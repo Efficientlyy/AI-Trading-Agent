@@ -1,0 +1,106 @@
+# Order Book Strategy Configuration
+# This file contains settings for order book-based trading strategies
+
+strategies:
+  # Market Imbalance Strategy
+  market_imbalance:
+    enabled: true
+    description: "Strategy that detects imbalances in the order book to predict short-term price movements"
+    
+    # Symbols to trade (can be overridden via command line)
+    symbols: ["BTC/USDT", "ETH/USDT"]
+    
+    # Exchanges to use
+    exchanges: ["binance"]
+    
+    # Core strategy parameters
+    imbalance_threshold: 1.5     # Trigger signal when imbalance exceeds this value (1.5 = 50% imbalance)
+    
+    # Order book depth levels for analysis
+    depth_shallow: 5             # Shallow depth for immediate impact analysis
+    depth_medium: 10             # Medium depth for short-term market pressure
+    depth_deep: 20               # Deep levels for sustained pressure
+    
+    # Position sizing parameters
+    min_trade_size: 0.01         # Minimum position size
+    max_trade_size: 0.5          # Maximum position size
+    
+    # Risk management
+    take_profit_pct: 0.5         # Take profit at 0.5% gain
+    stop_loss_pct: 0.3           # Stop loss at 0.3% loss
+    
+    # Signal parameters
+    signal_cooldown: 300         # Wait 5 minutes between signals for the same symbol
+    
+    # Backtesting settings
+    backtest:
+      start_date: "2023-01-01"
+      end_date: "2023-12-31"
+      initial_balance: 10000
+      fee_pct: 0.1               # 0.1% trading fee
+      timeframe: "1m"
+
+  # Volume Absorption Strategy (another example)
+  volume_absorption:
+    enabled: true
+    description: "Strategy that detects when large orders are absorbed by the market without significant price impact"
+    
+    # Symbols to trade
+    symbols: ["BTC/USDT", "ETH/USDT"]
+    
+    # Exchanges to use
+    exchanges: ["binance"]
+    
+    # Core strategy parameters
+    min_order_size: 5.0          # Minimum order size to consider significant (in BTC)
+    absorption_threshold: 0.8    # 80% of the order must be absorbed
+    price_impact_threshold: 0.1  # Max 0.1% price impact for absorption to be considered
+    
+    # Position sizing parameters
+    min_trade_size: 0.05
+    max_trade_size: 0.5
+    
+    # Risk management
+    take_profit_pct: 0.7
+    stop_loss_pct: 0.4
+    
+    # Signal parameters
+    signal_cooldown: 600         # 10 minutes 
+    # Backtesting parameters
+    backtest:
+      start_date: "2023-01-01"
+      end_date: "2023-12-31"
+      timeframe: "1m"
+
+  # Meta-Strategy for Order Book Strategies
+  combined_orderbook:
+    enabled: true
+    symbols: ["BTC/USDT", "ETH/USDT"]
+    exchanges: ["binance"]
+    # Meta-strategy parameters
+    sub_strategies: ["market_imbalance", "volume_absorption"]
+    combination_method: "weighted_average"  # weighted_average, majority_vote, unanimous, any, custom
+    min_consensus_pct: 0.5       # At least 50% of strategies must agree
+    min_overall_confidence: 0.6  # Minimum combined confidence
+    signal_window: 60            # Consider signals within this time window (seconds)
+    # Strategy weightings
+    strategy_weights:
+      market_imbalance:
+        weight: 1.5              # Higher weight for market imbalance
+        min_confidence: 0.6      # Higher confidence threshold
+        enabled: true
+      volume_absorption:
+        weight: 1.0
+        min_confidence: 0.5
+        enabled: true
+    # Risk management parameters
+    min_trade_size: 0.05
+    max_trade_size: 0.5
+    take_profit_pct: 0.6
+    stop_loss_pct: 0.35
+    signal_cooldown: 300
+    # Backtesting parameters
+    backtest:
+      start_date: "2023-01-01"
+      end_date: "2023-12-31"
+      timeframe: "1m" 

@@ -1,0 +1,127 @@
+# Portfolio Manager Configuration
+
+# General settings
+enabled: true
+component_id: portfolio
+
+# Position limits
+max_positions: 5  # Maximum number of open positions
+max_positions_per_symbol: 1  # Maximum positions per trading pair
+max_positions_per_exchange: 3  # Maximum positions per exchange
+
+# Risk management
+max_risk_per_trade: 0.02  # 2% of capital per trade maximum risk
+max_portfolio_risk: 0.10  # 10% maximum portfolio risk (sum of all positions)
+risk_capital: 10000.0  # Capital amount to base risk calculations on
+close_positions_on_shutdown: false  # Whether to automatically close positions on shutdown
+
+# Position sizing
+position_sizing_method: risk-based  # fixed, risk-based, kelly
+default_position_size: 0.1  # 10% of available capital (for fixed sizing)
+default_leverage: 1.0  # Default leverage for positions (1.0 = no leverage)
+
+# Stop loss and take profit defaults
+default_stop_loss_percent: 0.05  # 5% default stop loss
+default_take_profit_percent: 0.15  # 15% default take profit
+
+# Signal filtering
+min_signal_confidence: 0.7  # Minimum signal confidence to act on (0.0 to 1.0)
+strategy_weighting:  # Weighting for different strategies (higher weight = more influence)
+  ma_crossover: 1.0
+  rsi_strategy: 1.0
+  sentiment_strategy: 0.8
+
+# Performance tracking
+track_trade_history: true  # Whether to track detailed trade history
+save_portfolio_stats_interval: 3600  # Save portfolio stats every hour (seconds)
+stats_file_path: data/portfolio/stats  # Path to save portfolio stats
+
+# Reporting
+report_frequency: daily  # never, hourly, daily, weekly
+report_metrics:
+  - win_rate
+  - profit_factor
+  - average_gain
+  - maximum_drawdown
+  - sharpe_ratio
+
+# Portfolio Management Configuration
+
+# Main portfolio settings
+main_portfolio:
+  name: "main"
+  initial_balance: 10000.00
+  base_currency: "USDT"
+  
+  # Risk management parameters
+  risk_management:
+    max_position_size: 0.1              # Maximum size of a position as a percentage of portfolio
+    max_risk_per_trade_pct: 0.01        # Maximum risk per trade (1% of portfolio)
+    max_risk_per_day_pct: 0.05          # Maximum risk per day (5% of portfolio)
+    max_open_positions: 10              # Maximum number of open positions
+    max_open_positions_per_symbol: 2    # Maximum positions per symbol
+    max_drawdown_pct: 0.20              # Maximum drawdown allowed (20%)
+    
+  # Default exit parameters (can be overridden by strategies)
+  default_take_profit_pct: 0.02         # Default take profit at 2%
+  default_stop_loss_pct: 0.01           # Default stop loss at 1%
+  
+  # Position sizing modes: fixed, risk_based, portfolio_percentage
+  position_sizing:
+    mode: "risk_based"                  # Use risk-based position sizing by default
+    fixed_size: 0.1                     # Fixed size (used when mode is "fixed")
+    portfolio_percentage: 0.05          # Percentage of portfolio (used when mode is "portfolio_percentage")
+
+# Test portfolio for paper trading
+test_portfolio:
+  name: "test"
+  initial_balance: 1000.00
+  base_currency: "USDT"
+  
+  # Risk management parameters - more aggressive for testing
+  risk_management:
+    max_position_size: 0.2              # Higher position size for testing
+    max_risk_per_trade_pct: 0.02        # Higher risk per trade for testing
+    max_risk_per_day_pct: 0.10          # Higher risk per day for testing
+    max_open_positions: 5               # Fewer positions for testing
+    max_open_positions_per_symbol: 1    # Only one position per symbol
+    max_drawdown_pct: 0.30              # Higher drawdown tolerance for testing
+    
+  # Default exit parameters
+  default_take_profit_pct: 0.03         # Higher take profit for testing
+  default_stop_loss_pct: 0.02           # Higher stop loss for testing
+  
+  # Position sizing
+  position_sizing:
+    mode: "portfolio_percentage"
+    fixed_size: 0.05
+    portfolio_percentage: 0.10
+
+# Performance tracking settings
+performance_tracking:
+  metrics:
+    - "total_return"
+    - "sharpe_ratio"
+    - "max_drawdown"
+    - "win_rate"
+    - "average_win"
+    - "average_loss"
+    - "profit_factor"
+  
+  # Benchmarks to compare against
+  benchmarks:
+    - "BTC/USDT"
+    - "ETH/USDT"
+  
+  # Reporting intervals
+  reporting:
+    daily: true
+    weekly: true
+    monthly: true
+
+# Logging settings
+logging:
+  position_updates: true               # Log position updates
+  trades: true                         # Log all trades
+  daily_summary: true                  # Log daily summary
+  risk_breaches: true                  # Log when risk parameters are breached 

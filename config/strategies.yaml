@@ -1,0 +1,56 @@
+# Trading strategies configuration
+
+# Global settings
+strategies:
+  enabled: true
+  enabled_strategies:
+    - ma_crossover
+    # Add more strategies as they are implemented
+
+  # Moving Average Crossover strategy configuration
+  ma_crossover:
+    enabled: true
+    class_name: MovingAverageCrossoverStrategy
+    module: src.strategy.ma_crossover
+    
+    # By default, analyze all symbols and exchanges
+    # Uncomment and modify to specify specific symbols or exchanges
+    # symbols:
+    #   - BTC/USDT
+    #   - ETH/USDT
+    # exchanges:
+    #   - binance
+    
+    # Timeframes to analyze
+    timeframes:
+      - 5m
+      - 15m
+      - 1h
+      - 4h
+    
+    # Moving average settings
+    fast_ma:
+      type: EMA  # EMA or SMA
+      period: 12
+    
+    slow_ma:
+      type: EMA  # EMA or SMA
+      period: 26
+    
+    # Signal generation settings
+    min_confidence: 0.6  # Minimum confidence to generate signals (0.0 to 1.0)
+    min_signal_interval: 3600  # Minimum seconds between similar signals
+    
+    # Position management
+    use_stop_loss: true
+    stop_loss_pct: 0.02  # 2%
+    use_take_profit: true
+    take_profit_pct: 0.05  # 5%
+    
+    # Event subscriptions
+    subscriptions:
+      - CandleDataEvent
+      - TechnicalIndicatorEvent
+    
+    # Maximum number of signals to keep in history
+    max_signal_history: 1000 

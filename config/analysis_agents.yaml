@@ -1,0 +1,62 @@
+# Analysis agents configuration
+
+# Global settings
+analysis_agents:
+  enabled: true
+  enabled_agents:
+    - technical_indicators
+    # Add more agents as they are implemented
+
+  # Technical indicators agent configuration
+  technical_indicators:
+    enabled: true
+    class_name: TechnicalIndicatorAgent
+    module: src.analysis_agents.technical_indicators
+    analysis_interval: 60  # Seconds between analysis runs
+    max_cache_size: 500   # Maximum number of candles to keep in cache
+    
+    # By default, analyze all symbols and exchanges
+    # Uncomment and modify to specify specific symbols or exchanges
+    # symbols:
+    #   - BTC/USDT
+    #   - ETH/USDT
+    # exchanges:
+    #   - binance
+    
+    # Timeframes to analyze
+    timeframes:
+      - 1m
+      - 5m
+      - 15m
+      - 1h
+      - 4h
+      - 1d
+    
+    # Indicators to calculate
+    indicators:
+      - SMA
+      - EMA
+      - RSI
+      - MACD
+      - BBANDS
+    
+    # Indicator-specific parameters
+    parameters:
+      SMA:
+        periods: [20, 50, 200]
+      
+      EMA:
+        periods: [9, 12, 26, 50, 200]
+      
+      RSI:
+        period: 14
+      
+      MACD:
+        fast_period: 12
+        slow_period: 26
+        signal_period: 9
+      
+      BBANDS:
+        period: 20
+        nbdevup: 2
+        nbdevdn: 2 

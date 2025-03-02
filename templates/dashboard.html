@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Trading Agent Monitoring</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', path='/css/dashboard.css') }}">
+</head>
+<body>
+    <h1>AI Trading Agent Monitoring Dashboard</h1>
+    <p>Last updated: {{ timestamp }}</p>
+    
+    <div class="dashboard">
+        <!-- System Status Card -->
+        <div class="card">
+            <h2>System Status</h2>
+            <span class="timestamp">{{ timestamp }}</span>
+            
+            <div class="metrics-row">
+                <div class="metric">
+                    <div class="metric-value">{{ uptime }}</div>
+                    <div class="metric-name">Uptime</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">{{ error_count }}</div>
+                    <div class="metric-name">Errors</div>
+                </div>
+            </div>
+            
+            <h3>Components</h3>
+            {% for component in components %}
+            <div class="component-status">
+                <div>
+                    <span class="status-indicator status-{{ component.status.lower() }}"></span>
+                    {{ component.name }}
+                </div>
+                <div>{{ component.status }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Alert Card -->
+        <div class="card">
+            <h2>System Alerts</h2>
+            <span class="timestamp">{{ timestamp }}</span>
+            
+            <div class="alert-counters">
+                <div class="alert-count alert-count-critical">
+                    <div class="metric-value">{{ alert_counts.critical }}</div>
+                    <div class="metric-name">Critical</div>
+                </div>
+                <div class="alert-count alert-count-error">
+                    <div class="metric-value">{{ alert_counts.error }}</div>
+                    <div class="metric-name">Error</div>
+                </div>
+                <div class="alert-count alert-count-warning">
+                    <div class="metric-value">{{ alert_counts.warning }}</div>
+                    <div class="metric-name">Warning</div>
+                </div>
+                <div class="alert-count alert-count-info">
+                    <div class="metric-value">{{ alert_counts.info }}</div>
+                    <div class="metric-name">Info</div>
+                </div>
+            </div>
+            
+            <div class="alerts-list">
+                {% for alert in alerts %}
+                <div class="alert alert-{{ alert.level }}">
+                    <span class="alert-category">{{ alert.category }}</span>
+                    <span class="alert-time">{{ alert.time }}</span>
+                    <div>{{ alert.message }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Active Orders Card -->
+        <div class="card">
+            <h2>Active Orders</h2>
+            <span class="timestamp">{{ timestamp }}</span>
+            
+            <div class="orders-list">
+                {% for order in orders %}
+                <div class="order-item">
+                    <div>
+                        <span class="badge badge-{{ order.side.lower() }}">{{ order.side }}</span>
+                        <span class="badge badge-{{ order.status.lower() }}">{{ order.status }}</span>
+                        {{ order.symbol }}
+                    </div>
+                    <div>
+                        <small>ID: {{ order.id }}</small> | 
+                        <small>Price: ${{ order.price }}</small> | 
+                        <small>Qty: {{ order.quantity }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Recent Trades Card -->
+        <div class="card">
+            <h2>Recent Trades</h2>
+            <span class="timestamp">{{ timestamp }}</span>
+            
+            <div class="trades-list">
+                {% for trade in trades %}
+                <div class="trade-item">
+                    <div>
+                        <span class="badge badge-{{ trade.side.lower() }}">{{ trade.side }}</span>
+                        {{ trade.symbol }}
+                    </div>
+                    <div>
+                        <small>{{ trade.time }}</small> | 
+                        <small>Price: ${{ trade.price }}</small> | 
+                        <small>Qty: {{ trade.quantity }}</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Performance Metrics Card -->
+        <div class="card">
+            <h2>Execution Metrics</h2>
+            <span class="timestamp">{{ timestamp }}</span>
+            
+            <div class="metrics-row">
+                <div class="metric">
+                    <div class="metric-value">{{ metrics.slippage }}%</div>
+                    <div class="metric-name">Avg. Slippage</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">{{ metrics.fill_rate }}%</div>
+                    <div class="metric-name">Fill Rate</div>
+                </div>
+            </div>
+            
+            <div class="metrics-row">
+                <div class="metric">
+                    <div class="metric-value">{{ metrics.latency }}ms</div>
+                    <div class="metric-name">Avg. Latency</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value">${{ metrics.fees }}</div>
+                    <div class="metric-name">Daily Fees</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <p>AI Trading Agent Monitoring Dashboard | Refresh page to update data</p>
+    </footer>
+</body>
+</html>

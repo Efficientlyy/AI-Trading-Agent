@@ -1,0 +1,305 @@
+[
+  {
+    "transaction_id": "tx_binance_1",
+    "exchange_id": "Binance",
+    "fee_type": "maker",
+    "asset": "BTC",
+    "amount": 0.01,
+    "transaction_time": "2025-03-01T22:52:41.746687",
+    "usd_value": 400.0,
+    "related_to": "btc_grid_strategy",
+    "details": {
+      "order_size": 1.0,
+      "order_price": 40000
+    }
+  },
+  {
+    "transaction_id": "tx_coinbase_1",
+    "exchange_id": "Coinbase",
+    "fee_type": "taker",
+    "asset": "USD",
+    "amount": 30.0,
+    "transaction_time": "2025-03-01T19:52:41.746687",
+    "usd_value": 30.0,
+    "related_to": "eth_momentum_strategy",
+    "details": {
+      "order_size": 5.0,
+      "order_price": 2000
+    }
+  },
+  {
+    "transaction_id": "tx_kraken_1",
+    "exchange_id": "Kraken",
+    "fee_type": "withdrawal",
+    "asset": "BTC",
+    "amount": 0.0005,
+    "transaction_time": "2025-03-01T00:52:41.746687",
+    "usd_value": 20.0,
+    "details": {
+      "withdrawal_amount": 0.1,
+      "network": "Bitcoin"
+    }
+  },
+  {
+    "transaction_id": "tx_binance_2",
+    "exchange_id": "Binance",
+    "fee_type": "maker",
+    "asset": "BTC",
+    "amount": 0.00375,
+    "transaction_time": "2025-03-02T00:52:41.747687",
+    "usd_value": 150.0,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_coinbase_3",
+    "exchange_id": "Coinbase",
+    "fee_type": "taker",
+    "asset": "ETH",
+    "amount": 0.030600000000000002,
+    "transaction_time": "2025-03-01T00:52:41.747687",
+    "usd_value": 61.2,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_kraken_4",
+    "exchange_id": "Kraken",
+    "fee_type": "maker",
+    "asset": "USD",
+    "amount": 0.0112,
+    "transaction_time": "2025-02-28T00:52:41.747687",
+    "usd_value": 0.0112,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_binance_5",
+    "exchange_id": "Binance",
+    "fee_type": "taker",
+    "asset": "BTC",
+    "amount": 0.006,
+    "transaction_time": "2025-02-27T00:52:41.747687",
+    "usd_value": 240.0,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_coinbase_6",
+    "exchange_id": "Coinbase",
+    "fee_type": "maker",
+    "asset": "ETH",
+    "amount": 0.0459,
+    "transaction_time": "2025-02-26T00:52:41.747687",
+    "usd_value": 91.80000000000001,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_kraken_7",
+    "exchange_id": "Kraken",
+    "fee_type": "taker",
+    "asset": "USD",
+    "amount": 0.026,
+    "transaction_time": "2025-02-25T00:52:41.747687",
+    "usd_value": 0.026,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_binance_8",
+    "exchange_id": "Binance",
+    "fee_type": "maker",
+    "asset": "BTC",
+    "amount": 0.00825,
+    "transaction_time": "2025-02-24T00:52:41.747687",
+    "usd_value": 330.0,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_binance_1",
+    "exchange_id": "Binance",
+    "fee_type": "maker",
+    "asset": "BTC",
+    "amount": 0.01,
+    "transaction_time": "2025-03-01T22:53:13.545315",
+    "usd_value": 400,
+    "related_to": "btc_grid_strategy",
+    "details": {
+      "order_size": 1.0,
+      "order_price": 40000
+    }
+  },
+  {
+    "transaction_id": "tx_coinbase_1",
+    "exchange_id": "Coinbase",
+    "fee_type": "taker",
+    "asset": "USD",
+    "amount": 30.0,
+    "transaction_time": "2025-03-01T19:53:13.545315",
+    "usd_value": 30.0,
+    "related_to": "eth_momentum_strategy",
+    "details": {
+      "order_size": 5.0,
+      "order_price": 2000
+    }
+  },
+  {
+    "transaction_id": "tx_kraken_1",
+    "exchange_id": "Kraken",
+    "fee_type": "withdrawal",
+    "asset": "BTC",
+    "amount": 0.0005,
+    "transaction_time": "2025-03-01T00:53:13.545315",
+    "usd_value": 20.0,
+    "details": {
+      "withdrawal_amount": 0.1,
+      "network": "Bitcoin"
+    }
+  },
+  {
+    "transaction_id": "tx_binance_2",
+    "exchange_id": "Binance",
+    "fee_type": "maker",
+    "asset": "BTC",
+    "amount": 0.0028125000000000003,
+    "transaction_time": "2025-03-02T00:53:13.545315",
+    "usd_value": 112.50000000000001,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_coinbase_3",
+    "exchange_id": "Coinbase",
+    "fee_type": "taker",
+    "asset": "ETH",
+    "amount": 0.026010000000000002,
+    "transaction_time": "2025-03-01T00:53:13.545315",
+    "usd_value": 52.02,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_kraken_4",
+    "exchange_id": "Kraken",
+    "fee_type": "maker",
+    "asset": "USD",
+    "amount": 0.0112,
+    "transaction_time": "2025-02-28T00:53:13.546336",
+    "usd_value": 0.0112,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_binance_5",
+    "exchange_id": "Binance",
+    "fee_type": "taker",
+    "asset": "BTC",
+    "amount": 0.0045000000000000005,
+    "transaction_time": "2025-02-27T00:53:13.546336",
+    "usd_value": 180.00000000000003,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_coinbase_6",
+    "exchange_id": "Coinbase",
+    "fee_type": "maker",
+    "asset": "ETH",
+    "amount": 0.039015,
+    "transaction_time": "2025-02-26T00:53:13.546336",
+    "usd_value": 78.03,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_kraken_7",
+    "exchange_id": "Kraken",
+    "fee_type": "taker",
+    "asset": "USD",
+    "amount": 0.026,
+    "transaction_time": "2025-02-25T00:53:13.546336",
+    "usd_value": 0.026,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_binance_8",
+    "exchange_id": "Binance",
+    "fee_type": "maker",
+    "asset": "BTC",
+    "amount": 0.0061875,
+    "transaction_time": "2025-02-24T00:53:13.546336",
+    "usd_value": 247.5,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_coinbase_9",
+    "exchange_id": "Coinbase",
+    "fee_type": "taker",
+    "asset": "ETH",
+    "amount": 0.052020000000000004,
+    "transaction_time": "2025-03-02T00:53:13.547334",
+    "usd_value": 104.04,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_kraken_10",
+    "exchange_id": "Kraken",
+    "fee_type": "maker",
+    "asset": "USD",
+    "amount": 0.020800000000000003,
+    "transaction_time": "2025-03-01T00:53:13.547334",
+    "usd_value": 0.020800000000000003,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  },
+  {
+    "transaction_id": "tx_binance_11",
+    "exchange_id": "Binance",
+    "fee_type": "taker",
+    "asset": "BTC",
+    "amount": 0.007875,
+    "transaction_time": "2025-02-28T00:53:13.547334",
+    "usd_value": 315.0,
+    "related_to": "sample_strategy",
+    "details": {
+      "sample": true
+    }
+  }
+]
