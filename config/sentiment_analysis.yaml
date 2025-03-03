@@ -1,0 +1,76 @@
+# Sentiment Analysis Configuration
+
+# Main sentiment analysis settings
+sentiment:
+  enabled: true
+  
+  # Social Media Sentiment Agent
+  social_media:
+    enabled: true
+    platforms:
+      - Twitter
+      - Reddit
+    update_interval: 300  # 5 minutes
+    min_confidence: 0.7
+    sentiment_shift_threshold: 0.15
+    contrarian_threshold: 0.8
+    max_history_size: 100
+  
+  # News Sentiment Agent
+  news:
+    enabled: true
+    sources:
+      - CryptoNews
+      - CoinDesk
+      - CoinTelegraph
+    update_interval: 600  # 10 minutes
+    min_confidence: 0.7
+    sentiment_shift_threshold: 0.15
+    contrarian_threshold: 0.8
+    max_history_size: 100
+  
+  # Market Sentiment Agent
+  market:
+    enabled: true
+    indicators:
+      - FearGreedIndex
+      - LongShortRatio
+    update_interval: 3600  # 1 hour
+    min_confidence: 0.7
+    sentiment_shift_threshold: 0.15
+    contrarian_threshold: 0.8
+    max_history_size: 100
+  
+  # Onchain Sentiment Agent
+  onchain:
+    enabled: true
+    metrics:
+      - LargeTransactions
+      - ActiveAddresses
+      - HashRate
+      - ExchangeReserves
+    update_interval: 3600  # 1 hour
+    min_confidence: 0.7
+    sentiment_shift_threshold: 0.15
+    contrarian_threshold: 0.8
+    max_history_size: 100
+  
+  # Sentiment Aggregator
+  aggregator:
+    enabled: true
+    update_interval: 1800  # 30 minutes
+    min_confidence: 0.7
+    sentiment_shift_threshold: 0.1  # More sensitive to shifts
+    source_weights:
+      social_media: 0.25
+      news: 0.25
+      market: 0.3
+      onchain: 0.2
+    max_history_size: 100
+
+# Symbols to monitor (for all sentiment agents)
+symbols:
+  - BTC/USDT
+  - ETH/USDT
+  - SOL/USDT
+  - XRP/USDT
