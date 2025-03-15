@@ -1,5 +1,7 @@
 # AI Trading Agent - Sentiment Analysis System
 
+[![codecov](https://codecov.io/gh/Efficientlyy/AI-Trading-Agent/branch/main/graph/badge.svg)](https://codecov.io/gh/Efficientlyy/AI-Trading-Agent)
+
 This repository contains a modular, high-performance sentiment analysis system for cryptocurrency trading. It's designed to analyze sentiment from multiple sources and provide actionable trading insights.
 
 ## Architecture
@@ -92,3 +94,41 @@ This system follows a modular design with clear separation of concerns:
 - Components use a consistent event-based communication system
 - Error handling is robust with proper async patterns
 - All modules include comprehensive documentation
+
+## Test Coverage
+
+The project enforces strict test coverage requirements to maintain code quality and ensure reliability across all components. Our coverage configuration follows the Component Isolation principle, with specific thresholds for each module.
+
+### Coverage Thresholds
+
+| Component | Threshold | Description |
+|-----------|-----------|-------------|
+| Market Regime Detection | ≥85% | Critical algorithms for market state identification |
+| ML Models | ≥80% | Machine learning model implementations |
+| Performance Evaluation | ≥75% | Metrics and evaluation tools |
+| Rust Core | ≥80% | Performance-critical components written in Rust |
+| Dashboard | ≥80% | React/TypeScript visualization components |
+
+### CI Integration
+
+Coverage is enforced through our CI pipeline:
+
+- Each PR triggers component-specific coverage checks
+- Coverage reports are generated for modified components
+- PRs cannot be merged if coverage drops below thresholds
+- Critical files receive extra scrutiny
+
+### PR Comments
+
+Codecov automatically comments on PRs with:
+
+- Overall coverage changes
+- Per-component coverage details
+- Warnings for components that drop below thresholds
+- Highlighting of changes to critical files
+
+This system ensures that:
+1. New code maintains high test quality
+2. Contributors receive immediate feedback on coverage
+3. Code quality remains consistent across all components
+4. Critical components maintain the highest standards
