@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Dict, Any, Optional, List
 from datetime import datetime
 
+from src.common.events import Event as BaseEvent, EventPriority
 from src.models.order import Order
 
 
@@ -19,6 +20,7 @@ class EventType(Enum):
     PERFORMANCE = "performance"
     POSITION = "position"
     DATA = "data"
+    SENTIMENT = "sentiment"
 
 
 class Event:
@@ -129,4 +131,42 @@ class DataEvent(Event):
         self.source = source
         self.data_type = data_type
         self.symbol = symbol
-        self.data = data 
+        self.data = data
+
+
+class SentimentEvent(BaseEvent):
+    """Event for sentiment analysis updates."""
+    
+    def __init__(self, source: str, symbol: str, sentiment_value: float,
+                 sentiment_direction: str, confidence: float,
+                 details: Optional[Dict[str, Any]] = None,
+                 timestamp: Optional[datetime] = None):
+        """Initialize a sentiment event.
+        
+        Args:
+            source: The source of the sentiment data
+            symbol: The trading pair symbol
+            sentiment_value: The numerical sentiment value (0.0-1.0)
+            sentiment_direction: The direction of sentiment ("bullish", "bearish")
+            confidence: The confidence level of the sentiment prediction (0.0-1.0)
+            details: Optional additional details about the sentiment
+            timestamp: Optional custom timestamp (defaults to now)
+        """
+        # Create payload for BaseEvent
+        payload = {
+            "symbol": symbol,
+            "sentiment_value": sentiment_value,
+            "sentiment_direction": sentiment_direction,
+            "confidence": confidence,
+        }
+        
+        # Add details to payload if provided
+        if details:
+            payload.update(details)
+            
+        # Initialize BaseEvent
+        super().__init__(
+            event_type=EventType.SENTIMENT.value,
+            source=source,
+            payload=payload
+        )

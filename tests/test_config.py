@@ -89,8 +89,10 @@ def test_override_from_env(monkeypatch):
     # Check that values were overridden correctly
     assert result["test"]["value1"] == "env value"
     assert result["test"]["value2"] == 123  # Unchanged
-    assert result["test"]["nested"]["value3"] == "false"  # Coming from env var as string
-    assert result["test"]["new_value"] == "brand new"  # New value
+    assert result["test"]["nested"]["value3"] is False  # Properly converted to boolean False
+    assert "new" in result["test"]  # New section added
+    assert "value" in result["test"]["new"]  # New value key added
+    assert result["test"]["new"]["value"] == "brand new"  # New value has correct content
 
 
 def test_merge_dicts():
@@ -118,11 +120,12 @@ def test_merge_dicts():
         "f": 6
     }
     
-    result = Config._merge_dicts(dict1, dict2)
+    # Call _merge_dicts as an instance method, not a static method
+    result = test_config_instance._merge_dicts(dict1, dict2)
     
     # Check that dictionaries were merged correctly
-    assert result["a"] == 1  # Unchanged from dict1
-    assert result["b"]["c"] == 2  # Unchanged from dict1
-    assert result["b"]["d"] == 4  # Overridden from dict2
-    assert result["b"]["e"] == 5  # New from dict2
-    assert result["f"] == 6  # New from dict2 
+    assert result["a"] == 1
+    assert result["b"]["c"] == 2
+    assert result["b"]["d"] == 4  # Overridden by dict2
+    assert result["b"]["e"] == 5  # Added from dict2
+    assert result["f"] == 6  # Added from dict2

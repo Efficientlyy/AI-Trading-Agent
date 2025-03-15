@@ -1,0 +1,50 @@
+logging:
+  level: DEBUG
+  directory: ./tests/data/logs
+  file_pattern: app_{date}.log
+  max_size_mb: 10
+  backup_count: 5
+  compression: true
+  
+  # Log query settings
+  query:
+    max_results: 1000
+    default_pattern: "*.log*"
+    cache_size: 100
+    
+  # Log replay settings
+  replay:
+    default_speed: 1.0
+    batch_size: 100
+    max_retries: 3
+    retry_delay: 1.0
+    
+  # Health monitoring settings
+  health:
+    update_interval: 30
+    check_timeout: 5
+    metrics:
+      retention_days: 7
+      threshold_check_interval: 60
+    system_checks:
+      cpu_warning: 80
+      cpu_critical: 90
+      memory_warning: 80
+      memory_critical: 90
+      disk_warning: 80
+      disk_critical: 90
+      
+  # Alerting settings
+  alerts:
+    enabled: true
+    channels:
+      - console
+    batch_interval: 60
+    rate_limit: 10
+    
+  # Feature flags
+  features:
+    compression: true
+    sanitization: true
+    distributed_tracing: true
+    buffering: true

@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block title %}API Documentation{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h2>Market Regime Detection API Documentation</h2>
+            <p class="text-muted">Reference guide for using the API programmatically</p>
+        </div>
+        
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="sticky-top pt-3" style="top: 70px;">
+                        <div class="list-group">
+                            <a href="#overview" class="list-group-item list-group-item-action">Overview</a>
+                            <a href="#authentication" class="list-group-item list-group-item-action">Authentication</a>
+                            <a href="#endpoints" class="list-group-item list-group-item-action">Endpoints</a>
+                            <a href="#detect" class="list-group-item list-group-item-action">Regime Detection</a>
+                            <a href="#backtest" class="list-group-item list-group-item-action">Backtesting</a>
+                            <a href="#report" class="list-group-item list-group-item-action">Reports</a>
+                            <a href="#errors" class="list-group-item list-group-item-action">Error Handling</a>
+                            <a href="#examples" class="list-group-item list-group-item-action">Code Examples</a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-9">
+                    <section id="overview" class="mb-5">
+                        <h3>Overview</h3>
+                        <p>
+                            The Market Regime Detection API provides endpoints for detecting market regimes and backtesting trading strategies 
+                            based on different regime detection methods.
+                        </p>
+                        <p>
+                            <strong>Base URL:</strong> <code>{{ request.host_url }}api/v1</code>
+                        </p>
+                        <p>
+                            All requests and responses use JSON format. Ensure you include the appropriate headers:
+                        </p>
+                        <pre><code>Content-Type: application/json
+Accept: application/json</code></pre>
+                    </section>
+                    
+                    <section id="authentication" class="mb-5">
+                        <h3>Authentication</h3>
+                        <p>
+                            API requests need to be authenticated using an API key provided in the request header.
+                        </p>
+                        <pre><code>X-API-Key: your_api_key</code></pre>
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Contact us to obtain an API key for production use.
+                        </div>
+                    </section>
+                    
+                    <section id="endpoints" class="mb-5">
+                        <h3>Available Endpoints</h3>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Endpoint</th>
+                                    <th>Method</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>/api/v1/detect</code></td>
+                                    <td>POST</td>
+                                    <td>Detect market regimes for a specified symbol</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/v1/backtest</code></td>
+                                    <td>POST</td>
+                                    <td>Backtest a trading strategy based on regime detection</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/v1/generate_report</code></td>
+                                    <td>POST</td>
+                                    <td>Generate a PDF report of backtest results</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/api/v1/status</code></td>
+                                    <td>GET</td>
+                                    <td>Check API health and status</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </section>
+                    
+                    <section id="detect" class="mb-5">
+                        <h3>Regime Detection</h3>
+                        <p>
+                            <strong>Endpoint:</strong> <code>/api/v1/detect</code><br>
+                            <strong>Method:</strong> POST
+                        </p>
+                        
+                        <h4>Request Parameters</h4>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Type</th>
+                                    <th>Required</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>symbol</td>
+                                    <td>string</td>
+                                    <td>Yes</td>
+                                    <td>The ticker symbol to analyze (e.g., "SPY")</td>
+                                </tr>
+                                <tr>
+                                    <td>period</td>
+                                    <td>string</td>
+                                    <td>No</td>
+                                    <td>Time period for data (e.g., "1y", "3y", "5y", "max"). Default: "3y"</td>
+                                </tr>
+                                <tr>
+                                    <td>lookback_window</td>
+                                    <td>integer</td>
+                                    <td>No</td>
+                                    <td>Lookback window for calculations. Default: 60</td>
+                                </tr>
+                                <tr>
+                                    <td>methods</td>
+                                    <td>array</td>
+                                    <td>No</td>
+                                    <td>List of detection methods to use (e.g., ["volatility", "momentum", "hmm"]). Default: all methods</td>
+                                </tr>
+                                <tr>
+                                    <td>include_statistics</td>
+                                    <td>boolean</td>
+                                    <td>No</td>
+                                    <td>Whether to include statistics in response. Default: false</td>
+                                </tr>
+                                <tr>
+                                    <td>include_visualizations</td>
+                                    <td>boolean</td>
+                                    <td>No</td>
+                                    <td>Whether to include visualization URLs in response. Default: false</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <h4>Response Format</h4>
+                        <pre><code>{
+  "request_id": "abc123",
+  "symbol": "SPY",
+  "regimes": {
+    "volatility": [0, 0, 1, 1, 2, ...],
+    "momentum": [1, 1, 1, 0, 0, ...],
+    "hmm": [0, 0, 0, 1, 1, ...]
+  },
+  "dates": ["2020-01-01", "2020-01-02", ...],
+  "statistics": { ... },
+  "visualization_urls": {
+    "volatility": "/static/visualizations/abc123_volatility.png",
+    "momentum": "/static/visualizations/abc123_momentum.png",
+    "hmm": "/static/visualizations/abc123_hmm.png"
+  },
+  "execution_time": 0.89
+}</code></pre>
+                    </section>
+                    
+                    <section id="backtest" class="mb-5">
+                        <h3>Backtesting</h3>
+                        <p>
+                            <strong>Endpoint:</strong> <code>/api/v1/backtest</code><br>
+                            <strong>Method:</strong> POST
+                        </p>
+                        
+                        <h4>Request Parameters</h4>
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Type</th>
+                                    <th>Required</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>symbol</td>
+                                    <td>string</td>
+                                    <td>Yes</td>
+                                    <td>The ticker symbol to analyze (e.g., "SPY")</td>
+                                </tr>
+                                <tr>
+                                    <td>period</td>
+                                    <td>string</td>
+                                    <td>No</td>
+                                    <td>Time period for data (e.g., "1y", "3y", "5y", "max"). Default: "3y"</td>
+                                </tr>
+                                <tr>
+                                    <td>strategy</td>
+                                    <td>string</td>
+                                    <td>No</td>
+                                    <td>Trading strategy to use. Options: "trend_following", "mean_reversion", "momentum", "volatility_based", "regime_adaptive". Default: "trend_following"</td>
+                                </tr>
+                                <tr>
+                                    <td>regime_methods</td>
+                                    <td>array</td>
+                                    <td>No</td>
+                                    <td>List of detection methods to use (e.g., ["volatility", "momentum", "hmm"]). Default: all methods</td>
+                                </tr>
+                                <tr>
+                                    <td>initial_capital</td>
+                                    <td>number</td>
+                                    <td>No</td>
+                                    <td>Initial capital for backtest. Default: 10000</td>
+                                </tr>
+                                <tr>
+                                    <td>position_sizing</td>
+                                    <td>string</td>
+                                    <td>No</td>
+                                    <td>Position sizing method. Options: "fixed", "percent", "kelly", "volatility". Default: "fixed"</td>
+                                </tr>
+                                <tr>
+                                    <td>max_position_size</td>
+                                    <td>number</td>
+                                    <td>No</td>
+                                    <td>Maximum position size as percentage (1-100). Default: 100</td>
+                                </tr>
+                                <tr>
+                                    <td>stop_loss_pct</td>
+                                    <td>number</td>
+                                    <td>No</td>
+                                    <td>Stop loss percentage. Default: None</td>
+                                </tr>
+                                <tr>
+                                    <td>take_profit_pct</td>
+                                    <td>number</td>
+                                    <td>No</td>
+                                    <td>Take profit percentage. Default: None</td>
+                                </tr>
+                                <tr>
+                                    <td>include_transaction_costs</td>
+                                    <td>boolean</td>
+                                    <td>No</td>
+                                    <td>Whether to include transaction costs. Default: true</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <h4>Response Format</h4>
+                        <pre><code>{
+  "request_id": "abc123",
+  "symbol": "SPY",
+  "strategy_name": "Trend Following",
+  "performance_metrics": {
+    "total_return": 0.345,
+    "annual_return": 0.112,
+    "annual_volatility": 0.15,
+    "sharpe_ratio": 0.78,
+    "sortino_ratio": 1.23,
+    "calmar_ratio": 0.65,
+    "max_drawdown": -0.18,
+    "win_rate": 0.62,
+    "profit_factor": 1.89,
+    "num_trades": 34
+  },
+  "regime_metrics": {
+    "0": { "total_return": 0.21, ... },
+    "1": { "total_return": -0.05, ... },
+    "2": { "total_return": 0.19, ... }
+  },
+  "trades": [ ... ],
+  "equity_curve_url": "/static/visualizations/abc123_equity.png",
+  "regime_chart_url": "/static/visualizations/abc123_regimes.png",
+  "execution_time": 1.23
+}</code></pre>
+                    </section>
+                    
+                    <section id="report" class="mb-5">
+                        <h3>Generate Reports</h3>
+                        <p>
+                            <strong>Endpoint:</strong> <code>/api/v1/generate_report</code><br>
+                            <strong>Method:</strong> POST
+                        </p>
+                        <p>
+                            This endpoint accepts previously generated backtest results and returns a PDF report.
+                        </p>
+                        <p>
+                            <strong>Request Body:</strong> The complete backtest results JSON object from a previous backtest request.
+                        </p>
+                        <p>
+                            <strong>Response:</strong> A PDF file containing the formatted backtest report.
+                        </p>
+                    </section>
+                    
+                    <section id="errors" class="mb-5">
+                        <h3>Error Handling</h3>
+                        <p>
+                            The API uses standard HTTP status codes to indicate success or failure:
+                        </p>
+                        <ul>
+                            <li><code>200 OK</code> - Request successful</li>
+                            <li><code>400 Bad Request</code> - Invalid input parameters</li>
+                            <li><code>401 Unauthorized</code> - Missing or invalid API key</li>
+                            <li><code>404 Not Found</code> - Resource not found</li>
+                            <li><code>429 Too Many Requests</code> - Rate limit exceeded</li>
+                            <li><code>500 Internal Server Error</code> - Server error</li>
+                        </ul>
+                        <p>
+                            Error responses include a JSON object with details:
+                        </p>
+                        <pre><code>{
+  "error": true,
+  "code": 400,
+  "message": "Invalid parameter: period",
+  "details": "Period must be one of: 1d, 5d, 1mo, 3mo, 6mo, 1y, 2y, 5y, 10y, ytd, max"
+}</code></pre>
+                    </section>
+                    
+                    <section id="examples" class="mb-5">
+                        <h3>Code Examples</h3>
+                        
+                        <h4>Python</h4>
+                        <pre><code>import requests
+import json
+
+api_key = "your_api_key"
+base_url = "{{ request.host_url }}api/v1"
+
+# Detect regimes
+detect_payload = {
+    "symbol": "SPY",
+    "period": "3y",
+    "methods": ["volatility", "momentum"],
+    "include_visualizations": True
+}
+
+headers = {
+    "Content-Type": "application/json",
+    "Accept": "application/json",
+    "X-API-Key": api_key
+}
+
+response = requests.post(
+    f"{base_url}/detect", 
+    headers=headers,
+    json=detect_payload
+)
+
+results = response.json()
+print(f"Detected {len(results['regimes']['volatility'])} regimes")</code></pre>
+                        
+                        <h4>JavaScript</h4>
+                        <pre><code>const apiKey = 'your_api_key';
+const baseUrl = '{{ request.host_url }}api/v1';
+
+// Backtest a strategy
+const backtestPayload = {
+  symbol: 'SPY',
+  period: '5y',
+  strategy: 'trend_following',
+  regime_methods: ['volatility', 'momentum'],
+  initial_capital: 10000
+};
+
+fetch(`${baseUrl}/backtest`, {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-API-Key': apiKey
+  },
+  body: JSON.stringify(backtestPayload)
+})
+.then(response => response.json())
+.then(data => {
+  console.log(`Total return: ${(data.performance_metrics.total_return * 100).toFixed(2)}%`);
+})
+.catch(error => console.error('Error:', error));</code></pre>
+                    </section>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

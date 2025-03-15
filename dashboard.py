@@ -547,6 +547,120 @@ async def get_dashboard(request: Request):
         }
     )
 
+@app.get("/risk", response_class=HTMLResponse)
+async def risk_management(request: Request):
+    """
+    Display the risk management dashboard.
+    
+    This shows real-time risk utilization across strategies and assets,
+    as well as risk alerts and optimization opportunities.
+    """
+    try:
+        # In a real implementation, this would fetch data from the risk management system
+        # For now, we use placeholder data (this matches the HTML template)
+        risk_data = {
+            "timestamp": datetime.now().isoformat(),
+            "system_risk": {
+                "total_budget": 5.0,
+                "current_risk": 2.8,
+                "utilization": 56.0,
+                "available_risk": 2.2
+            },
+            "strategies": {
+                "trend_following": {
+                    "max_risk": 2.5,
+                    "current_risk": 1.4,
+                    "utilization": 56.0,
+                    "status": "low",
+                    "markets": {
+                        "crypto": {
+                            "max_risk": 1.5,
+                            "current_risk": 0.9,
+                            "utilization": 60.0,
+                            "assets": {
+                                "BTC": {"max_risk": 0.6, "current_risk": 0.4, "utilization": 67.0},
+                                "ETH": {"max_risk": 0.5, "current_risk": 0.3, "utilization": 60.0},
+                                "SOL": {"max_risk": 0.4, "current_risk": 0.2, "utilization": 50.0}
+                            }
+                        },
+                        "forex": {
+                            "max_risk": 1.0,
+                            "current_risk": 0.5,
+                            "utilization": 50.0,
+                            "assets": {
+                                "EUR/USD": {"max_risk": 0.6, "current_risk": 0.3, "utilization": 50.0},
+                                "GBP/USD": {"max_risk": 0.4, "current_risk": 0.2, "utilization": 50.0}
+                            }
+                        }
+                    }
+                },
+                "mean_reversion": {
+                    "max_risk": 1.5,
+                    "current_risk": 1.2,
+                    "utilization": 80.0,
+                    "status": "medium",
+                    "markets": {
+                        "crypto": {
+                            "max_risk": 1.0,
+                            "current_risk": 0.9,
+                            "utilization": 90.0,
+                            "assets": {
+                                "BTC": {"max_risk": 0.4, "current_risk": 0.4, "utilization": 100.0},
+                                "ETH": {"max_risk": 0.3, "current_risk": 0.3, "utilization": 100.0},
+                                "LINK": {"max_risk": 0.3, "current_risk": 0.2, "utilization": 67.0}
+                            }
+                        },
+                        "commodities": {
+                            "max_risk": 0.5,
+                            "current_risk": 0.3,
+                            "utilization": 60.0,
+                            "assets": {
+                                "GOLD": {"max_risk": 0.3, "current_risk": 0.2, "utilization": 67.0},
+                                "SILVER": {"max_risk": 0.2, "current_risk": 0.1, "utilization": 50.0}
+                            }
+                        }
+                    }
+                },
+                "breakout": {
+                    "max_risk": 1.0,
+                    "current_risk": 0.2,
+                    "utilization": 20.0,
+                    "status": "low",
+                    "markets": {
+                        "crypto": {
+                            "max_risk": 1.0,
+                            "current_risk": 0.2,
+                            "utilization": 20.0,
+                            "assets": {
+                                "BTC": {"max_risk": 0.5, "current_risk": 0.1, "utilization": 20.0},
+                                "ETH": {"max_risk": 0.3, "current_risk": 0.1, "utilization": 33.0},
+                                "AVAX": {"max_risk": 0.2, "current_risk": 0.0, "utilization": 0.0}
+                            }
+                        }
+                    }
+                }
+            },
+            "alerts": [
+                {
+                    "level": "warning",
+                    "message": "Strategy 'Mean Reversion' risk utilization at 80.0%"
+                },
+                {
+                    "level": "critical",
+                    "message": "Asset 'BTC' in 'Mean Reversion' strategy has reached 100% risk utilization"
+                },
+                {
+                    "level": "critical",
+                    "message": "Asset 'ETH' in 'Mean Reversion' strategy has reached 100% risk utilization"
+                }
+            ]
+        }
+        
+        # Serve the risk management HTML template
+        return templates.TemplateResponse("risk_management.html", {"request": request, "risk_data": risk_data})
+    except Exception as e:
+        return HTMLResponse(f"<h1>Error</h1><p>Failed to load risk management dashboard: {str(e)}</p>")
+
 def main():
     """Run the dashboard server."""
     # Parse command line arguments

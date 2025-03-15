@@ -3,20 +3,21 @@
 import asyncio
 import os
 import shutil
+import sys
 from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
+import pytest_asyncio
 
 # Ensure we're using the test configuration
 os.environ["ENVIRONMENT"] = "testing"
 
 
 @pytest.fixture(scope="session")
-def event_loop():
-    """Create an event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
+def event_loop_policy():
+    """Create an event loop policy for tests."""
+    return asyncio.DefaultEventLoopPolicy()
 
 
 @pytest.fixture(scope="session")
@@ -49,34 +50,31 @@ def test_logs_dir():
         shutil.rmtree(test_dir)
 
 
-@pytest.fixture(scope="session", autouse=True)
-def reset_singletons():
-    """Reset singleton instances between tests."""
-    # This helps ensure tests don't interfere with each other
-    from src.common.config import Config
-    from src.common.events import EventBus
-    
-    # Reset Config singleton
-    Config._instance = None
-    Config._initialized = False
-    Config._config = {}
-    Config._loaded_files = set()
-    
-    # Reset EventBus singleton
-    EventBus._instance = None
-    EventBus._initialized = False
-    EventBus._subscribers = {}
-    EventBus._registered_event_types = set()
+@pytest.fixture(scope="session")
+def mock_dependencies():
+    """Mock dependencies for sentiment strategy tests."""
+    # Store original modules
+    original_modules = {}
+    for mod in ['src.common.logging', 'src.common.events', 'src.common.config']:
+        if mod in sys.modules:
+            original_modules[mod] = sys.modules[mod]
+        sys.modules[mod] = MagicMock()
     
     yield
     
-    # Also reset after all tests
-    Config._instance = None
-    Config._initialized = False
-    Config._config = {}
-    Config._loaded_files = set()
+    # Restore original modules
+    for mod, orig in original_modules.items():
+        sys.modules[mod] = orig
+
+
+@pytest.fixture(scope="session", autouse=True)
+def reset_singletons():
+    """Reset singleton instances between tests."""
+    # Check if we need to mock dependencies first
+    if 'src.common.config' not in sys.modules:
+        from unittest.mock import MagicMock
+        sys.modules['src.common.config'] = MagicMock()
+        sys.modules['src.common.events'] = MagicMock()
     
-    EventBus._instance = None
-    EventBus._initialized = False
-    EventBus._subscribers = {}
-    EventBus._registered_event_types = set() 
+    # Let the test run
+    yield

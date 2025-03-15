@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Regime Detection</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            padding-top: 20px;
+            padding-bottom: 40px;
+        }
+        .regime-card {
+            margin-bottom: 20px;
+        }
+        .regime-label-0 {
+            background-color: #d4edda;
+        }
+        .regime-label-1 {
+            background-color: #fff3cd;
+        }
+        .regime-label-2 {
+            background-color: #f8d7da;
+        }
+        .chart-container {
+            height: 400px;
+            margin-bottom: 30px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .loading-spinner {
+            width: 3rem;
+            height: 3rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="pb-3 mb-4 border-bottom">
+            <div class="d-flex align-items-center">
+                <h1 class="display-5 fw-bold">Market Regime Detection</h1>
+                <span class="ms-auto badge bg-success" id="api-status">API Connected</span>
+            </div>
+        </header>
+
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Market Data Input</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="market-data-form">
+                            <div class="row mb-3">
+                                <div class="col-md-4">
+                                    <label for="symbol" class="form-label">Symbol</label>
+                                    <input type="text" class="form-control" id="symbol" value="SPY" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="start-date" class="form-label">Start Date</label>
+                                    <input type="date" class="form-control" id="start-date" required>
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="end-date" class="form-label">End Date</label>
+                                    <input type="date" class="form-control" id="end-date" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Regime Detection Methods</label>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="volatility" id="method-volatility" checked>
+                                        <label class="form-check-label" for="method-volatility">Volatility</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="momentum" id="method-momentum" checked>
+                                        <label class="form-check-label" for="method-momentum">Momentum</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="hmm" id="method-hmm">
+                                        <label class="form-check-label" for="method-hmm">Hidden Markov Model</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="trend" id="method-trend">
+                                        <label class="form-check-label" for="method-trend">Trend</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="lookback-window" class="form-label">Lookback Window</label>
+                                    <input type="number" class="form-control" id="lookback-window" value="63" min="10" max="252">
+                                    
+                                    <div class="form-check mt-3">
+                                        <input class="form-check-input" type="checkbox" value="true" id="include-statistics" checked>
+                                        <label class="form-check-label" for="include-statistics">Include Statistics</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="true" id="include-visualization" checked>
+                                        <label class="form-check-label" for="include-visualization">Include Visualization</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                                <button type="submit" class="btn btn-primary">Detect Regimes</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="loading" id="loading">
+            <div class="spinner-border loading-spinner text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Processing data and detecting regimes...</p>
+        </div>
+
+        <div id="results-container" style="display: none;">
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5>Price Chart</h5>
+                            <span class="badge bg-info" id="request-id"></span>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" id="price-chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="row mb-4" id="regime-charts">
+                <!-- Regime charts will be added here dynamically -->
+            </div>
+            
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>Statistics</h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="statistics-container">
+                                <!-- Statistics will be added here dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        // Set default dates (1 year ago to today)
+        const today = new Date();
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(today.getFullYear() - 1);
+        
+        document.getElementById('start-date').valueAsDate = oneYearAgo;
+        document.getElementById('end-date').valueAsDate = today;
+        
+        // Check API status
+        async function checkApiStatus() {
+            try {
+                const response = await axios.get('/health');
+                if (response.status === 200) {
+                    document.getElementById('api-status').textContent = 'API Connected';
+                    document.getElementById('api-status').className = 'ms-auto badge bg-success';
+                }
+            } catch (error) {
+                document.getElementById('api-status').textContent = 'API Disconnected';
+                document.getElementById('api-status').className = 'ms-auto badge bg-danger';
+            }
+        }
+        
+        // Initialize
+        checkApiStatus();
+        setInterval(checkApiStatus, 30000); // Check every 30 seconds
+        
+        // Handle form submission
+        document.getElementById('market-data-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // Show loading indicator
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results-container').style.display = 'none';
+            
+            // Get form values
+            const symbol = document.getElementById('symbol').value;
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            const lookbackWindow = parseInt(document.getElementById('lookback-window').value);
+            const includeStatistics = document.getElementById('include-statistics').checked;
+            const includeVisualization = document.getElementById('include-visualization').checked;
+            
+            // Get selected methods
+            const methods = [];
+            document.querySelectorAll('input[type=checkbox]:checked').forEach(checkbox => {
+                if (checkbox.value !== 'true') {
+                    methods.push(checkbox.value);
+                }
+            });
+            
+            if (methods.length === 0) {
+                alert('Please select at least one regime detection method.');
+                document.getElementById('loading').style.display = 'none';
+                return;
+            }
+            
+            try {
+                // Download data from Yahoo Finance (this would be done by the server in a real app)
+                // For this demo, we'll simulate by calling the API directly
+                
+                // Call the API
+                const response = await axios.post('/detect-regimes', {
+                    market_data: {
+                        symbol: symbol,
+                        data: [] // In a real app, this would contain actual market data
+                    },
+                    methods: methods,
+                    lookback_window: lookbackWindow,
+                    include_statistics: includeStatistics,
+                    include_visualization: includeVisualization
+                });
+                
+                // Display results
+                displayResults(response.data);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error detecting regimes. See console for details.');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+        
+        function displayResults(data) {
+            // Show results container
+            document.getElementById('results-container').style.display = 'block';
+            
+            // Set request ID
+            document.getElementById('request-id').textContent = `Request ID: ${data.request_id}`;
+            
+            // Clear previous charts
+            document.getElementById('regime-charts').innerHTML = '';
+            
+            // Create charts for each regime
+            for (const [method, labels] of Object.entries(data.regimes)) {
+                // Create card for this regime
+                const card = document.createElement('div');
+                card.className = 'col-md-6 regime-card';
+                card.innerHTML = `
+                    <div class="card">
+                        <div class="card-header">
+                            <h5>${method.charAt(0).toUpperCase() + method.slice(1)} Regime</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" id="${method}-chart"></div>
+                        </div>
+                    </div>
+                `;
+                document.getElementById('regime-charts').appendChild(card);
+                
+                // Create chart
+                createRegimeChart(method, labels);
+            }
+            
+            // Display statistics if available
+            if (data.statistics) {
+                displayStatistics(data.statistics);
+            }
+        }
+        
+        function createRegimeChart(method, labels) {
+            const ctx = document.getElementById(`${method}-chart`).getContext('2d');
+            
+            // Create labels array (dates or indices)
+            const chartLabels = Array.from({length: labels.length}, (_, i) => i);
+            
+            // Create datasets
+            const datasets = [
+                {
+                    label: `${method.charAt(0).toUpperCase() + method.slice(1)} Regime`,
+                    data: labels,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: false,
+                    stepped: true
+                }
+            ];
+            
+            // Create chart
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartLabels,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 3,
+                            ticks: {
+                                callback: function(value) {
+                                    if (value === 0) return 'Low';
+                                    if (value === 1) return 'Normal';
+                                    if (value === 2) return 'High';
+                                    return '';
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.parsed.y;
+                                    if (value === 0) return 'Low';
+                                    if (value === 1) return 'Normal';
+                                    if (value === 2) return 'High';
+                                    return '';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function displayStatistics(statistics) {
+            const container = document.getElementById('statistics-container');
+            container.innerHTML = '';
+            
+            // Create a table for each method
+            for (const [method, stats] of Object.entries(statistics)) {
+                const methodTitle = document.createElement('h5');
+                methodTitle.textContent = `${method.charAt(0).toUpperCase() + method.slice(1)} Statistics`;
+                container.appendChild(methodTitle);
+                
+                const table = document.createElement('table');
+                table.className = 'table table-striped table-hover';
+                
+                // Create table header
+                const thead = document.createElement('thead');
+                thead.innerHTML = `
+                    <tr>
+                        <th>Statistic</th>
+                        <th>Value</th>
+                    </tr>
+                `;
+                table.appendChild(thead);
+                
+                // Create table body
+                const tbody = document.createElement('tbody');
+                
+                for (const [stat, value] of Object.entries(stats)) {
+                    const row = document.createElement('tr');
+                    
+                    // Format the statistic name
+                    const formattedStat = stat
+                        .replace(/_/g, ' ')
+                        .replace(/\b\w/g, l => l.toUpperCase());
+                    
+                    // Format the value based on type
+                    let formattedValue = value;
+                    if (typeof value === 'number') {
+                        formattedValue = value.toFixed(4);
+                    }
+                    
+                    row.innerHTML = `
+                        <td>${formattedStat}</td>
+                        <td>${formattedValue}</td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                }
+                
+                table.appendChild(tbody);
+                container.appendChild(table);
+                
+                // Add a separator
+                if (Object.keys(statistics).indexOf(method) < Object.keys(statistics).length - 1) {
+                    const hr = document.createElement('hr');
+                    container.appendChild(hr);
+                }
+            }
+        }
+    </script>
+</body>
+</html> 

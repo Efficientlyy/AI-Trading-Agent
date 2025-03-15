@@ -17,6 +17,7 @@ import structlog
 from pydantic import BaseModel, Field
 
 from src.common.config import config
+from src.common.datetime_utils import utc_now
 from src.common.logging import get_logger
 
 # Configure logger
@@ -37,7 +38,7 @@ class Event(BaseModel):
 
     event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     event_type: str = Field(...)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=utc_now)
     priority: EventPriority = Field(default=EventPriority.NORMAL)
     source: str = Field(...)
     payload: Dict[str, Any] = Field(default_factory=dict)

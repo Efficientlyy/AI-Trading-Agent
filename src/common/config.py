@@ -7,11 +7,13 @@ and environment variables.
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, create_model, validator
+
+from src.common.config_schema import ConfigSchema
 
 # Load environment variables from .env file
 load_dotenv()
@@ -25,6 +27,23 @@ class ConfigurationError(Exception):
     """Raised when there's an issue with configuration loading or validation."""
 
     pass
+
+
+class ValidationResult:
+    """Result of a configuration validation."""
+    
+    def __init__(self, is_valid: bool, errors: List[str] = None, config: Dict[str, Any] = None):
+        """
+        Initialize the validation result.
+        
+        Args:
+            is_valid: Whether the configuration is valid
+            errors: List of validation errors (if any)
+            config: The validated configuration (if valid)
+        """
+        self.is_valid = is_valid
+        self.errors = errors or []
+        self.config = config or {}
 
 
 class ConfigValidator:
@@ -119,8 +138,8 @@ class ConfigLoader:
                     # Convert the string to the same type as the existing value
                     value_type = type(current[key])
                     if value_type == bool:
-                        # Special handling for boolean values
-                        current[key] = env_value.lower() in ("true", "1", "yes")
+                        # Special handling for boolean values - convert string to Boolean properly
+                        current[key] = env_value.lower() in ("true", "1", "yes", "t", "y")
                     elif value_type == int:
                         current[key] = int(env_value)
                     elif value_type == float:
@@ -131,8 +150,20 @@ class ConfigLoader:
                     else:
                         current[key] = env_value
                 else:
-                    # If the key doesn't exist yet, just set it as a string
-                    current[key] = env_value
+                    # If the key doesn't exist yet, try to infer the type
+                    env_lower = env_value.lower()
+                    if env_lower in ("true", "false", "yes", "no", "1", "0", "t", "f", "y", "n"):
+                        # It looks like a boolean, convert it
+                        current[key] = env_lower in ("true", "1", "yes", "t", "y")
+                    elif env_value.isdigit():
+                        # It looks like an integer
+                        current[key] = int(env_value)
+                    elif env_value.replace(".", "", 1).isdigit() and env_value.count(".") == 1:
+                        # It looks like a float (one decimal point and rest are digits)
+                        current[key] = float(env_value)
+                    else:
+                        # Default to string
+                        current[key] = env_value
             except ValueError:
                 # If type conversion fails, just use the string value
                 current[key] = env_value
@@ -152,6 +183,7 @@ class Config:
     _config: Dict[str, Any] = {}
     _loaded_files: set = set()
     _initialized = False
+    _schema: Optional[ConfigSchema] = None
 
     def __new__(cls):
         """Implement the singleton pattern."""
@@ -168,6 +200,29 @@ class Config:
     def _load_system_config(self) -> None:
         """Load the main system configuration file."""
         self.load_config_file(DEFAULT_CONFIG_FILE)
+
+    def set_schema(self, schema: ConfigSchema) -> None:
+        """
+        Set the schema to use for configuration validation.
+        
+        Args:
+            schema: The schema to use for validation
+        """
+        self._schema = schema
+
+    def validate_config(self) -> ValidationResult:
+        """
+        Validate the current configuration against the schema.
+        
+        Returns:
+            Validation result containing success/failure and any errors
+        """
+        if self._schema is None:
+            # No schema set, treat as valid
+            return ValidationResult(True, [], self._config)
+        
+        errors = self._schema.validate_config(self._config)
+        return ValidationResult(len(errors) == 0, errors, self._config)
 
     def load_config_file(self, filepath: Union[str, Path]) -> None:
         """
@@ -192,6 +247,13 @@ class Config:
         # Merge with existing configuration
         self._merge_config(config)
         
+        # Validate if a schema is set
+        if self._schema is not None:
+            result = self.validate_config()
+            if not result.is_valid:
+                errors_str = "\n- ".join([""] + result.errors)
+                raise ConfigurationError(f"Configuration validation failed:{errors_str}")
+        
         # Mark this file as loaded
         self._loaded_files.add(filepath)
 
@@ -204,60 +266,81 @@ class Config:
         """
         self._config = self._merge_dicts(self._config, new_config)
 
-    @staticmethod
-    def _merge_dicts(dict1: Dict[str, Any], dict2: Dict[str, Any]) -> Dict[str, Any]:
+    def _merge_dicts(self, dict1: Dict[str, Any], dict2: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Recursively merge two dictionaries.
+        Deep merge two dictionaries, with dict2 taking precedence.
 
         Args:
-            dict1: First dictionary
-            dict2: Second dictionary (overrides dict1)
+            dict1: Base dictionary
+            dict2: Dictionary with overrides
 
         Returns:
             Merged dictionary
         """
         result = dict1.copy()
-        
         for key, value in dict2.items():
             if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-                # Recursively merge nested dictionaries
-                result[key] = Config._merge_dicts(result[key], value)
+                # If both are dictionaries, merge them recursively
+                result[key] = self._merge_dicts(result[key], value)
             else:
-                # Override or add the key
+                # Otherwise, value from dict2 takes precedence
                 result[key] = value
-                
         return result
 
     def get(self, key_path: str, default: Any = None) -> Any:
         """
-        Get a configuration value using a dot-notation path.
-        
+        Get a configuration value by its key path.
+
         Args:
-            key_path: Dot-notation path to the configuration value (e.g., "system.logging.level")
-            default: Default value to return if the key doesn't exist
-            
+            key_path: Dot-separated path to the configuration value
+            default: Default value to return if the key is not found
+
         Returns:
-            The configuration value or the default if not found
+            Configuration value or default if not found
         """
         parts = key_path.split(".")
-        value = self._config
+        current = self._config
         
-        try:
-            for part in parts:
-                value = value[part]
-            return value
-        except (KeyError, TypeError):
-            return default
+        # Navigate the path
+        for part in parts:
+            if not isinstance(current, dict) or part not in current:
+                return default
+            current = current[part]
+            
+        return current
+
+    def set(self, key_path: str, value: Any) -> None:
+        """
+        Set a configuration value by its key path.
+
+        Args:
+            key_path: Dot-separated path to the configuration value
+            value: Value to set
+        """
+        parts = key_path.split(".")
+        current = self._config
+        
+        # Navigate to the right place, creating dictionaries as needed
+        for part in parts[:-1]:
+            if part not in current:
+                current[part] = {}
+            elif not isinstance(current[part], dict):
+                # If the path exists but is not a dict, convert it to an empty dict
+                current[part] = {}
+            current = current[part]
+            
+        # Set the value
+        current[parts[-1]] = value
 
     def get_all(self) -> Dict[str, Any]:
         """
-        Get the entire configuration.
-        
+        Get the entire configuration dictionary.
+
         Returns:
-            Dictionary containing all configuration
+            The complete configuration dictionary
         """
         return self._config.copy()
 
 
 # Create a singleton instance
-config = Config() 
+config = Config()

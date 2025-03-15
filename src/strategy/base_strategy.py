@@ -5,13 +5,13 @@ This module defines the base class for all trading strategies in the system.
 
 import asyncio
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 from src.common.component import Component
 from src.common.config import config
 from src.common.events import event_bus
 from src.common.logging import get_logger
+from src.common.datetime_utils import utc_now
 from src.models.events import (
     CandleDataEvent, ErrorEvent, OrderBookEvent, PatternEvent,
     SignalEvent, SystemStatusEvent, TechnicalIndicatorEvent,
@@ -256,7 +256,7 @@ class Strategy(Component, ABC):
             stop_loss=stop_loss,
             expiration=expiration,
             metadata=metadata or {},
-            timestamp=datetime.utcnow()
+            timestamp=utc_now()
         )
         
         # If this is an entry signal, store it in active signals

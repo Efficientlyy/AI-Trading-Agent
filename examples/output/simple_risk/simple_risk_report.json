@@ -1,0 +1,97 @@
+{
+  "timestamp": "2025-03-02T17:34:08.502241",
+  "risk_budget": {
+    "timestamp": "2025-03-02T17:34:08.502241",
+    "total_risk_percent": 5.0,
+    "current_system_risk": 0.0,
+    "risk_utilization_percent": 0.0,
+    "available_risk": 5.0,
+    "strategies": {
+      "trend_following": {
+        "max_risk": 2.5,
+        "current_risk": 0.0,
+        "risk_utilization_percent": 0.0,
+        "available_risk": 2.5,
+        "markets": {
+          "crypto": {
+            "max_risk": 1.5,
+            "current_risk": 0.0,
+            "risk_utilization_percent": 0.0,
+            "available_risk": 1.5,
+            "assets": {
+              "BTC": {
+                "max_risk": 0.6,
+                "current_risk": 0.0,
+                "risk_utilization_percent": 0.0,
+                "available_risk": 0.6
+              },
+              "ETH": {
+                "max_risk": 0.5,
+                "current_risk": 0.0,
+                "risk_utilization_percent": 0.0,
+                "available_risk": 0.5
+              }
+            }
+          }
+        }
+      },
+      "mean_reversion": {
+        "max_risk": 1.5,
+        "current_risk": 0.0,
+        "risk_utilization_percent": 0.0,
+        "available_risk": 1.5,
+        "markets": {}
+      },
+      "breakout": {
+        "max_risk": 1.0,
+        "current_risk": 0.0,
+        "risk_utilization_percent": 0.0,
+        "available_risk": 1.0,
+        "markets": {}
+      }
+    }
+  },
+  "position_risk": {
+    "BTC": {
+      "var_95": 24606.01799300101,
+      "expected_shortfall": 30988.34305583937,
+      "max_drawdown": 0.615885340533225,
+      "volatility": 0.4703311129779225
+    },
+    "ETH": {
+      "var_95": 4549.085651446232,
+      "expected_shortfall": 5780.272674750467,
+      "max_drawdown": 0.6147852036254271,
+      "volatility": 0.5431830023300885
+    }
+  },
+  "dynamic_limits": {
+    "portfolio": {
+      "current_value": 850000.0,
+      "peak_value": 1000000.0,
+      "drawdown": 0.15
+    },
+    "symbols": {
+      "BTC": {
+        "volatility": 0.029628075209423965,
+        "position_size_multiplier": 1.0125531202397426,
+        "limits": [
+          {
+            "type": "VOLATILITY_BASED",
+            "threshold": 0.05,
+            "current_value": 0.029628075209423965,
+            "status": "NORMAL",
+            "last_updated": "2025-03-02T17:34:08.504258"
+          },
+          {
+            "type": "DRAWDOWN",
+            "threshold": 0.15,
+            "current_value": 0.15,
+            "status": "BREACHED",
+            "last_updated": "2025-03-02T17:34:08.271575"
+          }
+        ]
+      }
+    }
+  }
+}

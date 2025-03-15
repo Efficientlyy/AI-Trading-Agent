@@ -4,7 +4,7 @@ This module defines the Position class, which represents an open trading positio
 """
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Dict, List, Optional
 
@@ -27,7 +27,31 @@ class PositionSide(str, Enum):
 
 
 class Position(BaseModel):
-    """Model representing a trading position."""
+    """A trading position.
+    
+    This class represents a trading position, which can be either a long or short position.
+    It tracks the position's status, entry and exit prices, and calculates profit and loss.
+    
+    Attributes:
+        id: A unique identifier for this position
+        exchange: The exchange where this position was taken
+        symbol: The trading pair symbol (e.g., BTC/USDT)
+        side: Whether this is a long or short position
+        entry_price: The price at which this position was entered
+        amount: The amount of the base asset in this position
+        status: The current status of this position (pending, open, closed, etc.)
+        stop_loss: Optional stop loss price
+        take_profit: Optional take profit price
+        leverage: The leverage used for this position (default: 1.0)
+        created_at: When this position was created (default: current time)
+        opened_at: When this position was opened (set by open())
+        closed_at: When this position was closed (set by close())
+        exit_price: The price at which this position was closed
+        realized_pnl: The realized profit or loss after closing
+        fee_paid: Trading fees paid for this position
+        metadata: Additional data about this position
+        tags: Tags associated with this position
+    """
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     exchange: str
@@ -39,7 +63,7 @@ class Position(BaseModel):
     stop_loss: Optional[float] = None
     take_profit: Optional[float] = None
     leverage: float = 1.0
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     opened_at: Optional[datetime] = None
     closed_at: Optional[datetime] = None
     exit_price: Optional[float] = None
@@ -130,7 +154,7 @@ class Position(BaseModel):
         
         self.status = PositionStatus.CLOSED
         self.exit_price = exit_price
-        self.closed_at = close_time or datetime.utcnow()
+        self.closed_at = close_time or datetime.now(timezone.utc)
         
         # Calculate realized PnL
         if self.side == PositionSide.LONG:
@@ -152,4 +176,4 @@ class Position(BaseModel):
             return
         
         self.status = PositionStatus.OPEN
-        self.opened_at = entry_time or datetime.utcnow() 
+        self.opened_at = entry_time or datetime.now(timezone.utc)

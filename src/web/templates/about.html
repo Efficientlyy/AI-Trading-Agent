@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+
+{% block title %}About - Market Regime Detection{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="card">
+        <div class="card-header">
+            <h2>About Market Regime Detection</h2>
+        </div>
+        
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-12">
+                    <h3>What are Market Regimes?</h3>
+                    <p class="lead">
+                        Market regimes are distinct periods characterized by unique patterns of market behavior, volatility, and the relationships between different asset classes.
+                    </p>
+                    <p>
+                        Financial markets do not follow a single consistent pattern over time. Instead, they cycle through different "regimes" or states, each with its own characteristics:
+                    </p>
+                    <ul>
+                        <li><strong>Bull Markets:</strong> Characterized by upward trends, lower volatility, and generally positive returns</li>
+                        <li><strong>Bear Markets:</strong> Characterized by downward trends, higher volatility, and generally negative returns</li>
+                        <li><strong>Range-Bound Markets:</strong> Characterized by sideways movements with price oscillating within a range</li>
+                        <li><strong>High Volatility Regimes:</strong> Characterized by large price swings and increased uncertainty</li>
+                        <li><strong>Low Volatility Regimes:</strong> Characterized by small price movements and more predictable patterns</li>
+                    </ul>
+                    
+                    <hr class="my-4">
+                    
+                    <h3>Why Market Regime Detection Matters</h3>
+                    <p>
+                        Identifying the current market regime is crucial for successful trading and investment for several reasons:
+                    </p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-primary text-white">
+                                    Strategy Selection
+                                </div>
+                                <div class="card-body">
+                                    Different strategies perform better in different regimes. For example, trend-following strategies work well in strong bull or bear markets but fail in range-bound conditions.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-primary text-white">
+                                    Risk Management
+                                </div>
+                                <div class="card-body">
+                                    Adjusting position sizing and risk parameters based on the current market regime can significantly improve risk-adjusted returns.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-primary text-white">
+                                    Performance Improvement
+                                </div>
+                                <div class="card-body">
+                                    Regime-adaptive strategies can outperform static strategies by adjusting to changing market conditions.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card mb-3">
+                                <div class="card-header bg-primary text-white">
+                                    Avoiding Drawdowns
+                                </div>
+                                <div class="card-body">
+                                    Recognizing shifts in market regimes can help traders avoid significant drawdowns by adjusting exposure or switching strategies.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    
+                    <h3>Our Approach to Market Regime Detection</h3>
+                    <p>
+                        Our Market Regime Detection API combines multiple techniques to identify market regimes:
+                    </p>
+                    <ul>
+                        <li><strong>Volatility-Based Detection:</strong> Analyzes price volatility patterns to identify regimes</li>
+                        <li><strong>Momentum-Based Detection:</strong> Uses momentum indicators to classify market states</li>
+                        <li><strong>Trend-Based Detection:</strong> Employs trend analysis techniques to detect directional regimes</li>
+                        <li><strong>Hidden Markov Models:</strong> Applies unsupervised machine learning to discover hidden market states</li>
+                        <li><strong>Ensemble Methods:</strong> Combines multiple detection methods for more robust regime identification</li>
+                    </ul>
+                    
+                    <div class="alert alert-info mt-4">
+                        <h4>Getting Started</h4>
+                        <p>
+                            Ready to enhance your trading with regime detection? Head over to the <a href="{{ url_for('index') }}">home page</a> to try out our API, or check the <a href="{{ url_for('api_docs') }}">API documentation</a> to learn more about the technical details.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

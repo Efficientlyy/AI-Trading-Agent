@@ -1,38 +1,61 @@
 # Core dependencies
-fastapi==0.103.1
-uvicorn==0.23.2
-pydantic==2.3.0
-python-dotenv==1.0.0
-requests==2.31.0
-websockets==11.0.3
-aiohttp==3.8.5
-jinja2==3.1.2
+numpy>=1.20.0
+pandas>=1.3.0
+scipy>=1.7.0
+scikit-learn>=1.0.0
+matplotlib>=3.4.0
+seaborn>=0.11.0
+
+# API and web
+fastapi>=0.68.0
+uvicorn>=0.15.0
+pydantic>=1.8.0
+python-multipart>=0.0.5
+aiofiles>=0.7.0
+requests>=2.26.0
+aiohttp>=3.8.0
+websocket-client>=1.3.0
 
 # Data handling
-pandas==2.1.0
-numpy==1.25.2
-pyarrow==13.0.0
+yfinance>=0.1.70
+alpha_vantage>=2.3.1
+ccxt>=1.60.0
 
-# Visualization
-matplotlib==3.7.2
-seaborn==0.12.2
-plotly==5.16.1
+# Machine learning
+tensorflow>=2.7.0
+keras>=2.7.0
+torch>=1.10.0
+hmmlearn>=0.2.6
+statsmodels>=0.13.0
+
+# Performance and optimization
+numba>=0.54.0
+joblib>=1.1.0
+psutil>=5.8.0
 
 # Testing
-pytest==7.4.0
-pytest-asyncio==0.21.1
+pytest>=6.2.5
+pytest-asyncio>=0.16.0
+httpx>=0.20.0
 
-# Exchange APIs
-ccxt==4.0.112
+# Development
+black>=21.9b0
+isort>=5.9.3
+mypy>=0.910
+flake8>=4.0.1
+
+# Visualization
+plotly==5.16.1
+tabulate==0.9.0
 
 # Utilities
 loguru==0.7.0
 pyyaml==6.0.1
 python-dateutil==2.8.2
 tqdm==4.66.1
+cryptography>=37.0.0
+structlog>=22.0.0
+ta>=0.10.0
 
 # For alerts and notifications
-APScheduler==3.10.4
-
-# Optimization
-scipy==1.11.2 
+APScheduler==3.10.4 

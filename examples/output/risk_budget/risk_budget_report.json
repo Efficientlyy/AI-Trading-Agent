@@ -1,0 +1,98 @@
+{
+  "timestamp": "2025-03-02T17:41:28.838467",
+  "risk_budget": {
+    "timestamp": "2025-03-02T17:41:28.838467",
+    "total_risk_percent": 5.0,
+    "current_system_risk": 0.65,
+    "risk_utilization_percent": 13.0,
+    "available_risk": 4.35,
+    "strategies": {
+      "trend_following": {
+        "max_risk": 2.5,
+        "current_risk": 0.5,
+        "risk_utilization_percent": 20.0,
+        "available_risk": 2.0,
+        "markets": {
+          "crypto": {
+            "max_risk": 1.357142857142857,
+            "current_risk": 0.5,
+            "risk_utilization_percent": 36.8421052631579,
+            "available_risk": 0.857142857142857,
+            "assets": {
+              "BTC": {
+                "max_risk": 0.6,
+                "current_risk": 0.3,
+                "risk_utilization_percent": 50.0,
+                "available_risk": 0.3
+              },
+              "ETH": {
+                "max_risk": 0.5,
+                "current_risk": 0.2,
+                "risk_utilization_percent": 40.0,
+                "available_risk": 0.3
+              }
+            }
+          },
+          "forex": {
+            "max_risk": 1.142857142857143,
+            "current_risk": 0.0,
+            "risk_utilization_percent": 0.0,
+            "available_risk": 1.142857142857143,
+            "assets": {}
+          }
+        }
+      },
+      "mean_reversion": {
+        "max_risk": 1.5,
+        "current_risk": 0.15,
+        "risk_utilization_percent": 10.0,
+        "available_risk": 1.35,
+        "markets": {
+          "crypto": {
+            "max_risk": 0.8214285714285715,
+            "current_risk": 0.15,
+            "risk_utilization_percent": 18.260869565217387,
+            "available_risk": 0.6714285714285715,
+            "assets": {
+              "BTC": {
+                "max_risk": 0.4,
+                "current_risk": 0.15,
+                "risk_utilization_percent": 37.49999999999999,
+                "available_risk": 0.25
+              }
+            }
+          },
+          "commodities": {
+            "max_risk": 0.6785714285714286,
+            "current_risk": 0.0,
+            "risk_utilization_percent": 0.0,
+            "available_risk": 0.6785714285714286,
+            "assets": {}
+          }
+        }
+      },
+      "breakout": {
+        "max_risk": 1.0,
+        "current_risk": 0.0,
+        "risk_utilization_percent": 0.0,
+        "available_risk": 1.0,
+        "markets": {
+          "crypto": {
+            "max_risk": 1.0,
+            "current_risk": 0.0,
+            "risk_utilization_percent": 0.0,
+            "available_risk": 1.0,
+            "assets": {
+              "BTC": {
+                "max_risk": 0.5,
+                "current_risk": 0.0,
+                "risk_utilization_percent": 0.0,
+                "available_risk": 0.5
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

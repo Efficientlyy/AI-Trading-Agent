@@ -10,6 +10,8 @@ from typing import Dict, List, Optional, Union
 
 from pydantic import BaseModel, Field
 
+from src.common.datetime_utils import utc_now
+
 
 class OrderType(str, Enum):
     """Type of order."""
@@ -47,7 +49,37 @@ class OrderStatus(str, Enum):
 
 
 class Order(BaseModel):
-    """Model representing a trading order."""
+    """Model representing a trading order.
+    
+    This class represents an order sent to an exchange, tracking its
+    state, fill status, and associated metadata throughout its lifecycle.
+    
+    Attributes:
+        id: A unique identifier for this order
+        client_order_id: Optional client-defined ID
+        exchange_order_id: ID assigned by the exchange (when available)
+        exchange: The exchange this order was sent to
+        symbol: The trading pair symbol (e.g., BTC/USDT)
+        order_type: Type of order (market, limit, etc.)
+        side: Buy or sell
+        quantity: Amount to buy or sell
+        price: Limit price (required for limit orders)
+        stop_price: Stop price (required for stop orders)
+        time_in_force: How long the order remains active
+        status: Current order status
+        created_at: When this order was created
+        submitted_at: When this order was submitted to the exchange
+        updated_at: When this order was last updated
+        filled_quantity: Amount that has been filled
+        average_fill_price: Average price of all fills
+        fees: Trading fees paid (by currency)
+        is_post_only: Whether this is a post-only order
+        is_reduce_only: Whether this order can only reduce a position
+        position_id: ID of the position this order is associated with
+        strategy_id: ID of the strategy that created this order
+        metadata: Additional data about this order
+        error_message: Error message if order was rejected
+    """
     
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     client_order_id: Optional[str] = None
@@ -61,7 +93,7 @@ class Order(BaseModel):
     stop_price: Optional[float] = None  # Required for stop orders
     time_in_force: TimeInForce = TimeInForce.GTC
     status: OrderStatus = OrderStatus.CREATED
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=utc_now)
     submitted_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
     filled_quantity: float = 0.0
@@ -121,7 +153,7 @@ class Order(BaseModel):
             error: Error message (if order was rejected)
         """
         self.status = new_status
-        self.updated_at = datetime.utcnow()
+        self.updated_at = utc_now()
         
         if filled_qty is not None:
             self.filled_quantity = filled_qty
@@ -139,4 +171,26 @@ class Order(BaseModel):
         if self.filled_quantity >= self.quantity:
             self.status = OrderStatus.FILLED
         elif self.filled_quantity > 0 and self.filled_quantity < self.quantity:
-            self.status = OrderStatus.PARTIALLY_FILLED 
+            self.status = OrderStatus.PARTIALLY_FILLED
+            
+    def update_fill(self, filled_qty: float, avg_price: Optional[float] = None) -> None:
+        """Update the order fill information without changing the status.
+        
+        This method updates the filled quantity and average price, and then
+        automatically updates the status based on the fill level.
+        
+        Args:
+            filled_qty: The total filled quantity
+            avg_price: The average fill price (if available)
+        """
+        self.filled_quantity = filled_qty
+        self.updated_at = utc_now()
+        
+        if avg_price is not None:
+            self.average_fill_price = avg_price
+            
+        # Update status based on fill quantity
+        if self.filled_quantity >= self.quantity:
+            self.status = OrderStatus.FILLED
+        elif self.filled_quantity > 0:
+            self.status = OrderStatus.PARTIALLY_FILLED

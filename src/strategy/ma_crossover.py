@@ -6,11 +6,12 @@ moving averages.
 """
 
 import asyncio
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Dict, List, Optional, Set, Tuple
 
 from src.common.config import config
 from src.common.logging import get_logger
+from src.common.datetime_utils import utc_now
 from src.models.market_data import CandleData, OrderBookData, TimeFrame, TradeData
 from src.models.signals import Signal, SignalType
 from src.strategy.base_strategy import Strategy
@@ -250,7 +251,7 @@ class MovingAverageCrossoverStrategy(Strategy):
         """
         # Check if we should generate a signal
         signal_key = (symbol, timeframe, direction)
-        now = datetime.utcnow()
+        now = utc_now()
         
         # Check if we've sent a similar signal recently
         if signal_key in self.signal_sent:

@@ -1,19 +1,16 @@
 """Tests for the Position model."""
 
 import datetime
+import unittest
 from unittest import mock
+from uuid import UUID
 
-# For environments without pytest installed
-# This allows the file to be parsed without errors
-try:
-    import pytest
-except ImportError:
-    pass  # The tests won't run without pytest, but the file will load without errors
+import pytest
 
 from src.models.position import Position, PositionSide, PositionStatus
 
 
-class TestPosition:
+class TestPosition(unittest.TestCase):
     """Test cases for the Position model."""
     
     def test_position_initialization(self):
@@ -43,7 +40,7 @@ class TestPosition:
         
     def test_position_open(self):
         """Test that a position can be opened."""
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         position = Position(
             exchange="binance",
             symbol="BTC/USDT",
@@ -52,16 +49,22 @@ class TestPosition:
             amount=0.1
         )
         
+        # Mock datetime for both the test and the position module
         with mock.patch('datetime.datetime') as mock_datetime:
-            mock_datetime.utcnow.return_value = now
-            position.open()
+            mock_datetime.now.return_value = now
+            mock_datetime.timezone.utc = datetime.timezone.utc
+            # Also patch the used datetime in the Position module
+            with mock.patch('src.models.position.datetime') as mock_position_datetime:
+                mock_position_datetime.now.return_value = now
+                mock_position_datetime.timezone.utc = datetime.timezone.utc
+                position.open()
         
         assert position.status == PositionStatus.OPEN
         assert position.opened_at == now
         
     def test_position_close(self):
         """Test that a position can be closed."""
-        now = datetime.datetime.utcnow()
+        now = datetime.datetime.now(datetime.timezone.utc)
         position = Position(
             exchange="binance",
             symbol="BTC/USDT",
@@ -71,9 +74,14 @@ class TestPosition:
         )
         position.open()
         
+        # Mock datetime for both the test and the position module
         with mock.patch('datetime.datetime') as mock_datetime:
-            mock_datetime.utcnow.return_value = now
-            position.close(52000.0)
+            mock_datetime.now.return_value = now
+            mock_datetime.timezone.utc = datetime.timezone.utc
+            with mock.patch('src.models.position.datetime') as mock_position_datetime:
+                mock_position_datetime.now.return_value = now
+                mock_position_datetime.timezone.utc = datetime.timezone.utc
+                position.close(52000.0)
         
         assert position.status == PositionStatus.CLOSED
         assert position.closed_at == now

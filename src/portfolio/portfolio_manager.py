@@ -18,6 +18,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Dict, List, Optional, Any, Tuple, Set, Union
 import uuid
+from collections import defaultdict
 
 from src.common.logging import get_logger
 from src.models.signals import Signal, SignalType
@@ -413,6 +414,16 @@ class PortfolioManager:
         self.open_positions_by_symbol: Dict[str, Set[str]] = {}  # symbol -> Set of position_ids
         self.open_positions_by_strategy: Dict[str, Set[str]] = {}  # strategy_id -> Set of position_ids
         
+        # Current market prices for symbols
+        self.current_prices: Dict[str, Decimal] = {}
+        
+        # Historical values tracking
+        self.balance_history: List[Dict[str, Any]] = []
+        self.equity_history: List[Dict[str, Any]] = []
+        
+        # Record initial balance
+        self._record_balance(initial_balance)
+        
         # Performance tracking
         self.highest_balance = initial_balance
         self.lowest_balance = initial_balance
@@ -631,10 +642,11 @@ class PortfolioManager:
         }
     
     def get_open_positions(self) -> List[Position]:
-        """Get all currently open positions.
+        """
+        Get all currently open positions.
         
         Returns:
-            List of open Position objects
+            List of all open Position objects
         """
         return [self.positions[position_id] for position_id in self.open_positions]
     

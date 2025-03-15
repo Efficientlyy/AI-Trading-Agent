@@ -1,0 +1,56 @@
+# AI Trading Agent CI Workflow
+# This workflow runs tests and linting for the dashboard component
+# It ensures code quality and prevents regressions
+
+name: CI
+
+# Define when this workflow will run
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    
+    # Test on multiple Node.js versions to ensure compatibility
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+    
+    steps:
+      # Check out the repository code
+      - uses: actions/checkout@v3
+      
+      # Set up Node.js with the specified version
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: dashboard/package-lock.json
+      
+      # Install project dependencies
+      - name: Install dependencies
+        working-directory: ./dashboard
+        run: npm ci
+      
+      # Run ESLint to check code quality
+      - name: Run linting
+        working-directory: ./dashboard
+        run: npm run lint
+      
+      # Run tests with Jest and generate coverage report
+      - name: Run tests
+        working-directory: ./dashboard
+        run: npm test -- --ci --coverage
+      
+      # Save the coverage report as an artifact
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-report-node-${{ matrix.node-version }}
+          path: dashboard/coverage/
