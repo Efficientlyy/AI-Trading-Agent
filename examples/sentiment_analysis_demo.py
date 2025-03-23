@@ -3,7 +3,7 @@ Sentiment Analysis System Demo
 
 This example demonstrates the sentiment analysis system in action, 
 showing how to initialize and run the sentiment analysis manager
-and its various sentiment analysis agents.
+and its various sentiment analysis agents with real API integrations.
 """
 
 import asyncio
@@ -12,9 +12,21 @@ from datetime import datetime
 
 from src.analysis_agents.sentiment_analysis_manager import SentimentAnalysisManager
 from src.common.config import config
-# Use standard logging configuration since setup_logging might not be available
+from src.common.events import event_bus
+from src.models.events import SentimentEvent
 from src.models.market_data import CandleData, TimeFrame
 
+
+# Event handler for sentiment events
+async def sentiment_event_handler(event: SentimentEvent):
+    """Handle sentiment events."""
+    logger = logging.getLogger("sentiment_demo")
+    logger.info(f"Received sentiment event for {event.symbol}:")
+    logger.info(f"  Source: {event.source}")
+    logger.info(f"  Direction: {event.sentiment_direction}")
+    logger.info(f"  Value: {event.sentiment_value:.2f}")
+    logger.info(f"  Confidence: {event.confidence:.2f}")
+    logger.info(f"  Details: {event.details}")
 
 async def run_sentiment_demo():
     """Run the sentiment analysis system demo."""
@@ -25,6 +37,9 @@ async def run_sentiment_demo():
     )
     logger = logging.getLogger("sentiment_demo")
     logger.info("Starting sentiment analysis demo")
+    
+    # Subscribe to sentiment events to monitor them
+    event_bus.subscribe("sentiment_event", sentiment_event_handler)
     
     # Create sentiment analysis manager
     manager = SentimentAnalysisManager()

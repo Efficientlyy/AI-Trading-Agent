@@ -11,6 +11,7 @@ from typing import Dict, List, Optional, Set, Tuple, Any
 import numpy as np
 
 from src.analysis_agents.sentiment.sentiment_base import BaseSentimentAgent
+from src.analysis_agents.sentiment.nlp_service import NLPService
 from src.common.config import config
 from src.common.logging import get_logger
 from src.models.market_data import CandleData, TimeFrame
@@ -52,6 +53,9 @@ class SentimentAggregator(BaseSentimentAgent):
         
         # The aggregator has its own sentiment cache
         self.aggregated_cache: Dict[str, Dict[str, Any]] = {}
+        
+        # NLP service (will be set by manager)
+        self.nlp_service: Optional[NLPService] = None
     
     async def _initialize(self) -> None:
         """Initialize the sentiment aggregator."""

@@ -27,6 +27,13 @@ keras>=2.7.0
 torch>=1.10.0
 hmmlearn>=0.2.6
 statsmodels>=0.13.0
+transformers>=4.20.0  # Added for NLP sentiment analysis
+
+# NLP and text processing
+tweepy>=4.10.0  # Twitter API client
+praw>=7.6.0  # Reddit API client
+beautifulsoup4>=4.9.0  # HTML parsing
+spacy>=3.4.0  # NLP processing
 
 # Performance and optimization
 numba>=0.54.0
@@ -58,4 +65,4 @@ structlog>=22.0.0
 ta>=0.10.0
 
 # For alerts and notifications
-APScheduler==3.10.4 
+APScheduler==3.10.4
