@@ -6,6 +6,7 @@ strategies:
   enabled_strategies:
     - ma_crossover
     - sentiment
+    - enhanced_sentiment
     # Add more strategies as they are implemented
 
   # Moving Average Crossover strategy configuration
@@ -102,6 +103,67 @@ strategies:
     subscriptions:
       - CandleDataEvent
       - SentimentEvent
+    
+    # Maximum number of signals to keep in history
+    max_signal_history: 1000
+    
+  # Enhanced Sentiment Strategy configuration
+  enhanced_sentiment:
+    enabled: true
+    class_name: EnhancedSentimentStrategy
+    module: src.strategy.enhanced_sentiment_strategy
+    
+    # Trading symbols to monitor
+    symbols:
+      - BTC/USDT
+      - ETH/USDT
+      - SOL/USDT
+      - XRP/USDT
+    
+    # Timeframes to analyze
+    timeframes:
+      - 1h
+      - 4h
+    
+    # Sentiment threshold settings (inherited from base sentiment strategy)
+    sentiment_threshold_bullish: 0.7
+    sentiment_threshold_bearish: 0.3
+    min_confidence: 0.7
+    min_signal_interval: 3600
+    
+    # Enhanced settings
+    use_market_regime: true
+    use_technical_confirmation: true
+    min_signal_score: 0.7
+    
+    # Technical indicators for confirmation
+    rsi_period: 14
+    rsi_overbought: 70
+    rsi_oversold: 30
+    
+    # Market regime settings
+    regime_lookback: 20
+    
+    # Source weights (same as base strategy)
+    source_weights:
+      social_media: 1.0
+      news: 1.0
+      market: 1.0
+      onchain: 1.0
+      aggregator: 2.0
+    
+    # Position management
+    use_stop_loss: true
+    stop_loss_pct: 0.03
+    use_take_profit: true
+    take_profit_pct: 0.06
+    
+    # Event subscriptions (add MarketRegimeEvent)
+    subscriptions:
+      - CandleDataEvent
+      - SentimentEvent
+      - MarketRegimeEvent
+      - TechnicalIndicatorEvent
     
     # Maximum number of signals to keep in history
     max_signal_history: 1000
