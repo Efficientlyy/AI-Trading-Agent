@@ -11,6 +11,14 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import json
 import uuid
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 # Import required packages
 try:
@@ -19,11 +27,20 @@ try:
     from fastapi.responses import HTMLResponse
     from fastapi.staticfiles import StaticFiles
     from fastapi.templating import Jinja2Templates
+    import pandas as pd
+    import numpy as np
 except ImportError as e:
     print(f"Error: {e}")
     print("Please make sure you have installed all required packages:")
-    print("pip install fastapi uvicorn jinja2 starlette")
+    print("pip install fastapi uvicorn jinja2 starlette pandas numpy")
     exit(1)
+
+# Try to import our dashboard components
+try:
+    from src.dashboard import sentiment_router
+except ImportError as e:
+    logger.warning(f"Could not import sentiment dashboard: {e}")
+    sentiment_router = None
 
 # Create templates directory
 templates_dir = Path("dashboard_templates")
@@ -411,6 +428,11 @@ try:
     app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 except Exception as e:
     print(f"Warning: Could not mount static files: {e}")
+    
+# Include sentiment dashboard router if available
+if sentiment_router:
+    app.include_router(sentiment_router)
+    logger.info("Sentiment dashboard mounted at /sentiment")
 
 # Mock alert data
 def generate_mock_alerts(count=10):
