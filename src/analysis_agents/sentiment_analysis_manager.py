@@ -14,6 +14,7 @@ from src.analysis_agents.sentiment.news_sentiment import NewsSentimentAgent
 from src.analysis_agents.sentiment.market_sentiment import MarketSentimentAgent
 from src.analysis_agents.sentiment.onchain_sentiment import OnchainSentimentAgent
 from src.analysis_agents.sentiment.sentiment_aggregator import SentimentAggregator
+from src.analysis_agents.sentiment.nlp_service import NLPService
 from src.common.config import config
 from src.common.logging import get_logger
 from src.common.component import Component
@@ -34,6 +35,9 @@ class SentimentAnalysisManager(Component):
         # Load configuration
         self.enabled = config.get("analysis_agents.sentiment.enabled", True)
         self.agent_configs = config.get("analysis_agents.sentiment.agents", {})
+        
+        # Create NLP service
+        self.nlp_service = NLPService()
         
         # Create sentiment agents
         self.agents: Dict[str, BaseSentimentAgent] = {}
@@ -74,9 +78,14 @@ class SentimentAnalysisManager(Component):
             
         self.logger.info("Initializing sentiment analysis manager")
         
+        # Initialize NLP service first
+        await self.nlp_service.initialize()
+        
         # Initialize all agents
         init_tasks = []
         for agent_id, agent in self.agents.items():
+            # Pass NLP service to agent
+            agent.set_nlp_service(self.nlp_service)
             init_tasks.append(agent.initialize())
             
         # Wait for all agents to initialize

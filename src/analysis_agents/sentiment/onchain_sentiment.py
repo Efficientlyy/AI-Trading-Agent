@@ -5,11 +5,12 @@ such as wallet activity, transaction volume, and blockchain data.
 """
 
 import asyncio
-import random
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple, Any
 
 from src.analysis_agents.sentiment.sentiment_base import BaseSentimentAgent
+from src.analysis_agents.sentiment.nlp_service import NLPService
+from src.analysis_agents.sentiment.blockchain_client import BlockchainClient
 from src.common.config import config
 from src.common.logging import get_logger
 from src.models.market_data import CandleData, TimeFrame
@@ -42,6 +43,12 @@ class OnchainSentimentAgent(BaseSentimentAgent):
             f"analysis_agents.{agent_id}.update_interval", 
             3600  # Default: 1 hour
         )
+        
+        # API clients (will be initialized during _initialize)
+        self.blockchain_client = None
+        
+        # NLP service (will be set by manager)
+        self.nlp_service = None
     
     async def _initialize(self) -> None:
         """Initialize the onchain sentiment agent."""
@@ -52,6 +59,43 @@ class OnchainSentimentAgent(BaseSentimentAgent):
             
         self.logger.info("Initializing onchain sentiment agent",
                        metrics=self.metrics)
+                       
+        # Initialize API clients
+        try:
+            # Get API keys from config
+            blockchain_com_api_key = config.get("sentiment.apis.blockchain_com.api_key", "")
+            glassnode_api_key = config.get("sentiment.apis.glassnode.api_key", "")
+            
+            # Blockchain client
+            self.blockchain_client = BlockchainClient(
+                blockchain_com_api_key=blockchain_com_api_key,
+                glassnode_api_key=glassnode_api_key
+            )
+            
+            # Log which providers are being used
+            active_providers = []
+            if blockchain_com_api_key:
+                active_providers.append("Blockchain.com")
+            if glassnode_api_key:
+                active_providers.append("Glassnode")
+                
+            if active_providers:
+                self.logger.info("Initialized blockchain API clients", 
+                              providers=", ".join(active_providers))
+            else:
+                self.logger.warning("No blockchain API keys provided, using mock data")
+            
+        except Exception as e:
+            self.logger.error("Failed to initialize blockchain API client", error=str(e))
+    
+    def set_nlp_service(self, nlp_service: NLPService) -> None:
+        """Set the NLP service for sentiment analysis.
+        
+        Args:
+            nlp_service: The NLP service to use
+        """
+        self.nlp_service = nlp_service
+        self.logger.info("NLP service set for onchain sentiment agent")
     
     async def _start(self) -> None:
         """Start the onchain sentiment agent."""
@@ -75,6 +119,14 @@ class OnchainSentimentAgent(BaseSentimentAgent):
             except asyncio.CancelledError:
                 pass
         
+        # Close blockchain client
+        if hasattr(self, "blockchain_client") and self.blockchain_client:
+            try:
+                await self.blockchain_client.close()
+                self.logger.debug("Blockchain client closed")
+            except Exception as e:
+                self.logger.warning("Error closing blockchain client", error=str(e))
+        
         await super()._stop()
     
     async def _update_sentiment_periodically(self) -> None:
@@ -86,8 +138,6 @@ class OnchainSentimentAgent(BaseSentimentAgent):
                     # (typically just BTC, ETH, and some major coins)
                     base_currency = symbol.split('/')[0]
                     if base_currency in ["BTC", "ETH"]:
-                        # In a real system, we would fetch actual on-chain data
-                        # For the demo, we'll simulate it
                         await self._analyze_onchain_metrics(symbol)
                     
                 # Wait for next update
@@ -116,47 +166,87 @@ class OnchainSentimentAgent(BaseSentimentAgent):
             return
         
         try:
-            # Simulate on-chain metrics
+            # Fetch on-chain metrics
             
-            # Large transactions count (normalized to 0-1)
-            large_tx_value = random.uniform(0.3, 0.7)
+            # Large transactions count and volume
+            large_tx_data = await self.blockchain_client.get_large_transactions(
+                asset=base_currency,
+                time_period="24h"
+            )
+            large_tx_count = large_tx_data.get("count", 0)
+            large_tx_volume = large_tx_data.get("volume", 0)
             
-            # Active addresses growth rate (-1 to 1, centered at 0)
-            active_addr_growth = random.uniform(-0.5, 0.5)
+            # Active addresses
+            active_addr_data = await self.blockchain_client.get_active_addresses(
+                asset=base_currency,
+                time_period="24h"
+            )
+            active_addresses = active_addr_data.get("count", 0)
+            active_addr_change = active_addr_data.get("change_percentage", 0)
             
-            # Network hash rate trend (-1 to 1, centered at 0)
-            hash_rate_trend = random.uniform(-0.3, 0.3)
+            # Network hash rate (for PoW chains)
+            hash_rate_data = None
+            hash_rate_change = 0
+            if base_currency == "BTC":
+                hash_rate_data = await self.blockchain_client.get_hash_rate(
+                    asset=base_currency,
+                    time_period="7d"
+                )
+                hash_rate_change = hash_rate_data.get("change_percentage", 0) if hash_rate_data else 0
             
-            # Exchange reserves growth rate (-1 to 1, centered at 0)
+            # Exchange reserves
+            exchange_data = await self.blockchain_client.get_exchange_reserves(
+                asset=base_currency,
+                time_period="7d"
+            )
+            exchange_reserves = exchange_data.get("reserves", 0)
+            exchange_reserves_change = exchange_data.get("change_percentage", 0)
+            
+            # Normalize metrics to sentiment scores (0-1)
+            
+            # Large transactions (normalize based on historical averages)
+            large_tx_normalized = min(1.0, large_tx_volume / large_tx_data.get("average_volume", large_tx_volume))
+            
+            # Active addresses growth (-100% to +100%, normalize to 0-1)
+            active_addr_normalized = 0.5 + (active_addr_change / 200)  # Convert to 0-1 scale
+            
+            # Hash rate change (-100% to +100%, normalize to 0-1)
+            hash_rate_normalized = 0.5 + (hash_rate_change / 200)  # Convert to 0-1 scale
+            
+            # Exchange reserves change (-100% to +100%, normalize to 0-1)
             # Negative means tokens leaving exchanges (bullish)
-            exchange_reserves_growth = random.uniform(-0.4, 0.4)
+            exchange_reserves_normalized = 0.5 - (exchange_reserves_change / 200)
             
             # Combine metrics into a sentiment score
             # Each metric is weighted differently
             sentiment_metrics = {
-                "large_transactions": large_tx_value,
-                "active_addresses": 0.5 + (active_addr_growth / 2),  # Convert to 0-1 scale
-                "hash_rate": 0.5 + (hash_rate_trend / 2),  # Convert to 0-1 scale
-                "exchange_reserves": 0.5 - (exchange_reserves_growth / 2)  # Negative is bullish
+                "large_transactions": large_tx_normalized,
+                "active_addresses": active_addr_normalized,
+                "hash_rate": hash_rate_normalized if hash_rate_data else 0.5,
+                "exchange_reserves": exchange_reserves_normalized
             }
             
             # Calculate weighted sentiment
             metric_weights = {
                 "large_transactions": 0.3,
                 "active_addresses": 0.3,
-                "hash_rate": 0.2,
+                "hash_rate": 0.2 if hash_rate_data else 0,
                 "exchange_reserves": 0.2
             }
+            
+            # Adjust weights if hash rate is not available
+            if not hash_rate_data:
+                total_weight = sum(metric_weights.values())
+                for key in metric_weights:
+                    metric_weights[key] = metric_weights[key] / total_weight
             
             sentiment_value = sum(
                 sentiment_metrics[metric] * metric_weights[metric]
                 for metric in sentiment_metrics
             ) / sum(metric_weights.values())
             
-            # Calculate confidence based on data quality and coverage
-            confidence_base = 0.7  # Base confidence
-            confidence_adjustment = random.uniform(-0.1, 0.1)  # Random adjustment
-            confidence = min(0.95, max(0.5, confidence_base + confidence_adjustment))
+            # Calculate confidence based on data quality
+            confidence = 0.7  # Base confidence
             
             # Determine direction
             if sentiment_value > 0.6:
@@ -168,10 +258,13 @@ class OnchainSentimentAgent(BaseSentimentAgent):
             
             # Store additional metadata
             additional_data = {
-                "large_transactions": large_tx_value,
-                "active_addresses_growth": active_addr_growth,
-                "hash_rate_trend": hash_rate_trend,
-                "exchange_reserves_growth": exchange_reserves_growth,
+                "large_transactions_count": large_tx_count,
+                "large_transactions_volume": large_tx_volume,
+                "active_addresses": active_addresses,
+                "active_addresses_change": active_addr_change,
+                "hash_rate_change": hash_rate_change if hash_rate_data else None,
+                "exchange_reserves": exchange_reserves,
+                "exchange_reserves_change": exchange_reserves_change,
                 "metrics": self.metrics
             }
             
@@ -190,7 +283,7 @@ class OnchainSentimentAgent(BaseSentimentAgent):
                 # Publish event if confidence is high enough
                 if confidence >= self.min_confidence:
                     # Exchange outflows are often a strong signal
-                    is_strong_signal = exchange_reserves_growth < -0.2
+                    is_strong_signal = exchange_reserves_change < -5.0  # 5% outflow
                     
                     await self.publish_sentiment_event(
                         symbol=symbol,
@@ -199,13 +292,7 @@ class OnchainSentimentAgent(BaseSentimentAgent):
                         confidence=confidence,
                         is_extreme=is_strong_signal,
                         sources=self.metrics,
-                        details={
-                            "large_transactions": large_tx_value,
-                            "active_addresses_growth": active_addr_growth,
-                            "hash_rate_trend": hash_rate_trend,
-                            "exchange_reserves_growth": exchange_reserves_growth,
-                            "event_type": "onchain_sentiment_shift" if sentiment_shift > self.sentiment_shift_threshold else "strong_onchain_signal"
-                        }
+                        details=additional_data
                     )
         
         except Exception as e:
@@ -244,14 +331,14 @@ class OnchainSentimentAgent(BaseSentimentAgent):
             
         # Get the latest onchain sentiment
         sentiment_data = self.sentiment_cache[symbol]["onchain"]
-        exchange_reserves_growth = sentiment_data.get("exchange_reserves_growth", 0)
+        exchange_reserves_change = sentiment_data.get("exchange_reserves_change", 0)
         
         # Get price data from candles
         closes = [candle.close for candle in candles]
         
         # If there's a significant exchange outflow and price is stagnant or falling,
         # that's a potential divergence and accumulation signal
-        if len(closes) >= 20 and exchange_reserves_growth < -0.3:
+        if len(closes) >= 20 and exchange_reserves_change < -3.0:  # 3% outflow
             # Calculate short-term trend
             short_term_change = (closes[-1] / closes[-20]) - 1  # 20-period return
             
@@ -268,7 +355,7 @@ class OnchainSentimentAgent(BaseSentimentAgent):
                     signal_type="divergence",
                     sources=self.metrics,
                     details={
-                        "exchange_reserves_growth": exchange_reserves_growth,
+                        "exchange_reserves_change": exchange_reserves_change,
                         "price_change": short_term_change,
                         "event_type": "accumulation_divergence"
                     }

@@ -8,6 +8,7 @@ from datetime import datetime
 from typing import Dict, List, Optional, Any, Set, Tuple
 
 from src.analysis_agents.base_agent import AnalysisAgent
+from src.analysis_agents.sentiment.nlp_service import NLPService
 from src.common.config import config
 from src.common.logging import get_logger
 from src.models.events import SentimentEvent
@@ -42,6 +43,18 @@ class BaseSentimentAgent(AnalysisAgent):
         
         # Last update times
         self.last_update: Dict[str, Dict[str, datetime]] = {}
+        
+        # NLP service (will be set by manager)
+        self.nlp_service: Optional[NLPService] = None
+    
+    def set_nlp_service(self, nlp_service: NLPService) -> None:
+        """Set the NLP service for sentiment analysis.
+        
+        Args:
+            nlp_service: The NLP service to use
+        """
+        self.nlp_service = nlp_service
+        self.logger.info("NLP service set for sentiment agent")
         
     async def process_candle(self, candle: CandleData) -> None:
         """Process a new candle data event.
