@@ -1,12 +1,141 @@
 # AI Crypto Trading System Architecture
 
-*Last Updated: March 3, 2025*
+*Last Updated: March 22, 2025*
 
 This document serves as a central reference for the system design and development of our AI Crypto Trading System. It outlines the key architectural components, their current implementation status, and the roadmap for future development.
 
 ## System Overview
 
 The AI Crypto Trading System is designed as a modular, extensible platform for algorithmic trading in cryptocurrency markets. The system is organized in a layered architecture, with clear separation of concerns between data acquisition, strategy development, backtesting, portfolio management, and trade execution.
+
+**Core Design Philosophy**: A fully automated multi-agent trading system where specialized agents collaborate to detect market regimes, generate signals, manage risk, and execute trades with minimal human intervention.
+
+### High-Level Architecture Diagram
+
+```mermaid
+graph TD
+    subgraph "Core Infrastructure"
+        CI[Configuration Management] --> L[Logging System]
+        L --> EH[Exception Handling]
+        EH --> TS[Task Scheduling]
+        TS --> DB[Database Integration]
+        DB --> SEC[Authentication & Security]
+    end
+
+    subgraph "Data Processing"
+        DP[Data Collection] --> DN[Data Normalization]
+        DN --> DS[Data Storage]
+        DS --> CI[Custom Indicators]
+        CI --> FS[Feature Selection]
+    end
+
+    subgraph "Market Analysis"
+        RD[Regime Detection System] --> TA[Technical Analysis]
+        TA --> SA[Sentiment Analysis]
+        SA --> MPA[Market Pattern Analysis]
+    end
+
+    subgraph "Strategy & Execution"
+        ML[ML Strategy Framework] --> PE[Position Engine]
+        PE --> RM[Risk Management]
+        RM --> SIG[Signal Generation]
+        SIG --> ORD[Order Execution]
+    end
+
+    subgraph "Monitoring & Reporting"
+        DASH[Dashboard] --> RT[Real-time Monitoring]
+        RT --> REP[Performance Reporting]
+        REP --> ALT[Alert System]
+    end
+
+    subgraph "Performance Optimization"
+        RUST[Rust Components] --> PY[Python Fallbacks]
+        PY --> BENCH[Benchmarking Tools]
+    end
+
+    DP --> MPA
+    MPA --> ML
+    RD --> ML
+    ML --> SIG
+    ORD --> RT
+```
+
+## Project Structure
+
+The following diagram shows the overall project structure and the location of key components:
+
+```mermaid
+graph TD
+    root[AI-Trading-Agent] --> src
+    root --> dashboard
+    root --> rust
+    root --> config
+    root --> docs
+    root --> tests
+    root --> examples
+    root --> scripts
+
+    src --> ml
+    src --> strategy
+    src --> backtesting
+    src --> risk
+    src --> api
+    src --> rust_bridge
+    src --> utils
+    src --> common
+    src --> analysis_agents
+    src --> decision_engine
+    src --> execution
+
+    ml --> detection["detection/
+    - base_regime_detector.py
+    - hmm_regime_detector.py
+    - volatility_regime_detector.py
+    - trend_detector.py
+    - sentiment_regime_detector.py
+    - ensemble_regime_detector.py
+    - enhanced_ensemble_detector.py
+    - factory.py"]
+    
+    ml --> models["models/
+    - online_learning_models.py
+    - ensemble_models.py
+    - feature_selection.py"]
+    
+    ml --> evaluation["evaluation/
+    - metrics.py
+    - regime_evaluator.py
+    - ml_trading_metrics.py"]
+    
+    strategy --> base_strategy.py
+    strategy --> adaptive_ml_strategy.py
+    strategy --> sentiment_strategy.py
+    strategy --> market_imbalance.py
+    
+    backtesting --> walk_forward.py
+    backtesting --> adaptive_ml_backtester.py
+    backtesting --> performance_metrics.py
+    
+    risk --> risk_manager.py
+    risk --> risk_budget_manager.py
+    risk --> drawdown_controller.py
+    risk --> portfolio_risk_manager.py
+
+    dashboard --> src["src/
+    - components/
+    - lib/
+    - app/"]
+    
+    rust --> src["src/
+    - technical/
+    - market_data/
+    - time_series/
+    - python/"]
+    
+    config --> regime_detection_config.yaml
+    config --> sentiment_analysis.yaml
+    config --> strategies.yaml
+```
 
 ## Architecture Layers
 
@@ -78,9 +207,271 @@ The AI Crypto Trading System is designed as a modular, extensible platform for a
   - [x] MACD Strategy
   - [x] Enhanced MA with Market Regime Detection
   - [x] Multi-Strategy System with Consensus Signals
-- [ ] Machine Learning Strategy Framework
+  - [x] Adaptive ML Strategy with Advanced Indicators
+    - [x] Heikin Ashi, Keltner Channels, CMF, Stochastic RSI
+    - [x] Market Regime Detection with Squeeze Identification
+    - [x] Dynamic Position Sizing with Kelly Criterion
+    - [x] Circuit Breakers and Advanced Risk Management
+- [x] Machine Learning Strategy Framework
+  - [x] Feature Engineering Pipeline
+  - [x] Ensemble Models (Random Forest, Gradient Boosting)
+  - [x] Online Learning with Concept Drift Detection
+  - [x] Feature Importance Analysis
+    - [x] Feature Importance Tracking
+    - [x] Importance Analysis by Market Regime
+    - [x] Feature Importance Visualization
+    - [x] Performance Correlation Analysis
+  - [ ] Model Explainability (SHAP, LIME)
+
+### ML Strategy Framework Diagram
+
+```mermaid
+graph TD
+    subgraph "Feature Engineering"
+        FE[Feature Calculation] --> FS[Feature Selection]
+        FS --> FI[Feature Importance Analysis]
+        FI --> FT[Feature Transformation]
+    end
+
+    subgraph "ML Models"
+        FM[Model Factory] --> MT[Model Training]
+        MT --> ME[Model Evaluation]
+        ME --> CD[Concept Drift Detection]
+        CD --> MA[Model Adaptation]
+        MA --> MT
+    end
+
+    subgraph "Regime-Specific Adaptation"
+        RD[Regime Detection] --> RSM[Regime-Specific Models]
+        RSM --> RPM[Regime Parameter Maps]
+        RPM --> AT[Adaptation Triggers]
+    end
+    
+    subgraph "Signal Generation"
+        MP[Model Predictions] --> PC[Prediction Confidence]
+        PC --> SG[Signal Generation]
+        SG --> PS[Position Sizing]
+        PS --> SL[Stop Loss/Take Profit]
+    end
+
+    subgraph "Backtesting"
+        WF[Walk-Forward Analysis] --> PM[Performance Metrics]
+        PM --> RA[Regime Analysis]
+        RA --> RO[Parameter Optimization]
+    end
+
+    FT --> MT
+    RD --> AT
+    AT --> MA
+    ME --> MP
+    RSM --> MP
+    RO --> RPM
+    RA --> FM
+```
 - [ ] Sentiment Analysis Integration
 - [x] Signal Generation
+- [x] Market Regime Detection Framework
+  - [x] HMM-based Regime Detector
+  - [x] Volatility-based Regime Detector
+  - [x] Trend-based Regime Detector
+  - [x] Clustering-based Regime Detector
+  - [x] Ensemble Regime Detection Methods
+  - [x] Multi-timeframe Regime Analysis
+  - [x] Regime Benchmarking System
+  - [x] Regime Visualization Dashboard
+  - [x] Adaptive Strategy Parameter System
+  - [x] Enhanced Ensemble Detector
+  - [ ] Stress Testing Framework
+    - [ ] Historical Crisis Response Testing
+    - [ ] Monte Carlo Simulation
+    - [ ] Robustness Metrics
+    - [ ] Extreme Event Detection
+    - [ ] Regime Transition Speed Analysis
+
+### Market Regime Detection System Diagram
+
+```mermaid
+graph TD
+    subgraph "Market Data Input"
+        MD[Market Data] --> DPP[Data Preprocessing]
+        DPP --> FE[Feature Engineering]
+    end
+
+    subgraph "Detector Types"
+        HMM[HMM Detector] 
+        VOL[Volatility Detector]
+        TREND[Trend Detector]
+        CLUST[Clustering Detector]
+        MOM[Momentum Detector]
+        SENT[Sentiment Detector]
+    end
+
+    subgraph "Ensemble System"
+        DF[Detector Factory] --> ESB[Ensemble Detector Base]
+        ESB --> EE[Enhanced Ensemble]
+        ESB --> SE[Standard Ensemble]
+        
+        HMM --> ESB
+        VOL --> ESB
+        TREND --> ESB
+        CLUST --> ESB
+        MOM --> ESB
+        SENT --> ESB
+    end
+
+    subgraph "Context-Aware System"
+        MS[Market State Analysis] --> CA[Context Adaptation]
+        CA --> ARW[Adaptive Regime Weights]
+        ARW --> EE
+    end
+
+    subgraph "Confidence Scoring System"
+        EE --> CONF[Confidence Calculator]
+        CONF --> AGR[Agreement Factor]
+        CONF --> HIST[Historical Accuracy Factor]
+        CONF --> DQ[Data Quality Factor]
+        CONF --> BOUND[Boundary Proximity Factor]
+        CONF --> CS[Confidence Scores]
+    end
+
+    subgraph "Outputs"
+        ESB --> RP[Regime Predictions]
+        RP --> PROB[Regime Probabilities]
+        RP --> TRANS[Regime Transitions]
+        PROB --> CS
+        TRANS --> REG[Regime Statistics]
+    end
+
+    FE --> HMM
+    FE --> VOL
+    FE --> TREND
+    FE --> CLUST
+    FE --> MOM
+    FE --> SENT
+    
+    RP --> MS
+```
+
+*Implementation Progress: ~98%*
+
+### Enhanced Ensemble Detector Confidence Scoring System
+
+The Enhanced Ensemble Detector includes a comprehensive confidence scoring system that quantifies the reliability of regime predictions:
+
+#### Architecture
+
+```mermaid
+graph TD
+    subgraph "Confidence Scoring System"
+        CC[Confidence Calculator] --> FACTORS[Confidence Factors]
+        FACTORS --> AF[Agreement Factor]
+        FACTORS --> HF[Historical Accuracy Factor]
+        FACTORS --> DQF[Data Quality Factor]
+        FACTORS --> BPF[Boundary Proximity Factor]
+        
+        AF --> WS[Weighted Scoring]
+        HF --> WS
+        DQF --> WS
+        BPF --> WS
+        
+        WS --> VM[Volatility Modifier]
+        VM --> CR[Confidence Result]
+        CR --> CL[Confidence Level]
+        CR --> MD[Detailed Metadata]
+    end
+    
+    subgraph "Integration Points"
+        EED[Enhanced Ensemble Detector] --> CC
+        MD --> VIZ[Visualization]
+        CL --> RM[Risk Management]
+        CR --> STR[Strategy Adaptation]
+    end
+```
+
+#### Components
+
+1. **Confidence Calculator**
+   - Thread-safe orchestrator for confidence calculation
+   - Manages factor weighting, caching, and history
+   - Handles concurrent requests with proper locking
+   - Provides detailed performance metrics
+
+2. **Confidence Factors**
+   - **Agreement Factor**: Evaluates consistency across detector predictions
+   - **Historical Accuracy Factor**: Tracks detector performance over time
+   - **Data Quality Factor**: Assesses input data completeness and validity
+   - **Boundary Proximity Factor**: Measures proximity to regime transitions
+
+3. **Result Models**
+   - **Confidence Result**: Comprehensive output with overall score and details
+   - **Confidence Levels**: Qualitative labels (HIGH, MEDIUM, LOW) for decision making
+   - **Factor Scores**: Detailed scores from individual factors
+
+4. **Optimization Features**
+   - Efficient caching system to avoid redundant calculations
+   - Parallel processing for improved performance
+   - Memory-efficient storage of historical data
+   - Comprehensive error handling and fallbacks
+
+#### Benefits
+
+- Provides first-class confidence metrics alongside regime predictions
+- Enables more nuanced trading decisions based on prediction reliability
+- Supports adaptive risk management based on confidence levels
+- Delivers deeper insights into detector performance and limitations
+
+*Implementation Progress: 100%*
+
+### ML Analysis Framework
+
+- [x] Feature Importance Visualization
+  - [x] Interactive Feature Importance Chart
+  - [x] Regime-specific Feature Analysis
+  - [x] Feature Category Filtering
+  - [x] Detector Model Comparison
+- [x] Model Performance Metrics
+  - [x] Performance Radar Chart
+  - [x] Regime-specific Performance Analysis
+  - [x] Model Comparison Across Regimes
+  - [ ] Historical Performance Tracking
+- [x] Dashboard Visualizations
+  - [x] HTML Table-based Visualizations
+  - [x] Interactive Plotly Charts
+  - [x] Hybrid Approach with Fallbacks
+  - [x] Parameter Sensitivity Analysis
+  - [x] Signal Generator Dashboard
+    - [x] Trading Signal Visualization
+    - [x] Performance Metrics Display
+    - [x] Parameter Controls
+    - [x] Modular Architecture
+      - [x] Configuration Module
+      - [x] Data Loading Module
+      - [x] Data Generation Module
+      - [x] Signal Visualization Components
+      - [x] Regime Visualization Components
+      - [x] Performance Visualization Components
+      - [x] Common Components (Loading, Error Handling)
+      - [x] Callback Utilities
+  - [x] Performance Metrics Display
+    - [x] Detailed Performance Comparison (Python vs. Rust)
+    - [x] Historical Performance Trends
+    - [x] Interactive Metric Selection
+    - [x] Category-based Organization
+    - [x] Visual Improvement Indicators
+- [x] Model Predictions Analysis
+  - [x] Prediction Accuracy Visualization
+  - [x] Regime Transition Prediction
+  - [x] Confidence Scoring
+  - [x] Model Adaptation Metrics
+- [x] Online Learning Framework
+  - [x] Incremental Model Training
+  - [x] Concept Drift Detection
+  - [x] Model Configuration Management
+  - [x] Configuration History and Versioning
+  - [x] Configuration Recommendations System
+  - [x] Regime-Specific Configuration Presets
+  - [x] Configuration Impact Analysis
+  - [x] Performance Tracking Across Versions
 
 *Implementation Progress: ~80%*
 
@@ -140,6 +531,7 @@ The Execution Layer handles the actual execution of orders across different exch
   - [x] Order Cancellation
 
 - [x] **Exchange Connectors**
+  - [x] Unified Exchange Interface
   - [x] Binance Exchange Connector
   - [x] Coinbase Exchange Connector
   - [ ] FTX Exchange Connector
@@ -195,9 +587,80 @@ The Execution Layer handles the actual execution of orders across different exch
 
 *Implementation Progress: ~30%*
 
+## Performance Optimization
+
+### Rust Component Integration
+
+- [x] **Core Infrastructure**
+  - [x] Python/Rust FFI Bridge via PyO3
+  - [x] Component Validation System
+  - [x] Fallback Python Implementations
+  - [x] Environment-specific Validation
+  - [x] Performance Benchmarking Tools
+
+- [x] **Implemented Components**
+  - [x] Signal Generator
+    - [x] Moving Average Crossover Implementation
+    - [x] Performance Metrics Calculation
+    - [x] Python API Compatibility Layer
+  - [ ] High Frequency Data Processor
+  - [ ] Market Regime Detector
+  - [ ] Feature Extractor
+  - [ ] Risk Calculator
+
+- [ ] **Future Components**
+  - [ ] Order Book Analysis
+  - [ ] Pattern Recognition Engine
+  - [ ] Portfolio Optimization
+
+*Implementation Progress: ~30%*
+
 ## Risk Management System
 
 The Risk Management System is a critical component that safeguards trading operations by enforcing risk policies and optimizing risk allocation across strategies, markets, and assets.
+
+### Risk Management System Diagram
+
+```mermaid
+graph TD
+    subgraph "Risk Budget Hierarchy"
+        RB[System Risk Budget] --> SRB[Strategy Risk Budgets]
+        SRB --> MRB[Market Risk Budgets]
+        MRB --> ARB[Asset Risk Budgets]
+        ARB --> PRB[Position Risk Budgets]
+    end
+
+    subgraph "Position Risk Calculation"
+        VOL[Volatility Analysis] --> VAR[Value at Risk]
+        VAR --> ES[Expected Shortfall]
+        ES --> CR[Correlation Risk]
+        CR --> PS[Position Sizing]
+    end
+
+    subgraph "Dynamic Risk Adjustments"
+        RA[Regime Awareness] --> RC[Risk Controls]
+        RC --> DC[Drawdown Controls]
+        DC --> CB[Circuit Breakers]
+        CB --> TCL[Trade Count Limits]
+    end
+
+    subgraph "Performance Attribution"
+        PM[Performance Monitoring] --> RU[Risk Utilization]
+        RU --> RP[Risk/Performance Ratio]
+        RP --> RAA[Risk Allocation Adjustment]
+    end
+
+    subgraph "Risk Optimization"
+        KC[Kelly Criterion] --> RPO[Risk-Parity Optimization]
+        RPO --> RAO[Risk-Adjusted Optimization]
+        RAO --> DRA[Dynamic Risk Allocation]
+    end
+
+    PRB --> PS
+    RC --> PS
+    RAA --> RB
+    DRA --> RB
+```
 
 ### Key Components
 
@@ -274,16 +737,270 @@ The Exchange Integration System provides a standardized interface for connecting
 
 *Implementation Progress: ~75%*
 
+## Multi-Agent Architecture
+
+The AI Trading Agent utilizes a sophisticated multi-agent architecture to divide responsibilities and create a robust, adaptable trading system that mimics how a team of professional traders might collaborate.
+
+### Multi-Agent Architecture Diagram
+
+```mermaid
+graph TD
+    subgraph "Registry & Event Bus"
+        R[Agent Registry] --> EB[Event Bus]
+    end
+
+    subgraph "Sub-Agents Layer"
+        RA[Regime Analysis Agents]
+        SA[Strategy Agents]
+        MP[ML Prediction Agents]
+        RAM[Risk Assessment Agents]
+        EA[Execution Agents]
+    end
+
+    subgraph "Coordinator Agents"
+        SC[Strategy Coordinator]
+        RC[Risk Coordinator]
+        EC[Execution Coordinator]
+    end
+
+    subgraph "Meta-Agent Layer"
+        PEA[Performance Evaluation Agent]
+        SHM[System Health Monitor]
+    end
+
+    EB --> RA
+    EB --> SA
+    EB --> MP
+    EB --> RAM
+    EB --> EA
+    
+    RA --> SC
+    MP --> SC
+    SA --> SC
+    
+    SC --> RC
+    RC --> RAM
+    RC --> EC
+    EC --> EA
+    
+    EB --> PEA
+    EB --> SHM
+    
+    PEA --> SC
+    PEA --> RC
+    SHM --> R
+    
+    subgraph "Regime Analysis Agents Detail"
+        RA --> HMM[HMM Regime Agent]
+        RA --> VOL[Volatility Regime Agent]
+        RA --> TRD[Trend Regime Agent]
+        RA --> SEN[Sentiment Regime Agent]
+        RA --> ENS[Ensemble Regime Agent]
+    end
+    
+    subgraph "Strategy Agents Detail"
+        SA --> TA[Technical Strategy Agent]
+        SA --> ML[ML Strategy Agent]
+        SA --> SEN2[Sentiment Strategy Agent]
+        SA --> HFT[HFT Strategy Agent]
+    end
+    
+    subgraph "Execution Agents Detail"
+        EA --> OE[Order Execution Agent]
+        EA --> SE[Smart Execution Agent]
+        EA --> SLP[Slippage Optimization Agent]
+    end
+```
+
+### Key Components
+
+- [x] **Sub-Agents Layer**
+  - [x] Regime Detection Agents
+    - [x] HMM-based Regime Agent
+    - [x] Volatility-based Regime Agent
+    - [x] Momentum-based Regime Agent
+    - [x] Ensemble Regime Agent
+  - [x] Technical Strategy Agents
+    - [x] Indicator-based Agents
+    - [x] Pattern Recognition Agents
+    - [x] Support/Resistance Agents
+  - [x] ML Prediction Agents
+    - [x] Ensemble Model Agents
+    - [x] Time Series Prediction Agents
+    - [x] Deep Learning Agents
+  - [x] Risk Assessment Agents
+    - [x] VaR Calculation Agent
+    - [x] Drawdown Monitoring Agent
+    - [x] Correlation Analysis Agent
+  - [x] Execution Agents
+    - [x] TWAP/VWAP Execution Agent
+    - [x] Smart Order Routing Agent
+    - [x] Slippage Optimization Agent
+
+- [x] **Coordinator Agents**
+  - [x] Strategy Coordinator
+    - [x] Signal Aggregation
+    - [x] Conflict Resolution
+    - [x] Strategy Selection based on Regime
+  - [x] Risk Coordinator
+    - [x] Position Size Optimization
+    - [x] Risk Budget Allocation
+    - [x] Emergency Circuit Breakers
+  - [x] Execution Coordinator
+    - [x] Order Splitting
+    - [x] Exchange Selection
+    - [x] Execution Algorithm Selection
+
+- [x] **Meta-Agent Layer**
+  - [x] Performance Evaluation Agent
+    - [x] Agent Performance Tracking
+    - [x] Dynamic Weight Adjustment
+    - [x] Reinforcement Learning for Agent Selection
+  - [x] System Health Monitor
+    - [x] Data Quality Assessment
+    - [x] Agent Response Time Monitoring
+    - [x] Error Detection and Recovery
+
+- [x] **Communication Framework**
+  - [x] Message Passing Interface
+  - [x] Shared Knowledge Repository
+  - [x] Event-Driven Communication
+  - [x] Priority-Based Message Handling
+
+*Implementation Progress: ~85%*
+
+## Sentiment Regime Detection Implementation
+
+The SentimentRegimeDetector extends our market regime detection capabilities by leveraging sentiment analysis to identify market phases. This component integrates with our existing regime detection architecture through a standardized factory pattern.
+
+### Integration Architecture
+
+```
+                                  ┌─────────────────┐
+                                  │                 │
+                                  │ Factory System  │
+                                  │                 │
+                                  └────────┬────────┘
+                                           │
+                                           │ creates
+                                           ▼
+┌───────────────────┐    ┌─────────────────────────────────┐    ┌──────────────────┐
+│                   │    │                                 │    │                  │
+│ Volatility        │    │ SentimentRegimeDetector        │    │ Momentum         │
+│ Detector          │◄───┤                                │───►│ Detector         │
+│                   │    │                                │    │                  │
+└───────────────────┘    └─────────────────────────────────┘    └──────────────────┘
+                                           │
+                                           │
+                                           ▼
+                                  ┌────────────────────┐
+                                  │                    │
+                                  │ Ensemble Detector  │
+                                  │                    │
+                                  └────────────────────┘
+```
+
+### Key Components
+
+1. **SentimentRegimeDetector**: Detects market regimes based on sentiment data:
+   - Implements the abstract BaseRegimeDetector interface
+   - Leverages the SentimentAnalysisManager to fetch and process sentiment data
+   - Classifies markets into five sentiment-based regimes (Fearful, Anxious, Neutral, Optimistic, Euphoric)
+   - Implements proper hysteresis to prevent regime flickering
+   - Uses smoothing via exponential moving averages
+   - Provides both discrete regime classification and probability distributions
+
+2. **Factory Integration**:
+   - Registered with the RegimeDetectorFactory using standardized registration
+   - Accessible through the unified factory API
+   - Supports dynamic loading to avoid circular dependencies
+   - Includes configuration validation and sensible defaults
+
+3. **Ensemble Approach**:
+   - Integrates with the EnsembleRegimeDetector as a component detector
+   - Contributes weighted sentiment signals to ensemble decisions
+   - Leverages adaptive weighting based on historical performance
+
+### Benefits & Design Considerations
+
+- **Modular Design**: Follows single responsibility principle, with clear boundaries between components
+- **Extensibility**: Easily extended to incorporate new sentiment data sources
+- **Performance**: Optimized for efficient processing of large datasets
+- **Testing**: Comprehensive test suite with synthetic and historical data
+- **Hysteresis**: Implements regime smoothing to prevent noise-driven transitions
+- **Probability Output**: Provides probabilistic regime assessments, not just discrete classifications
+
+This implementation enhances our regime detection capabilities by incorporating sentiment signals that often precede price movements, allowing for earlier detection of regime transitions than purely price-based indicators.
+
+### Enhanced Ensemble Detector Workflow
+
+```mermaid
+sequenceDiagram
+    participant MD as Market Data
+    participant DF as Detector Factory
+    participant CD as Component Detectors
+    participant EE as Enhanced Ensemble
+    participant CA as Context Analysis
+    participant PW as Performance Weights
+    participant FD as Final Decision
+
+    MD->>EE: Market Data Input
+    EE->>DF: Request Component Detectors
+    DF->>EE: Return Detector Instances
+    EE->>CA: Extract Market Context
+    CA->>EE: Return Context Features
+    
+    EE->>CD: Request Regime Predictions
+    CD->>EE: Return Individual Predictions
+    EE->>CD: Request Regime Probabilities
+    CD->>EE: Return Individual Probabilities
+    
+    EE->>PW: Request Context-Specific Weights
+    CA->>PW: Provide Market Context Information
+    PW->>EE: Return Optimized Detector Weights
+    
+    EE->>FD: Combine Weighted Predictions
+    EE->>FD: Apply Hysteresis for Stability
+    FD->>EE: Return Ensemble Prediction
+    
+    EE->>PW: Update Performance History
+    EE->>PW: Adapt Weights Based on Accuracy
+    
+    EE->>MD: Return Final Regime Prediction
+    EE->>MD: Return Regime Probabilities
+```
+
 ## Next Implementation Priorities
 
-1. Begin machine learning strategy framework
-2. Implement advanced order types (Trailing Stop, OCO, Bracket Orders)
-3. Enhance data storage with time-series database integration
-4. Add exchange account management features
+1. **Advanced Backtesting Framework**
+   - [ ] Implement walk-forward analysis for adaptive strategy validation
+   - [ ] Create scenario-based stress testing with historical crisis events
+   - [ ] Add Monte Carlo simulation for robust performance evaluation
+   - [ ] Develop metric comparison across different market regimes
+
+2. **Online Learning Implementation**
+   - [ ] Create incremental model training pipeline
+   - [ ] Implement concept drift detection mechanisms
+   - [ ] Build model version management system
+   - [ ] Add performance comparison across model versions
+
+3. **Strategy Combination Framework**
+   - [ ] Implement dynamic strategy weighting based on regime detection
+   - [ ] Create correlation-based portfolio construction
+   - [ ] Develop performance attribution tools for combined strategies
+   - [ ] Build visualization dashboard for strategy allocation
 
 ## Current Sprint Accomplishments
 
-- Implemented comprehensive Risk Budget Management system
+- Implemented Adaptive ML Strategy with advanced indicators
+- Added ensemble ML approach with Random Forest and Gradient Boosting
+- Implemented online learning with concept drift detection
+- Built comprehensive online learning configuration system
+- Implemented configuration history and versioning
+- Enhanced risk management with dynamic position sizing and circuit breakers
+- Added performance optimizations with caching and parallel processing
+- Improved market regime detection with squeeze identification
+- Implemented comprehensive risk budget management system
 - Created risk visualization dashboard
 - Added performance-based risk optimization
 - Integrated risk management with alerts system
@@ -302,91 +1019,140 @@ The Exchange Integration System provides a standardized interface for connecting
 - Exchange API integration needs error handling improvements
 - Optimization process can be slow for large parameter spaces
 - Backtesting assumes perfect execution without slippage
+- ML model retraining can be resource-intensive during live trading
 
-## Next Sprint Plan
+## Roadmap & Development Priorities
 
-1. Implement Iceberg order execution algorithm
-2. Develop Coinbase exchange API integration
-3. Add portfolio rebalancing functionality
-4. Begin machine learning strategy framework
+### Immediate Priorities (Next 2 Weeks)
 
-## Implementation Progress Summary
+1. **Advanced Backtesting Framework**
+   - [ ] Implement walk-forward analysis for adaptive strategy validation
+   - [ ] Create scenario-based stress testing with historical crisis events
+   - [ ] Add Monte Carlo simulation for robust performance evaluation
+   - [ ] Develop metric comparison across different market regimes
 
-| Layer                     | Progress  | Key Components Implemented                                        |
-|---------------------------|-----------|------------------------------------------------------------------|
-| Core Infrastructure       | 80%       | Configuration, Logging, Exception Handling                        |
-| Data Layer                | 60%       | Historical Data, Real-time Data, Normalization                    |
-| Strategy Layer            | 80%       | Strategy Interface, Technical Strategies                          |
-| Backtesting Framework     | 90%       | Simulation, Metrics, Visualization, Optimization                  |
-| Portfolio Management      | 85%       | Position Management, Risk Management                              |
-| Execution Layer           | 85%       | Order Management, Exchange Interface, Execution Algorithms, TCA   |
-| Monitoring and UI         | 60%       | Dashboard, Alerts, Risk Visualization                             |
-| Development Tools         | 30%       | Backtesting Tool                                                  |
+2. **Online Learning Enhancements**
+   - [x] Implement configuration history and versioning
+   - [x] Add configuration presets for different market conditions
+   - [x] Create automated configuration recommendations
+   - [x] Implement configuration impact analysis tools
 
-## Additional Requirements
+3. **Strategy Combination Framework**
+   - [ ] Implement dynamic strategy weighting based on regime detection
+   - [ ] Create correlation-based portfolio construction
+   - [ ] Develop performance attribution tools for combined strategies
+   - [ ] Build visualization dashboard for strategy allocation
 
-### Documentation
+### Medium-term Priorities (1-2 Months)
 
-- [ ] **User Guides**
-  - [ ] Installation Guide
-  - [ ] Configuration Guide
-  - [ ] API Documentation
-  - [ ] Exchange Connector Guide
-  - [ ] Execution Algorithms Guide
+1. **Extended Market Regime Detection**
+   - [ ] Add multi-timeframe regime analysis
+   - [ ] Implement regime transition prediction
+   - [ ] Create visualization tools for regime probabilities
+   - [ ] Develop regime benchmarking system
 
-- [ ] **Developer Documentation**
-  - [ ] Code Style Guide
-  - [ ] Module Structure
-  - [ ] Testing Procedures
-  - [ ] Contribution Guidelines
+2. **Rust Integration for Performance-Critical Components**
+   - [ ] Identify bottlenecks in Python implementation
+   - [ ] Create Rust implementations of critical algorithms
+   - [ ] Build Python bindings with PyO3
+   - [ ] Benchmark and compare performance
 
-### Testing
+3. **Model Explainability Tools**
+   - [ ] Implement SHAP for feature importance
+   - [ ] Add LIME for local interpretability
+   - [ ] Create visualization dashboard for model decisions
+   - [ ] Develop rule extraction from complex models
 
-- [ ] **Unit Tests**
-  - [ ] Core Components
-  - [ ] Data Layer
-  - [ ] Strategy Layer
-  - [ ] Portfolio Management
-  - [ ] Execution Layer
+### Long-term Goals (3+ Months)
 
-- [ ] **Integration Tests**
-  - [ ] Exchange API Integration
-  - [ ] Database Integration
-  - [ ] External Data Sources
+1. **Production Deployment Infrastructure**
+   - [ ] Implement containerization with Docker
+   - [ ] Create Kubernetes deployment configuration
+   - [ ] Develop CI/CD pipeline for automated testing
+   - [ ] Build monitoring and alerting system
 
-- [ ] **Performance Tests**
-  - [ ] Execution Speed
-  - [ ] Memory Usage
-  - [ ] Scalability
-  - [ ] Stress Testing
+2. **Deep Learning Model Integration**
+   - [ ] Implement LSTM/GRU models for sequence prediction
+   - [ ] Add transformer-based models for market data
+   - [ ] Create specialized feature engineering for deep learning
+   - [ ] Develop hardware acceleration support
 
-## Development Roadmap
+3. **Comprehensive Risk Management System**
+   - [ ] Implement portfolio-level VaR and Expected Shortfall
+   - [ ] Create stress testing framework for extreme scenarios
+   - [ ] Develop adaptive risk parameters based on market regimes
+   - [ ] Build integrated risk dashboard
 
-### Version 1.0 (Core Trading System)
-- [x] Complete execution layer with all planned algorithms
-- [x] Implement transaction cost analysis
-- [ ] Finalize Coinbase exchange connector
-- [ ] Add comprehensive testing suite
-- [ ] Create user and developer documentation
-- [ ] Performance optimization
+## Project Status Summary
 
-### Version 1.1 (Advanced Execution)
-- [ ] Add advanced order types (Trailing Stop, OCO, Bracket Orders)
-- [ ] Implement cross-exchange arbitrage
-- [ ] Develop exchange-specific parameter optimization
-- [ ] Add historical TCA reporting
-- [ ] Create execution algorithm benchmarking tool
+The AI Trading Agent project has made significant progress in developing core functionality including market regime detection, adaptive ML strategies, and visualization dashboards. Current implementation focuses on enhancing backtesting capabilities, implementing online learning, and creating a strategy combination framework. The project is progressing well, with about 75% of the core functionality implemented.
 
-### Version 1.2 (ML Integration)
-- [ ] Implement machine learning strategy framework
-- [ ] Add feature engineering pipeline for ML models
-- [ ] Develop model training and validation tools
-- [ ] Create ML model deployment system
-- [ ] Add reinforcement learning for execution optimization
+## System Data Flow
 
-### Version 2.0 (Full Algo Trading Platform)
-- [ ] Add multi-asset portfolio management
-- [ ] Implement risk models for different market regimes
-- [ ] Create web-based UI for system management
-- [ ] Add real-time alerts and monitoring dashboard
-- [ ] Develop API for external strategy integration
+This diagram illustrates how data flows through the different components of the system from acquisition to visualization:
+
+```mermaid
+graph LR
+    subgraph "Data Acquisition"
+        MD[Market Data APIs] --> DC[Data Collection]
+        SM[Social Media APIs] --> SAC[Sentiment Analysis Collection]
+        N[News APIs] --> SAC
+        OB[Order Book Data] --> DC
+    end
+
+    subgraph "Data Processing"
+        DC --> DN[Data Normalization]
+        DN --> TS[Time Series Creation]
+        SAC --> SP[Sentiment Processing]
+        SP --> SA[Sentiment Aggregation]
+    end
+
+    subgraph "Feature Engineering"
+        TS --> TA[Technical Analysis]
+        TA --> TI[Technical Indicators]
+        SA --> SI[Sentiment Indicators]
+        TI --> FE[Feature Engineering]
+        SI --> FE
+        FE --> FS[Feature Selection]
+    end
+
+    subgraph "Regime Detection"
+        FS --> RDF[Regime Detector Factory]
+        RDF --> ID[Individual Detectors]
+        ID --> ED[Ensemble Detector]
+        ED --> RP[Regime Predictions]
+        RP --> RPR[Regime Probabilities]
+    end
+
+    subgraph "Strategy Execution"
+        RP --> BSS[Base Strategy Selection]
+        RPR --> PS[Parameter Selection]
+        PS --> TS[Trading Signals]
+        TS --> OE[Order Execution]
+    end
+
+    subgraph "Risk Management"
+        RP --> RBM[Risk Budget Management]
+        RPR --> DPS[Dynamic Position Sizing]
+        DPS --> SL[Stop Loss Settings]
+        SL --> TP[Take Profit Settings]
+        TP --> ROM[Risk Optimization Module]
+    end
+
+    subgraph "Performance Tracking"
+        OE --> PM[Performance Metrics]
+        PM --> BT[Backtesting]
+        BT --> OP[Optimization]
+        OP --> BSS
+    end
+
+    subgraph "Visualization"
+        PM --> DV[Dashboard Visualization]
+        RP --> RV[Regime Visualization]
+        RV --> DV
+        RBM --> RRM[Risk Reports]
+        RRM --> DV
+    end
+```
+
+This flow diagram demonstrates how data moves from external sources through the various processing steps, ultimately resulting in trading decisions and performance visualization.
