@@ -5,6 +5,7 @@ This project implements an AI trading agent with sentiment analysis capabilities
 ## Features
 
 - Multi-source sentiment analysis (Twitter, Reddit, news)
+- Early event detection system for market-moving events
 - Real-time market data integration
 - Enhanced trading strategies combining sentiment with technical indicators
 - Market regime detection
@@ -58,9 +59,16 @@ python examples/sentiment_real_integration_demo.py
 python examples/enhanced_sentiment_trading_strategy.py
 ```
 
+### Early Event Detection Demo
+
+```bash
+python examples/early_event_detection_demo.py
+```
+
 ## Documentation
 
 - [Sentiment Analysis Guide](docs/SENTIMENT_ANALYSIS_GUIDE.md)
+- [Early Event Detection System](docs/EARLY_EVENT_DETECTION_SYSTEM.md)
 - [Twitter Setup Guide](TWITTER_SETUP.md)
 - [Implementation Summary](SENTIMENT_IMPLEMENTATION_SUMMARY.md)
 
