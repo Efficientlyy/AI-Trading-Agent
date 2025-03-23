@@ -4,28 +4,160 @@
 
 name: CI
 
-# Define when this workflow will run
 on:
   push:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
 
+# Ensure we don't run parallel workflows on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
-    name: Test
+  python-test:
+    name: Python ML Components
     runs-on: ubuntu-latest
-    
-    # Test on multiple Node.js versions to ensure compatibility
+    strategy:
+      matrix:
+        python-version: [3.8, 3.9, "3.10"]
+        test-group: [detection, models, evaluation]
+      # Don't cancel other matrix jobs if one fails
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+          cache-dependency-path: |
+            requirements.txt
+            tests/requirements-test.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Install core ML dependencies first
+          pip install numpy pandas scipy scikit-learn
+          # Install full requirements
+          pip install -r requirements.txt
+          pip install -r tests/requirements-test.txt
+
+      - name: Run ML component tests
+        id: ml_tests
+        env:
+          TEST_GROUP: ${{ matrix.test-group }}
+          MIN_COVERAGE: ${{ matrix.test-group == 'detection' && '85' || matrix.test-group == 'models' && '80' || '75' }}
+        run: |
+          # Run tests in parallel with coverage and enforce thresholds
+          pytest tests/ml/${{ matrix.test-group }}/ \
+            -n auto \
+            --dist loadscope \
+            --cov=src/ml/${{ matrix.test-group }} \
+            --cov-config=.coveragerc \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-fail-under=${MIN_COVERAGE} \
+            -v
+
+      - name: Check component coverage thresholds
+        id: coverage_check
+        run: |
+          echo "Running coverage check for ${{ matrix.test-group }}"
+          python scripts/check_coverage.py
+        if: success()
+
+      - name: Upload ML coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          flags: ml,${{ matrix.test-group }}
+          name: ml-${{ matrix.test-group }}-py${{ matrix.python-version }}
+          fail_ci_if_error: true
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ steps.ml_tests.outcome }}" == "success" ] && [ "${{ steps.coverage_check.outcome }}" == "success" ]; then
+            echo "${{ matrix.test-group }} tests and coverage checks passed"
+            exit 0
+          else
+            echo "${{ matrix.test-group }} tests or coverage checks failed"
+            exit 1
+          fi
+
+  rust-test:
+    name: Rust Components
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          components: clippy
+
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Cache Rust dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            rust/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Run Clippy
+        id: clippy
+        working-directory: ./rust
+        run: |
+          cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests with coverage
+        id: rust_tests
+        working-directory: ./rust
+        run: |
+          # Run tests with coverage enforcement
+          cargo tarpaulin --out Xml --out Html --fail-under 80 --workspace --all-features
+
+      - name: Upload Rust coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./cobertura.xml
+          flags: rust
+          name: rust-coverage
+          fail_ci_if_error: true
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ steps.clippy.outcome }}" == "success" ] && [ "${{ steps.rust_tests.outcome }}" == "success" ]; then
+            echo "Rust tests and coverage checks passed"
+            exit 0
+          else
+            echo "Rust tests or coverage checks failed"
+            exit 1
+          fi
+
+  dashboard-test:
+    name: Dashboard Components
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         node-version: [16.x, 18.x, 20.x]
+      fail-fast: false
     
     steps:
-      # Check out the repository code
       - uses: actions/checkout@v3
       
-      # Set up Node.js with the specified version
       - name: Set up Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
@@ -33,24 +165,77 @@ jobs:
           cache: 'npm'
           cache-dependency-path: dashboard/package-lock.json
       
-      # Install project dependencies
       - name: Install dependencies
         working-directory: ./dashboard
-        run: npm ci
+        run: |
+          npm ci
+          # Install dev dependencies explicitly
+          npm install --save-dev @testing-library/react @testing-library/jest-dom
       
-      # Run ESLint to check code quality
       - name: Run linting
+        id: lint
         working-directory: ./dashboard
         run: npm run lint
       
-      # Run tests with Jest and generate coverage report
-      - name: Run tests
+      - name: Run component tests
+        id: dashboard_tests
         working-directory: ./dashboard
-        run: npm test -- --ci --coverage
+        run: |
+          # Run tests in parallel with coverage thresholds
+          npm test -- \
+            --ci \
+            --coverage \
+            --maxWorkers=2 \
+            --coverageThreshold='{"global":{"branches":80,"functions":80,"lines":80,"statements":80}}'
       
-      # Save the coverage report as an artifact
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v3
+      - name: Upload Dashboard coverage to Codecov
+        uses: codecov/codecov-action@v3
         with:
-          name: coverage-report-node-${{ matrix.node-version }}
-          path: dashboard/coverage/
+          files: ./dashboard/coverage/lcov.info
+          flags: dashboard
+          name: dashboard-node${{ matrix.node-version }}
+          fail_ci_if_error: true
+
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ steps.lint.outcome }}" == "success" ] && [ "${{ steps.dashboard_tests.outcome }}" == "success" ]; then
+            echo "Dashboard tests and coverage checks passed"
+            exit 0
+          else
+            echo "Dashboard tests or coverage checks failed"
+            exit 1
+          fi
+
+  coverage-status:
+    name: Coverage Status Check
+    needs: [python-test, rust-test, dashboard-test]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Download coverage reports
+        uses: actions/download-artifact@v3
+        with:
+          path: coverage-reports
+
+      - name: Check overall coverage status
+        id: coverage_check
+        run: |
+          # Verify all coverage thresholds are met
+          python scripts/check_coverage.py
+          
+      - name: Report final status
+        if: always()
+        run: |
+          if [ "${{ needs.python-test.result }}" == "success" ] && \
+             [ "${{ needs.rust-test.result }}" == "success" ] && \
+             [ "${{ needs.dashboard-test.result }}" == "success" ] && \
+             [ "${{ steps.coverage_check.outcome }}" == "success" ]; then
+            echo " All components passed tests and met coverage thresholds"
+            exit 0
+          else
+            echo " One or more components failed tests or coverage checks"
+            exit 1
+          fi

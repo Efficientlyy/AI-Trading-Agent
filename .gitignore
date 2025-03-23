@@ -64,3 +64,39 @@ venv.bak/
 # Project specific
 output.log
 /data/historical/
+
+# Node.js
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+.pnpm-debug.log
+
+# Rust artifacts
+time_series_rust/target/
+**/target/
+Cargo.lock
+**/*.rs.bk
+
+# Build artifacts and large files
+dashboard/.next/
+**/dist/
+**/.next/
+**/build/
+*.pdb
+*.dll
+*.exe
+*.exp
+*.lib
+*.rmeta
+*.rlib
+
+# Temporary files
+temp_files/
+**/temp/
+temp/
+*~
+
+# Large data files
+*.csv
+!/data/sample/*.csv
