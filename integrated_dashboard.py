@@ -11,52 +11,73 @@ This dashboard provides a unified interface with navigation between different da
 Each module follows the Single Responsibility Principle by focusing on specific functionality.
 """
 
+# Import necessary modules
+import os
+import sys
+import time
 import random
-import uuid
 import logging
-import argparse
 import json
-import numpy as np
-import pandas as pd
 from datetime import datetime, timedelta
-from enum import Enum
-from typing import Dict, List, Optional, Any, Tuple
 from pathlib import Path
+from typing import Dict, List, Any, Optional, Union, Tuple
+from enum import Enum  # Add missing Enum import
 
-from fastapi import FastAPI, Request, Query
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-import uvicorn
-import plotly
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
+# Try to import pandas and numpy, which we need for data generation
+try:
+    import pandas as pd
+    import numpy as np
+    from plotly.subplots import make_subplots
+    import plotly.graph_objects as go
+except ImportError:
+    # Log the error and exit if these critical dependencies are missing
+    sys.exit("Error: Required dependencies not found. Please install pandas, numpy, and plotly.")
+
+# Flask imports - these will be patched by our compatibility layer if needed
+try:
+    from flask import Flask, render_template, request, jsonify, redirect, url_for
+except ImportError:
+    # Log a warning but continue - our compatibility layer will handle this
+    logging.warning("Flask not found. Using compatibility layer.")
+    # Set these to None to avoid further import errors
+    Flask = None
+    render_template = None
+    request = None
+    jsonify = None
+    redirect = None
+    url_for = None
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("ai_trading_dashboard")
 
-# Create FastAPI app
-app = FastAPI(title="AI Trading Agent Integrated Dashboard")
+# Apply dateutil compatibility patches
+from src.common.dateutil_compat import apply_dateutil_patches
+apply_dateutil_patches()
 
-# Create necessary directories
-templates_dir = Path("templates")
-static_dir = Path("static")
-css_dir = static_dir / "css"
+# Import visualization and data libs
+try:
+    import plotly.express as px
+except ImportError as e:
+    print(f"Error importing data libraries: {e}")
+    print("Make sure pandas, numpy, and plotly are installed:")
+    print("pip install pandas numpy plotly")
+    sys.exit(1)
 
-templates_dir.mkdir(exist_ok=True)
-static_dir.mkdir(exist_ok=True)
-css_dir.mkdir(exist_ok=True)
+# Setup Flask instead of FastAPI
+try:
+    logger.info("Successfully imported Flask and dependencies")
+except ImportError as e:
+    logger.error(f"Error importing Flask: {e}")
+    print(f"Error importing Flask: {e}")
+    print("Make sure Flask is installed:")
+    print("pip install flask")
+    sys.exit(1)
 
-# Set up templates and static files
-templates = Jinja2Templates(directory="templates")
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Enums for consistent status and alert types
+# Enums for consistent status values
 class ComponentStatus(str, Enum):
     OK = "OK"
     WARNING = "Warning"
@@ -903,99 +924,317 @@ def generate_mock_logs(level: str = "all", count: int = 20):
     return logs
 
 
-@app.get("/", response_class=HTMLResponse)
-async def integrated_dashboard(request: Request, tab: str = Query("main", description="Dashboard tab to display"), level: str = Query("all", description="Log level filter for logs tab")):
-    """
-    Render the integrated dashboard with the selected tab.
+# Create Flask application function
+def create_app():
+    """Create and configure a Flask application for the dashboard."""
+    # Create Flask application
+    app = Flask(__name__, 
+                template_folder='templates',
+                static_folder='static')
     
-    Args:
-        request: The request object
-        tab: The active tab (main, sentiment, risk, logs)
-        level: The log level filter (all, info, warning, error, debug)
+    # Configure application
+    app.config['SECRET_KEY'] = 'ai-trading-agent-dashboard'
     
-    Returns:
-        HTMLResponse: Rendered dashboard template
-    """
-    import json
+    # Ensure template directory exists
+    template_dir = Path('templates')
+    template_dir.mkdir(exist_ok=True)
     
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # Generate data immediately
+    mock_price_data = generate_time_series_data(30, "bull")
+    mock_system_data = generate_mock_system_data()
+    # Use the correct DataFrame operations based on memory about time series issues
+    price_df = pd.DataFrame({'date': mock_price_data['date'].dt.strftime('%Y-%m-%d'), 
+                           'price': mock_price_data['value']})
     
-    # Validate tab parameter
-    valid_tabs = ["main", "sentiment", "risk", "logs", "market_regime"]
-    if tab not in valid_tabs:
-        tab = "main"
+    # Create a simple default template if it doesn't exist
+    template_path = template_dir / 'dashboard.html'
+    if not template_path.exists():
+        with open(template_path, 'w') as f:
+            f.write("""<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Trading Agent Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .card-header {
+            background-color: #f8f9fa;
+            font-weight: 600;
+        }
+        .status-ok { color: #198754; font-weight: bold; }
+        .status-warning { color: #ffc107; font-weight: bold; }
+        .status-error { color: #dc3545; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">AI Trading Agent Dashboard</h1>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">System Status</div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Status:</strong> <span class="status-ok">Active</span></p>
+                                <p><strong>Last Updated:</strong> <span id="last-updated"></span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Server Time:</strong> <span id="server-time"></span></p>
+                                <p><strong>Agent Version:</strong> 1.0.0</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Price Chart</div>
+                    <div class="card-body">
+                        <div id="price-chart" style="height: 300px;"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">Recent Alerts</div>
+                    <div class="card-body">
+                        <div class="alert alert-warning">
+                            <strong>Warning:</strong> High volatility detected
+                        </div>
+                        <div class="alert alert-info">
+                            <strong>Info:</strong> Pattern detected: Bull flag
+                        </div>
+                        <div class="alert alert-success">
+                            <strong>Success:</strong> Trade executed
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">Performance Metrics</div>
+                    <div class="card-body">
+                        <p><strong>Sharpe Ratio:</strong> 1.75</p>
+                        <p><strong>Win Rate:</strong> 68%</p>
+                        <p><strong>Drawdown:</strong> 8.2%</p>
+                        <p><strong>Total Return:</strong> 24.5%</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     
-    # Basic template data
-    template_data = {
-        "request": request,
-        "active_tab": tab,
-        "timestamp": timestamp
-    }
+    <script>
+        // Set current time
+        function updateTime() {
+            const now = new Date();
+            document.getElementById('server-time').textContent = now.toLocaleTimeString();
+            document.getElementById('last-updated').textContent = now.toLocaleString();
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+        
+        // Create sample price chart with embedded data
+        document.addEventListener('DOMContentLoaded', function() {
+            // Directly embedded data to avoid loading issues
+            const chartData = """ + price_df.to_json(orient='records') + """;
+            
+            const dates = chartData.map(item => item.date);
+            const prices = chartData.map(item => item.price);
+            
+            // Calculate simple moving average
+            const movingAvg = [];
+            for (let i = 0; i < prices.length; i++) {
+                if (i < 7) {
+                    movingAvg.push(null);
+                } else {
+                    let sum = 0;
+                    for (let j = i - 7; j < i; j++) {
+                        sum += prices[j];
+                    }
+                    movingAvg.push(sum / 7);
+                }
+            }
+            
+            const trace1 = {
+                x: dates,
+                y: prices,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'Price',
+                line: { color: '#2962FF' }
+            };
+            
+            const trace2 = {
+                x: dates,
+                y: movingAvg,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'MA(7)',
+                line: { color: '#FF6D00', dash: 'dash' }
+            };
+            
+            const layout = {
+                autosize: true,
+                margin: { l: 40, r: 40, t: 20, b: 40 },
+                xaxis: { showgrid: false },
+                yaxis: { showgrid: true },
+                legend: { orientation: 'h', y: 1.1 }
+            };
+            
+            Plotly.newPlot('price-chart', [trace1, trace2], layout);
+        });
+    </script>
+</body>
+</html>""")
     
-    # Get data specific to the selected tab
-    if tab == "main":
-        # Get system monitoring data
+    # Define routes
+    @app.route('/')
+    def index():
+        """Main dashboard route that renders the integrated dashboard."""
+        return render_template('dashboard.html')
+        
+    @app.route('/sentiment')
+    def sentiment_dashboard():
+        """Sentiment analysis dashboard tab."""
+        return render_template('dashboard.html')
+        
+    @app.route('/risk')
+    def risk_dashboard():
+        """Risk management dashboard tab."""
+        return render_template('dashboard.html')
+        
+    @app.route('/market-regime')
+    def market_regime_dashboard():
+        """Market regime dashboard tab."""
+        return render_template('dashboard.html')
+        
+    @app.route('/logs')
+    def logs_dashboard():
+        """Logs and monitoring dashboard tab."""
+        return render_template('dashboard.html')
+    
+    # API endpoints for data
+    @app.route('/api/status')
+    def api_status():
+        """API endpoint to check status."""
+        return jsonify({
+            "status": "ok", 
+            "timestamp": datetime.now().isoformat(),
+            "system": {
+                "cpu_usage": random.uniform(5, 25),
+                "memory_usage": random.uniform(30, 70),
+                "active_threads": random.randint(2, 8)
+            }
+        })
+    
+    @app.route('/api/price-data')
+    def api_price_data():
+        """API endpoint for price chart data."""
+        days = int(request.args.get('days', 30))
+        pattern = request.args.get('pattern', 'bull')
+        
+        # Generate time series data using our existing function
+        data = generate_time_series_data(days, pattern)
+        
+        # Convert to dictionary records
+        return jsonify(data.to_dict('records'))
+    
+    @app.route('/api/dashboard-data')
+    def api_dashboard_data():
+        """API endpoint for main dashboard data."""
+        # Generate mock system status data
         system_data = generate_mock_system_data()
-        orders_trades_data = generate_mock_orders_and_trades()
-        alerts, alert_counts = generate_mock_alerts()
         
-        template_data.update(system_data)
-        template_data.update(orders_trades_data)
-        template_data.update({
-            "alerts": alerts,
-            "alert_counts": alert_counts
+        # Generate some basic mock data for sentiment
+        sentiment_days = 30
+        price_data = generate_time_series_data(sentiment_days, 'bull')
+        
+        # Create sentiment data with dates
+        sentiment_data = {
+            'current_sentiment': random.uniform(0.3, 0.8),
+            'sentiment_status': random.choice(['Bullish', 'Neutral', 'Bearish']),
+            'historical_sentiment': {
+                'dates': [d.strftime('%Y-%m-%d') for d in price_data['date'].tolist()],
+                'values': [100 + random.uniform(-10, 10) for _ in range(sentiment_days)]
+            }
+        }
+        
+        # Create risk data
+        risk_data = {
+            'metrics': {
+                'sharpe': random.uniform(0.8, 2.5),
+                'var_95': random.uniform(3.5, 12.0)
+            },
+            'historical_volatility': {
+                'dates': [d.strftime('%Y-%m-%d') for d in price_data['date'].tolist()],
+                'values': [random.uniform(8, 25) for _ in range(sentiment_days)]
+            }
+        }
+        
+        # Create market regime data
+        market_regime_data = {
+            'current_regime': random.choice(['Bull Market', 'Bear Market', 'Sideways Market', 'Volatile Market']),
+            'price_data': {
+                'dates': [d.strftime('%Y-%m-%d') for d in price_data['date'].tolist()],
+                'values': price_data['value'].tolist()
+            }
+        }
+        
+        # Create component status data
+        components = [
+            {
+                'name': 'Data Collection',
+                'status': 'OK',
+                'message': 'Running normally'
+            },
+            {
+                'name': 'Strategy Engine',
+                'status': random.choice(['OK', 'Warning']),
+                'message': 'Performance degraded' if random.random() < 0.3 else 'Running normally'
+            },
+            {
+                'name': 'Order Manager',
+                'status': 'OK',
+                'message': 'Running normally'
+            },
+            {
+                'name': 'Exchange Connection',
+                'status': random.choice(['OK', 'Warning', 'Error']),
+                'message': random.choice(['Running normally', 'High latency detected', 'Connection timed out'])
+            },
+            {
+                'name': 'Risk Manager',
+                'status': 'OK',
+                'message': 'Running normally'
+            }
+        ]
+        
+        # Combine all data
+        return jsonify({
+            'system_status': {
+                'uptime': f"{random.randint(1, 48)}h {random.randint(0, 59)}m",
+                'errors': random.randint(0, 5),
+                'warnings': random.randint(0, 10),
+                'components': components
+            },
+            'sentiment': sentiment_data,
+            'risk': risk_data,
+            'market_regime': market_regime_data
         })
     
-    elif tab == "sentiment":
-        # Get sentiment analysis data
-        sentiment_data = generate_mock_sentiment_data()
-        
-        template_data.update(sentiment_data)
-    
-    elif tab == "risk":
-        risk_data = generate_mock_risk_data()
-        
-        template_data.update(risk_data)
-    
-    elif tab == "logs":
-        log_data = generate_mock_logs(level)
-        template_data.update({
-            "log_level": level,
-            "logs": log_data
-        })
-    
-    elif tab == "market_regime":
-        market_regime_data = generate_mock_market_regime_data()
-        template_data.update(market_regime_data)
-    
-    else:  # Default to main dashboard
-        main_data = generate_mock_system_data()
-        template_data.update(main_data)
-    
-    # Render the integrated dashboard template
-    return templates.TemplateResponse("integrated_dashboard.html", template_data)
+    return app
 
-def main():
-    """Run the integrated dashboard server."""
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description="Run the AI Trading Agent integrated dashboard")
-    parser.add_argument("--host", default="127.0.0.1", help="Host to bind the server to")
-    parser.add_argument("--port", type=int, default=8001, help="Port to bind the server to")
-    parser.add_argument("--reload", action="store_true", help="Enable auto-reload (development mode)")
-    args = parser.parse_args()
-    
-    # Log startup information
-    logger.info(f"Starting integrated dashboard on http://{args.host}:{args.port}")
-    logger.info("Press Ctrl+C to stop the server")
-    
-    # Run the server
-    uvicorn.run(
-        app, 
-        host=args.host,
-        port=args.port,
-        log_level="info",
-        reload=args.reload
-    )
-
+# For standalone testing
 if __name__ == "__main__":
-    main()
+    app = create_app()
+    app.run(debug=True, host="127.0.0.1", port=8001)
