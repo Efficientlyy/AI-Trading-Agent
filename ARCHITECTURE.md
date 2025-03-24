@@ -612,6 +612,55 @@ The Execution Layer handles the actual execution of orders across different exch
 
 *Implementation Progress: ~30%*
 
+## AI and LLM Integration
+
+### LLM Integration Architecture
+
+The system integrates Large Language Models (LLMs) to enhance market analysis, sentiment interpretation, and early signal detection. This integration follows our modular architecture principles for efficient resource usage and clear separation of concerns.
+
+```mermaid
+graph TD
+    subgraph "LLM Integration System"
+        CACHE[Cache Layer] --> TIERED[Tiered Model Selection]
+        TIERED --> APIS[LLM APIs]
+        TIERED --> TRACK[Usage Tracking]
+        TRACK --> BUDGET[Budget Management]
+        APIS --> PROCESS[Response Processing]
+    end
+
+    subgraph "Applications"
+        SENT[Sentiment Analysis] --> CACHE
+        NEWS[News Interpretation] --> CACHE
+        EARLY[Early Signal Detection] --> CACHE
+        REGIME[Regime Transition Analysis] --> CACHE
+    end
+```
+
+### LLM Components
+
+- [x] **Optimized LLM Usage System**
+  - [x] CachedLLMClient with TTL-based caching
+  - [x] Tiered model selection (GPT-3.5/GPT-4)
+  - [x] Confidence and impact-based model selection
+  - [x] Token usage tracking and budgeting
+  - [x] Cost monitoring and limit enforcement
+
+- [x] **LLM Applications**
+  - [x] Market sentiment analysis enhancement
+  - [x] News impact evaluation
+  - [x] Anomaly detection assistance
+  - [x] Pattern recognition augmentation
+  - [x] Regime transition analysis
+
+- [x] **Efficiency Features**
+  - [x] Prompt optimization and templating
+  - [x] Batch processing for related queries
+  - [x] Result memoization
+  - [x] Confidence scoring for responses
+  - [x] Fallback mechanisms for API failures
+
+*Implementation Progress: ~75%*
+
 ## Performance Optimization
 
 ### Rust Component Integration
@@ -1183,6 +1232,13 @@ graph LR
 This flow diagram demonstrates how data moves from external sources through the various processing steps, ultimately resulting in trading decisions and performance visualization.
 
 ## Recent Changes
+
+- **LLM Integration Documentation (March 24, 2025)**:
+  - Added comprehensive documentation of the LLM integration architecture
+  - Detailed the optimized LLM usage system with tiered model selection
+  - Documented key LLM applications in market analysis
+  - Included efficiency features like caching and prompt optimization
+  - Created visual diagram of the LLM integration system
 
 - **Integrated Dashboard (March 24, 2025)**:
   - Implemented a comprehensive dashboard for real-time monitoring with multiple specialized tabs
