@@ -612,6 +612,104 @@ The Execution Layer handles the actual execution of orders across different exch
 
 *Implementation Progress: ~30%*
 
+## Sentiment Analysis System
+
+The Sentiment Analysis System is a sophisticated component that processes and analyzes sentiment data from multiple sources to generate actionable trading signals and enhance market regime detection.
+
+### Sentiment Analysis Architecture
+
+```mermaid
+graph TD
+    subgraph "Data Sources"
+        SM[Social Media] --> FCOL[Data Collection Layer]
+        NWS[News Articles] --> FCOL
+        FEXP[Financial Expert Opinions] --> FCOL
+        FNLS[Financial News LLM Summaries] --> FCOL
+        SRCH[Search Trends] --> FCOL
+    end
+
+    subgraph "Processing Pipeline"
+        FCOL --> DP[Data Processing]
+        DP --> NLP[NLP Processing]
+        NLP --> SA[Sentiment Analysis]
+        SA --> SNI[Sentiment Indicators]
+        SNI --> AGG[Aggregation Layer]
+        AGG --> NORM[Normalization]
+    end
+
+    subgraph "Analysis Modules"
+        NORM --> CS[Cross-Source Analysis]
+        CS --> TF[Time-frame Analysis]
+        TF --> EXT[Extreme Sentiment Detection]
+        EXT --> SENT[Sentiment Score Generation]
+        SENT --> TRIG[Trigger Detection]
+    end
+
+    subgraph "Integration Points"
+        TRIG --> SG[Signal Generation]
+        SENT --> RD[Regime Detection Input]
+        SENT --> VIZ[Visualization System]
+        SG --> STRAT[Strategy System]
+    end
+```
+
+### Key Components
+
+- [x] **Data Collection System**
+  - [x] Social Media Scrapers (Twitter, Reddit, StockTwits)
+  - [x] News API Integration
+  - [x] Market Commentary Analysis
+  - [x] Search Volume Tracking
+  - [x] LLM-Enhanced News Summarization
+  
+- [x] **Processing Pipeline**
+  - [x] Sentiment Extraction and Scoring
+  - [x] Entity Recognition (assets, markets, events)
+  - [x] Topic Classification
+  - [x] Sentiment Aggregation
+  - [x] Cross-Source Correlation
+  - [x] Noise Reduction Algorithms
+  
+- [x] **Analysis Modules**
+  - [x] Multi-Timeframe Sentiment Analysis
+  - [x] Sentiment Trend Detection
+  - [x] Contrarian Indicator Detection
+  - [x] Sentiment Divergence Analysis
+  - [x] Extreme Sentiment Detection
+  - [x] Market Correlation Analysis
+  - [x] Predictive Sentiment Modeling
+  
+- [x] **Trading Integration**
+  - [x] Sentiment-Based Signal Generation
+  - [x] Regime Detection Enhancement
+  - [x] Risk Adjustment Recommendations
+  - [x] Position Sizing Modulation
+  - [x] Sentiment-Enhanced Strategies
+    - [x] Base Sentiment Strategy
+    - [x] Advanced Sentiment Strategy
+    - [x] Enhanced Sentiment Strategy
+    
+- [x] **Visualization System**
+  - [x] Sentiment Dashboard
+  - [x] Real-time Sentiment Monitoring
+  - [x] Historical Sentiment Analysis
+  - [x] Sentiment-Price Correlation Charts
+  - [x] Source Reliability Tracking
+  - [x] Performance Metrics Visualization
+
+### Key Features
+
+- **Multi-source Integration**: Combines signals from various sources with adaptive weighting
+- **Sentiment Extremes Detection**: Identifies potential market tops and bottoms through sentiment analysis
+- **Source Reliability Scoring**: Tracks and weights sources based on historical accuracy
+- **NLP-Enhanced Processing**: Utilizes advanced NLP techniques for nuanced sentiment extraction
+- **Time-Series Integration**: Correlates sentiment shifts with price movement across timeframes
+- **Adaptive Thresholds**: Dynamically adjusts sentiment thresholds based on market conditions
+- **Sentiment-Regime Correlation**: Maps sentiment patterns to specific market regimes
+- **Performance Tracking**: Monitors accuracy and effectiveness of sentiment-based signals
+
+*Implementation Progress: ~85%*
+
 ## AI and LLM Integration
 
 ### LLM Integration Architecture
@@ -803,6 +901,7 @@ The Exchange Integration System provides a standardized interface for connecting
   - [x] Implementation Shortfall
   - [x] Slippage Measurement
   - [x] Algorithm Comparison
+  - [x] Real-time Metrics
 
 - [ ] **Exchange Account Management**
   - [ ] API Key Management
@@ -1232,6 +1331,13 @@ graph LR
 This flow diagram demonstrates how data moves from external sources through the various processing steps, ultimately resulting in trading decisions and performance visualization.
 
 ## Recent Changes
+
+- **Sentiment Analysis Documentation (March 24, 2025)**:
+  - Added comprehensive documentation of the Sentiment Analysis System
+  - Created visual architecture diagram of the multi-source sentiment processing pipeline
+  - Documented key components including data collection, processing, and analysis modules
+  - Outlined integration points with trading strategies and regime detection
+  - Detailed the visualization and monitoring components
 
 - **LLM Integration Documentation (March 24, 2025)**:
   - Added comprehensive documentation of the LLM integration architecture
