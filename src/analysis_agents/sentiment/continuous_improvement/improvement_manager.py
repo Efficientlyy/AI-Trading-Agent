@@ -24,6 +24,10 @@ from src.analysis_agents.sentiment.ab_testing import (
 from src.analysis_agents.sentiment.prompt_tuning import prompt_tuning_system
 from src.analysis_agents.sentiment.performance_tracker import performance_tracker
 from src.analysis_agents.sentiment.llm_service import LLMService
+from src.analysis_agents.sentiment.continuous_improvement.stopping_criteria import (
+    stopping_criteria_manager, StoppingCriterion, BayesianProbabilityThresholdCriterion,
+    ExpectedLossCriterion, ConfidenceIntervalCriterion
+)
 
 class ContinuousImprovementManager:
     """Manager for continuous improvement of the sentiment analysis system.
@@ -67,6 +71,70 @@ class ContinuousImprovementManager:
             ExperimentType.CONFIDENCE_THRESHOLD: self._implement_confidence_threshold,
         }
         
+        # Configure automatic stopping criteria
+        self._configure_stopping_criteria()
+        
+    def _configure_stopping_criteria(self):
+        """Configure stopping criteria based on system configuration."""
+        # Clear existing criteria
+        stopping_criteria_manager.clear_criteria()
+        
+        # Load stopping criteria configuration
+        stopping_config = self.config.get("stopping_criteria", {})
+        
+        # Configure sample size criterion
+        min_samples = stopping_config.get("min_samples_per_variant", 100)
+        stopping_criteria_manager.add_criterion(
+            StoppingCriterion("sample_size", f"Minimum {min_samples} samples per variant")
+        )
+        
+        # Configure Bayesian probability threshold criterion
+        probability_threshold = stopping_config.get("probability_threshold", 0.95)
+        metrics_weight = stopping_config.get("metrics_weight", {
+            "sentiment_accuracy": 0.4,
+            "direction_accuracy": 0.3,
+            "calibration_error": 0.2,
+            "confidence_score": 0.1
+        })
+        stopping_criteria_manager.add_criterion(
+            BayesianProbabilityThresholdCriterion(
+                probability_threshold=probability_threshold,
+                min_samples_per_variant=min_samples,
+                metrics_weight=metrics_weight
+            )
+        )
+        
+        # Configure expected loss criterion
+        loss_threshold = stopping_config.get("loss_threshold", 0.005)
+        stopping_criteria_manager.add_criterion(
+            ExpectedLossCriterion(
+                loss_threshold=loss_threshold,
+                min_samples_per_variant=min_samples,
+                metrics_weight=metrics_weight
+            )
+        )
+        
+        # Configure confidence interval criterion
+        interval_width = stopping_config.get("interval_width_threshold", 0.05)
+        metrics_to_check = stopping_config.get("metrics_to_check", [
+            "sentiment_accuracy", "direction_accuracy"
+        ])
+        stopping_criteria_manager.add_criterion(
+            ConfidenceIntervalCriterion(
+                interval_width_threshold=interval_width,
+                min_samples_per_variant=min_samples,
+                metrics_to_check=metrics_to_check
+            )
+        )
+        
+        # Configure time limit criterion
+        max_days = stopping_config.get("max_experiment_days", 14)
+        stopping_criteria_manager.add_criterion(
+            StoppingCriterion("time_limit", f"Maximum {max_days} days runtime")
+        )
+        
+        self.logger.info(f"Configured {len(stopping_criteria_manager.criteria)} stopping criteria")
+    
     async def initialize(self):
         """Initialize the continuous improvement manager."""
         if not self.enabled:
@@ -81,6 +149,9 @@ class ContinuousImprovementManager:
         
         # Make the directory for the results history if it doesn't exist
         os.makedirs(os.path.dirname(self.results_history_file), exist_ok=True)
+        
+        # Configure stopping criteria
+        self._configure_stopping_criteria()
         
         self.logger.info("Continuous improvement system initialized.")
     
@@ -118,11 +189,11 @@ class ContinuousImprovementManager:
         
         # Check if it's time to generate experiments
         if (now - self.last_experiment_generation).total_seconds() > self.experiment_generation_interval:
-            self.generate_experiments()
+            await self.generate_experiments()
             self.last_experiment_generation = now
         
         # Check active experiments for potential implementation
-        self.check_experiments()
+        await self.check_experiments()
         
         # Update last check time
         self.last_check = now
@@ -190,6 +261,49 @@ class ContinuousImprovementManager:
         Returns:
             List of improvement opportunities
         """
+        try:
+            # Try to use Rust-optimized implementation first
+            from src.rust_bridge import identify_improvement_opportunities
+            
+            # Get Rust-optimized opportunities
+            rust_opportunities = identify_improvement_opportunities(metrics)
+            
+            # Convert Rust opportunities to our experiment types
+            if rust_opportunities:
+                opportunities = []
+                
+                # Map Rust type names to our ExperimentType enum
+                type_map = {
+                    "PROMPT_TEMPLATE": ExperimentType.PROMPT_TEMPLATE,
+                    "MODEL_SELECTION": ExperimentType.MODEL_SELECTION,
+                    "TEMPERATURE": ExperimentType.TEMPERATURE,
+                    "CONTEXT_STRATEGY": ExperimentType.CONTEXT_STRATEGY,
+                    "AGGREGATION_WEIGHTS": ExperimentType.AGGREGATION_WEIGHTS,
+                    "UPDATE_FREQUENCY": ExperimentType.UPDATE_FREQUENCY,
+                    "CONFIDENCE_THRESHOLD": ExperimentType.CONFIDENCE_THRESHOLD,
+                    "UNKNOWN": None
+                }
+                
+                for opp in rust_opportunities:
+                    rust_type = opp.get("type")
+                    exp_type = type_map.get(rust_type)
+                    
+                    if exp_type:
+                        opportunities.append({
+                            "type": exp_type,
+                            "reason": opp.get("reason", "Improvement opportunity detected"),
+                            "metrics": opp.get("metrics", {}),
+                            "potential_impact": opp.get("potential_impact", 0.5)
+                        })
+                
+                self.logger.info(f"Identified {len(opportunities)} improvement opportunities using Rust optimization")
+                return opportunities
+            
+        except Exception as e:
+            self.logger.warning(f"Error using Rust-optimized opportunity identification: {e}")
+            self.logger.info("Falling back to Python implementation for opportunity identification")
+        
+        # Fallback to Python implementation if Rust implementation fails or returns no results
         opportunities = []
         
         # Get baseline metrics
@@ -665,12 +779,45 @@ Return ONLY the improved template text with no additional commentary or explanat
     
     async def check_experiments(self):
         """Check active experiments for potential implementation."""
-        # Get completed experiments that have been analyzed
-        experiments = ab_testing_framework.list_experiments(
+        # First, check active experiments for automatic stopping
+        active_experiments = ab_testing_framework.list_experiments(
+            status=[ExperimentStatus.ACTIVE]
+        )
+        
+        # Check each active experiment with stopping criteria
+        for exp_data in active_experiments:
+            # Skip if not auto-generated
+            if not exp_data.get("auto_generated", False):
+                continue
+            
+            experiment_id = exp_data["id"]
+            experiment = ab_testing_framework.get_experiment(experiment_id)
+            
+            if not experiment:
+                continue
+            
+            # Evaluate stopping criteria
+            evaluation = stopping_criteria_manager.evaluate_experiment(experiment)
+            
+            if evaluation["should_stop"]:
+                # Log the reasons for stopping
+                reasons = [item["reason"] for item in evaluation["stopping_reasons"]]
+                reasons_str = "; ".join(reasons)
+                
+                self.logger.info(
+                    f"Automatically stopping experiment {experiment.name} ({experiment_id}). "
+                    f"Reasons: {reasons_str}"
+                )
+                
+                # Complete the experiment
+                ab_testing_framework.complete_experiment(experiment_id)
+        
+        # Now check analyzed experiments for implementation
+        analyzed_experiments = ab_testing_framework.list_experiments(
             status=[ExperimentStatus.ANALYZED]
         )
         
-        for exp_data in experiments:
+        for exp_data in analyzed_experiments:
             # Skip if not auto-generated
             if not exp_data.get("auto_generated", False):
                 continue

@@ -1,968 +1,651 @@
-"""Continuous Improvement dashboard component.
-
-This module provides a dashboard for monitoring and managing the
-automated improvement system for sentiment analysis.
-"""
-
-import json
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+"""Dashboard components for the continuous improvement system."""
 
 import dash
-from dash import html, dcc, callback, Input, Output, State, ALL, MATCH
+from dash import dcc, html, callback, Input, Output, State
 import dash_bootstrap_components as dbc
-import dash_table
 import plotly.graph_objects as go
 import plotly.express as px
 import pandas as pd
+import numpy as np
+from datetime import datetime, timedelta
 
-from src.analysis_agents.sentiment.continuous_improvement import continuous_improvement_manager
-from src.analysis_agents.sentiment.ab_testing import ab_testing_framework, ExperimentType
-from src.common.logging import get_logger
+from src.analysis_agents.sentiment.ab_testing import (
+    ab_testing_framework, ExperimentType, ExperimentStatus
+)
+from src.analysis_agents.sentiment.continuous_improvement.improvement_manager import (
+    continuous_improvement_manager
+)
+from src.analysis_agents.sentiment.continuous_improvement.stopping_criteria import (
+    stopping_criteria_manager
+)
+from src.analysis_agents.sentiment.continuous_improvement.bayesian_analysis import (
+    bayesian_analyzer
+)
+from src.dashboard.bayesian_visualizations import (
+    create_posterior_distribution_plot,
+    create_winning_probability_chart,
+    create_lift_estimation_chart,
+    create_experiment_progress_chart,
+    create_expected_loss_chart,
+    create_credible_interval_chart,
+    create_multi_variant_comparison_chart,
+    generate_experiment_visualizations
+)
 
 
-# Initialize logger
-logger = get_logger("dashboard", "continuous_improvement")
-
-
-def create_layout():
-    """Create the continuous improvement dashboard layout.
-    
-    Returns:
-        Dash layout
-    """
+def create_continuous_improvement_layout():
+    """Create the layout for the continuous improvement dashboard."""
     return html.Div([
-        html.H2("Continuous Improvement System", className="mt-4 mb-4"),
+        html.H2("Continuous Improvement System"),
         
-        # Controls and refresh
         html.Div([
-            dbc.Row([
-                dbc.Col([
-                    dbc.Button("Refresh Data", id="refresh-ci-data", color="primary", className="mr-2"),
-                    dcc.Interval(id="ci-refresh-interval", interval=30000, n_intervals=0),  # 30 seconds
-                ], width=3),
-                dbc.Col([
-                    dbc.Button("Generate Experiments", id="generate-experiments-btn", color="success", className="mr-2"),
-                    dbc.Button("Run Maintenance", id="run-maintenance-btn", color="warning")
-                ], width=4),
-                dbc.Col([
-                    dbc.FormGroup([
-                        dbc.Label("Auto-Implementation:"),
-                        dbc.Select(
-                            id="auto-implement-toggle",
-                            options=[
-                                {"label": "Enabled", "value": "enabled"},
-                                {"label": "Disabled", "value": "disabled"}
-                            ],
-                            value="disabled"
-                        )
-                    ], className="mb-0")
-                ], width=3)
-            ])
-        ], className="mb-4"),
+            html.H4("System Status"),
+            dbc.Card(
+                dbc.CardBody([
+                    html.Div(id="improvement-system-status"),
+                    html.Div([
+                        dbc.Button(
+                            "Refresh", id="refresh-improvement-status-btn", 
+                            color="primary", className="mr-2"
+                        ),
+                    ], className="d-flex justify-content-end mt-3")
+                ]),
+                className="mb-4"
+            ),
+        ]),
         
-        # System status card
-        dbc.Card([
-            dbc.CardHeader("System Status"),
-            dbc.CardBody(id="ci-system-status")
-        ], className="mb-4"),
+        html.Div([
+            html.H4("Active Experiments"),
+            dbc.Card(
+                dbc.CardBody([
+                    html.Div(id="active-experiments-table"),
+                    html.Div([
+                        dbc.Button(
+                            "Refresh", id="refresh-active-experiments-btn", 
+                            color="primary", className="mr-2"
+                        ),
+                    ], className="d-flex justify-content-end mt-3")
+                ]),
+                className="mb-4"
+            ),
+        ]),
         
-        # Tab navigation
-        dbc.Tabs([
-            # Improvement History Tab
-            dbc.Tab([
-                html.Div([
-                    html.H4("Improvement History", className="mt-3"),
-                    html.Div(id="improvement-history-container")
-                ])
-            ], label="Improvement History", tab_id="history-tab"),
-            
-            # Active Experiments Tab
-            dbc.Tab([
-                html.Div([
-                    html.H4("Auto-Generated Experiments", className="mt-3"),
-                    html.Div(id="auto-experiments-container")
-                ])
-            ], label="Auto-Generated Experiments", tab_id="experiments-tab"),
-            
-            # Metrics Improvement Tab
-            dbc.Tab([
-                html.Div([
-                    html.H4("Performance Metrics", className="mt-3"),
-                    html.Div(id="performance-metrics-container")
-                ])
-            ], label="Performance Metrics", tab_id="metrics-tab"),
-            
-            # Configuration Tab
-            dbc.Tab([
-                html.Div([
-                    html.H4("System Configuration", className="mt-3"),
-                    html.Div(id="ci-configuration-container")
-                ])
-            ], label="Configuration", tab_id="config-tab")
-        ], id="ci-tabs", active_tab="history-tab"),
+        html.Div([
+            html.H4("Stopping Criteria Status"),
+            dbc.Card(
+                dbc.CardBody([
+                    html.Div(id="stopping-criteria-status"),
+                    html.Div([
+                        dbc.Button(
+                            "Refresh", id="refresh-stopping-criteria-btn", 
+                            color="primary", className="mr-2"
+                        ),
+                    ], className="d-flex justify-content-end mt-3")
+                ]),
+                className="mb-4"
+            ),
+        ]),
         
-        # Stores
-        dcc.Store(id="ci-data-store")
+        html.Div([
+            html.H4("Experiment Results"),
+            dbc.Card(
+                dbc.CardBody([
+                    html.Div(id="experiment-results"),
+                    html.Div([
+                        dbc.Button(
+                            "Refresh", id="refresh-experiment-results-btn", 
+                            color="primary", className="mr-2"
+                        ),
+                    ], className="d-flex justify-content-end mt-3")
+                ]),
+                className="mb-4"
+            ),
+        ]),
+        
+        html.Div([
+            html.H4("Bayesian Analysis"),
+            dbc.Card(
+                dbc.CardBody([
+                    dcc.Dropdown(
+                        id="experiment-selector",
+                        placeholder="Select an experiment for Bayesian analysis",
+                    ),
+                    html.Div(id="bayesian-analysis-results", className="mt-3"),
+                ]),
+                className="mb-4"
+            ),
+        ]),
+        
+        # Interval for regular updates
+        dcc.Interval(
+            id="improvement-dashboard-interval",
+            interval=60000,  # 60 seconds
+            n_intervals=0
+        ),
     ])
 
 
 @callback(
-    Output("ci-data-store", "data"),
-    [Input("refresh-ci-data", "n_clicks"),
-     Input("ci-refresh-interval", "n_intervals")]
+    Output("improvement-system-status", "children"),
+    [Input("refresh-improvement-status-btn", "n_clicks"),
+     Input("improvement-dashboard-interval", "n_intervals")]
 )
-def update_ci_data(n_clicks, n_intervals):
-    """Update continuous improvement data store.
-    
-    Args:
-        n_clicks: Button click count
-        n_intervals: Interval refresh count
-        
-    Returns:
-        Continuous improvement data
-    """
+def update_system_status(n_clicks, n_intervals):
+    """Update the system status display."""
     try:
-        # Get system status
+        # Get status from the improvement manager
         status = continuous_improvement_manager.get_status()
         
-        # Get improvement history
-        history = continuous_improvement_manager.get_improvement_history()
+        # Format the status for display
+        status_items = []
+        for key, value in status.items():
+            if key in ["last_check", "last_experiment_generation"]:
+                # Format datetimes
+                value_str = value
+                try:
+                    dt = datetime.fromisoformat(value)
+                    value_str = dt.strftime("%Y-%m-%d %H:%M:%S")
+                except:
+                    pass
+                status_items.append(html.P(f"{key.replace('_', ' ').title()}: {value_str}"))
+            else:
+                status_items.append(html.P(f"{key.replace('_', ' ').title()}: {value}"))
         
+        # Add system enabled status with appropriate color
+        enabled_color = "success" if status.get("enabled", False) else "danger"
+        enabled_text = "Enabled" if status.get("enabled", False) else "Disabled"
+        status_items.insert(
+            0, 
+            html.Div([
+                html.Strong("System Status: "),
+                dbc.Badge(enabled_text, color=enabled_color, className="ml-2")
+            ], className="mb-3")
+        )
+        
+        return status_items
+    
+    except Exception as e:
+        return html.Div([
+            html.P(f"Error loading system status: {str(e)}"),
+            html.P("Check if the continuous improvement system is properly initialized.")
+        ], className="text-danger")
+
+
+@callback(
+    Output("active-experiments-table", "children"),
+    [Input("refresh-active-experiments-btn", "n_clicks"),
+     Input("improvement-dashboard-interval", "n_intervals")]
+)
+def update_active_experiments(n_clicks, n_intervals):
+    """Update the active experiments table."""
+    try:
         # Get active experiments
-        active_experiments = []
-        for exp_id in ab_testing_framework.active_experiment_ids:
-            exp = ab_testing_framework.get_experiment(exp_id)
-            if exp and exp.metadata.get("auto_generated", False):
-                active_experiments.append(exp.to_dict())
-        
-        # Get implemented improvements
-        implemented_improvements = continuous_improvement_manager.results_history
-        
-        return {
-            "status": status,
-            "history": history,
-            "active_experiments": active_experiments,
-            "implemented_improvements": implemented_improvements,
-            "timestamp": datetime.utcnow().isoformat()
-        }
-    except Exception as e:
-        logger.error(f"Error updating continuous improvement data: {str(e)}")
-        return {
-            "error": str(e),
-            "timestamp": datetime.utcnow().isoformat()
-        }
-
-
-@callback(
-    Output("ci-system-status", "children"),
-    [Input("ci-data-store", "data")]
-)
-def update_system_status(data):
-    """Update system status display.
-    
-    Args:
-        data: Continuous improvement data
-        
-    Returns:
-        System status content
-    """
-    if not data or "error" in data:
-        return html.Div("No data available", className="alert alert-warning")
-    
-    status = data.get("status", {})
-    
-    # Format dates
-    last_check = format_date(status.get("last_check", ""))
-    last_gen = format_date(status.get("last_experiment_generation", ""))
-    
-    status_color = "success" if status.get("enabled", False) else "warning"
-    auto_implement_color = "success" if status.get("auto_implement", False) else "warning"
-    
-    return dbc.Row([
-        dbc.Col([
-            html.Div([
-                html.H5("System State"),
-                html.P([
-                    html.Strong("Status: "),
-                    html.Span(
-                        "Enabled" if status.get("enabled", False) else "Disabled", 
-                        className=f"text-{status_color}"
-                    )
-                ]),
-                html.P([
-                    html.Strong("Auto-Implementation: "),
-                    html.Span(
-                        "Enabled" if status.get("auto_implement", False) else "Disabled",
-                        className=f"text-{auto_implement_color}"
-                    )
-                ])
-            ])
-        ], md=4),
-        dbc.Col([
-            html.Div([
-                html.H5("Activity"),
-                html.P([html.Strong("Last Check: "), last_check]),
-                html.P([html.Strong("Last Experiment Generation: "), last_gen]),
-                html.P([html.Strong("Active Experiments: "), str(status.get("active_experiments", 0))])
-            ])
-        ], md=4),
-        dbc.Col([
-            html.Div([
-                html.H5("Improvements"),
-                html.P([html.Strong("Total Improvements: "), str(status.get("improvements_count", 0))]),
-                html.P([
-                    html.Strong("System Health: "),
-                    html.Span(
-                        "Good" if status.get("active_experiments", 0) > 0 else "Needs Attention",
-                        className=f"text-{'success' if status.get('active_experiments', 0) > 0 else 'warning'}"
-                    )
-                ])
-            ])
-        ], md=4)
-    ])
-
-
-@callback(
-    Output("improvement-history-container", "children"),
-    [Input("ci-data-store", "data")]
-)
-def update_improvement_history(data):
-    """Update improvement history display.
-    
-    Args:
-        data: Continuous improvement data
-        
-    Returns:
-        Improvement history content
-    """
-    if not data or "error" in data:
-        return html.Div("No data available", className="alert alert-warning")
-    
-    improvements = data.get("implemented_improvements", [])
-    
-    if not improvements:
-        return html.Div("No improvements have been implemented yet", className="alert alert-info")
-    
-    # Create a timeline of improvements
-    timeline_items = []
-    
-    for i, improvement in enumerate(reversed(improvements)):  # Show newest first
-        timestamp = format_date(improvement.get("timestamp", ""))
-        experiment_name = improvement.get("experiment_name", "Unknown experiment")
-        experiment_type = improvement.get("experiment_type", "unknown").replace("_", " ").title()
-        winning_variant = improvement.get("winning_variant", "Unknown variant")
-        
-        # Get metrics improvement if available
-        metrics_improvement = improvement.get("metrics_improvement", {})
-        metrics_text = []
-        
-        for metric, value in metrics_improvement.items():
-            if isinstance(value, float):
-                metrics_text.append(f"{metric.replace('_', ' ').title()}: {value:.2f}%")
-            else:
-                metrics_text.append(f"{metric.replace('_', ' ').title()}: {value}")
-        
-        # Create timeline item
-        item = dbc.Card([
-            dbc.CardHeader(
-                html.H5(f"Improvement #{len(improvements) - i}: {experiment_name}", className="mb-0")
-            ),
-            dbc.CardBody([
-                html.P([html.Strong("Implemented: "), timestamp]),
-                html.P([html.Strong("Type: "), experiment_type]),
-                html.P([html.Strong("Winning Variant: "), winning_variant]),
-                
-                # Show metrics improvement if available
-                html.Div([
-                    html.Strong("Metrics Improvement:"),
-                    html.Ul([html.Li(metric) for metric in metrics_text]) if metrics_text else html.P("No metrics data available")
-                ]) if metrics_improvement else None,
-                
-                # Action button to view details
-                dbc.Button(
-                    "View Details", 
-                    id={"type": "improvement-details-btn", "index": i},
-                    color="primary", 
-                    size="sm",
-                    className="mt-2"
-                )
-            ])
-        ], className="mb-3")
-        
-        timeline_items.append(item)
-    
-    # Create a graph showing improvements over time
-    if len(improvements) > 1:
-        improvement_graph = create_improvement_graph(improvements)
-        graph_card = dbc.Card([
-            dbc.CardHeader("Improvement Metrics Over Time"),
-            dbc.CardBody([
-                dcc.Graph(
-                    id="improvement-metrics-graph",
-                    figure=improvement_graph
-                )
-            ])
-        ], className="mb-4")
-    else:
-        graph_card = None
-    
-    return html.Div([
-        # Improvement graph if available
-        graph_card,
-        
-        # Timeline items
-        html.Div(timeline_items)
-    ])
-
-
-@callback(
-    Output("auto-experiments-container", "children"),
-    [Input("ci-data-store", "data")]
-)
-def update_auto_experiments(data):
-    """Update auto-generated experiments display.
-    
-    Args:
-        data: Continuous improvement data
-        
-    Returns:
-        Auto-generated experiments content
-    """
-    if not data or "error" in data:
-        return html.Div("No data available", className="alert alert-warning")
-    
-    active_experiments = data.get("active_experiments", [])
-    
-    if not active_experiments:
-        return html.Div("No auto-generated experiments are currently active", className="alert alert-info")
-    
-    # Create cards for each active experiment
-    experiment_cards = []
-    
-    for experiment in active_experiments:
-        # Extract experiment data
-        exp_id = experiment.get("id", "")
-        name = experiment.get("name", "Unknown experiment")
-        status = experiment.get("status", "unknown")
-        exp_type = experiment.get("experiment_type", "unknown").replace("_", " ").title()
-        total_traffic = sum(metrics.get("requests", 0) for metrics in experiment.get("variant_metrics", {}).values())
-        variants = experiment.get("variants", [])
-        
-        # Create variant details
-        variant_items = []
-        for variant in variants:
-            variant_id = variant.get("id", "")
-            variant_name = variant.get("name", "Unknown variant")
-            is_control = variant.get("control", False)
-            
-            # Get metrics for this variant
-            metrics = experiment.get("variant_metrics", {}).get(variant_id, {})
-            requests = metrics.get("requests", 0)
-            success_rate = metrics.get("success_rate", 0) * 100  # Convert to percentage
-            
-            variant_items.append(
-                dbc.ListGroupItem([
-                    html.Strong(f"{variant_name} ({'Control' if is_control else 'Treatment'})"),
-                    html.Br(),
-                    f"Traffic: {requests} requests ({requests / max(1, total_traffic) * 100:.1f}%)",
-                    html.Br(),
-                    f"Success Rate: {success_rate:.1f}%"
-                ])
-            )
-        
-        # Create card
-        card = dbc.Card([
-            dbc.CardHeader(html.H5(name, className="mb-0")),
-            dbc.CardBody([
-                html.P([html.Strong("Status: "), status.title()]),
-                html.P([html.Strong("Type: "), exp_type]),
-                html.P([html.Strong("Traffic: "), f"{total_traffic} requests"]),
-                
-                html.H6("Variants:"),
-                dbc.ListGroup(variant_items, className="mb-3"),
-                
-                # Action buttons
-                dbc.ButtonGroup([
-                    dbc.Button(
-                        "View Details", 
-                        id={"type": "view-auto-experiment-btn", "index": exp_id},
-                        color="primary", 
-                        size="sm",
-                        className="mr-2"
-                    ),
-                    dbc.Button(
-                        "Pause", 
-                        id={"type": "pause-auto-experiment-btn", "index": exp_id},
-                        color="warning", 
-                        size="sm",
-                        className="mr-2"
-                    ),
-                    dbc.Button(
-                        "Complete", 
-                        id={"type": "complete-auto-experiment-btn", "index": exp_id},
-                        color="danger", 
-                        size="sm"
-                    )
-                ])
-            ])
-        ], className="mb-3")
-        
-        experiment_cards.append(dbc.Col(card, md=6))
-    
-    # Arrange cards in rows
-    rows = []
-    for i in range(0, len(experiment_cards), 2):
-        rows.append(dbc.Row(experiment_cards[i:i+2], className="mb-4"))
-    
-    return html.Div([
-        html.P("These experiments were automatically generated by the continuous improvement system:", className="mb-3"),
-        html.Div(rows)
-    ])
-
-
-@callback(
-    Output("performance-metrics-container", "children"),
-    [Input("ci-data-store", "data")]
-)
-def update_performance_metrics(data):
-    """Update performance metrics display.
-    
-    Args:
-        data: Continuous improvement data
-        
-    Returns:
-        Performance metrics content
-    """
-    if not data or "error" in data:
-        return html.Div("No data available", className="alert alert-warning")
-    
-    improvements = data.get("implemented_improvements", [])
-    
-    if not improvements:
-        return html.Div("No improvements have been implemented yet to show performance metrics", className="alert alert-info")
-    
-    # Create a summary of metrics over time
-    metrics_over_time = {}
-    dates = []
-    
-    for improvement in improvements:
-        timestamp = improvement.get("timestamp", "")
-        if not timestamp:
-            continue
-            
-        # Try to parse the timestamp
-        try:
-            date = datetime.fromisoformat(timestamp).strftime("%Y-%m-%d")
-            dates.append(date)
-        except:
-            continue
-            
-        # Extract metrics
-        metrics_improvement = improvement.get("metrics_improvement", {})
-        for metric, value in metrics_improvement.items():
-            if metric not in metrics_over_time:
-                metrics_over_time[metric] = []
-            
-            if isinstance(value, (int, float)):
-                metrics_over_time[metric].append(value)
-            else:
-                # Try to convert to float if possible
-                try:
-                    metrics_over_time[metric].append(float(value))
-                except:
-                    metrics_over_time[metric].append(0)
-    
-    # Create the metrics visualization
-    metrics_graphs = []
-    
-    for metric, values in metrics_over_time.items():
-        if len(values) < 2:
-            continue
-            
-        # Create a line graph for this metric
-        fig = go.Figure()
-        
-        fig.add_trace(go.Scatter(
-            x=dates[:len(values)],
-            y=values,
-            mode='lines+markers',
-            name=metric.replace("_", " ").title()
-        ))
-        
-        fig.update_layout(
-            title=f"{metric.replace('_', ' ').title()} Over Time",
-            xaxis_title="Date",
-            yaxis_title="Value",
-            height=400
+        experiments = ab_testing_framework.list_experiments(
+            status=[ExperimentStatus.ACTIVE]
         )
         
-        metrics_graphs.append(
-            dbc.Col(
-                dbc.Card([
-                    dbc.CardHeader(metric.replace("_", " ").title()),
-                    dbc.CardBody([
-                        dcc.Graph(
-                            id=f"metric-graph-{metric}",
-                            figure=fig
-                        )
+        if not experiments:
+            return html.P("No active experiments at the moment.")
+        
+        # Create a table of active experiments
+        rows = []
+        for exp in experiments:
+            # Create status badge
+            status_color = "primary"
+            
+            # Create button for details
+            details_btn = dbc.Button(
+                "Details", 
+                id={"type": "experiment-details-btn", "index": exp["id"]},
+                color="secondary", size="sm"
+            )
+            
+            # Create row
+            row = html.Tr([
+                html.Td(exp["name"]),
+                html.Td(exp["type"]),
+                html.Td(f"{exp.get('total_traffic', 0)} requests"),
+                html.Td(exp.get("start_time", "N/A")),
+                html.Td(details_btn)
+            ])
+            rows.append(row)
+        
+        # Create the table
+        table = dbc.Table(
+            [
+                # Header
+                html.Thead(
+                    html.Tr([
+                        html.Th("Name"),
+                        html.Th("Type"),
+                        html.Th("Traffic"),
+                        html.Th("Start Time"),
+                        html.Th("Actions")
                     ])
-                ]),
-                md=6,
-                className="mb-4"
-            )
+                ),
+                # Body
+                html.Tbody(rows)
+            ],
+            bordered=True,
+            hover=True,
+            responsive=True,
+            striped=True,
         )
-    
-    # Create cumulative improvement visualization
-    cumulative_improvement = {}
-    
-    for improvement in improvements:
-        metrics_improvement = improvement.get("metrics_improvement", {})
         
-        for metric, value in metrics_improvement.items():
-            if isinstance(value, (int, float)):
-                if metric not in cumulative_improvement:
-                    cumulative_improvement[metric] = 0
+        return table
+    
+    except Exception as e:
+        return html.Div([
+            html.P(f"Error loading active experiments: {str(e)}"),
+            html.P("Check if the AB testing framework is properly initialized.")
+        ], className="text-danger")
+
+
+@callback(
+    Output("stopping-criteria-status", "children"),
+    [Input("refresh-stopping-criteria-btn", "n_clicks"),
+     Input("improvement-dashboard-interval", "n_intervals")]
+)
+def update_stopping_criteria_status(n_clicks, n_intervals):
+    """Update the stopping criteria status display."""
+    try:
+        # Get active experiments
+        experiments = ab_testing_framework.list_experiments(
+            status=[ExperimentStatus.ACTIVE]
+        )
+        
+        if not experiments:
+            return html.P("No active experiments to evaluate stopping criteria for.")
+        
+        # Evaluate stopping criteria for each active experiment
+        criteria_evaluations = []
+        
+        for exp_data in experiments:
+            experiment_id = exp_data["id"]
+            experiment = ab_testing_framework.get_experiment(experiment_id)
+            
+            if not experiment:
+                continue
+            
+            # Evaluate stopping criteria
+            evaluation = stopping_criteria_manager.evaluate_experiment(experiment)
+            
+            # Create card for this experiment
+            criteria_rows = []
+            for criterion_name, result in evaluation["criteria_results"].items():
+                # Status badge
+                status_color = "success" if result["should_stop"] else "warning"
+                status_text = "Stop" if result["should_stop"] else "Continue"
                 
-                cumulative_improvement[metric] += value
+                row = html.Tr([
+                    html.Td(criterion_name.replace("_", " ").title()),
+                    html.Td(dbc.Badge(status_text, color=status_color)),
+                    html.Td(result["reason"])
+                ])
+                criteria_rows.append(row)
+            
+            # Create stopping criteria table
+            criteria_table = dbc.Table(
+                [
+                    # Header
+                    html.Thead(
+                        html.Tr([
+                            html.Th("Criterion"),
+                            html.Th("Status"),
+                            html.Th("Reason")
+                        ])
+                    ),
+                    # Body
+                    html.Tbody(criteria_rows)
+                ],
+                bordered=True,
+                hover=True,
+                responsive=True,
+                size="sm",
+                striped=True,
+            )
+            
+            # Add result header
+            should_stop = evaluation["should_stop"]
+            overall_color = "success" if should_stop else "warning"
+            overall_text = "Should Stop" if should_stop else "Continue"
+            
+            # Create card for this experiment
+            experiment_card = dbc.Card(
+                dbc.CardBody([
+                    html.H5(exp_data["name"], className="card-title"),
+                    html.Div([
+                        html.Strong("Overall Status: "),
+                        dbc.Badge(overall_text, color=overall_color, className="ml-2 mb-3")
+                    ]),
+                    criteria_table,
+                ]),
+                className="mb-3"
+            )
+            
+            criteria_evaluations.append(experiment_card)
+        
+        return html.Div(criteria_evaluations)
     
-    # Create the cumulative improvement bar chart
-    if cumulative_improvement:
-        metrics = list(cumulative_improvement.keys())
-        values = list(cumulative_improvement.values())
-        
-        cum_fig = go.Figure(go.Bar(
-            x=metrics,
-            y=values,
-            text=[f"{v:.2f}%" for v in values],
-            textposition="auto"
-        ))
-        
-        cum_fig.update_layout(
-            title="Cumulative Improvement by Metric",
-            xaxis_title="Metric",
-            yaxis_title="Cumulative Improvement (%)",
-            height=400
+    except Exception as e:
+        return html.Div([
+            html.P(f"Error evaluating stopping criteria: {str(e)}"),
+            html.P("Check if the stopping criteria system is properly initialized.")
+        ], className="text-danger")
+
+
+@callback(
+    Output("experiment-results", "children"),
+    [Input("refresh-experiment-results-btn", "n_clicks"),
+     Input("improvement-dashboard-interval", "n_intervals")]
+)
+def update_experiment_results(n_clicks, n_intervals):
+    """Update the experiment results display."""
+    try:
+        # Get analyzed experiments
+        experiments = ab_testing_framework.list_experiments(
+            status=[ExperimentStatus.ANALYZED, ExperimentStatus.IMPLEMENTED]
         )
         
-        cumulative_card = dbc.Card([
-            dbc.CardHeader("Cumulative Improvement"),
+        if not experiments:
+            return html.P("No analyzed experiments available.")
+        
+        # Create results for each experiment
+        results_cards = []
+        
+        for exp_data in experiments[:5]:  # Limit to most recent 5
+            experiment_id = exp_data["id"]
+            
+            # Create card for this experiment
+            has_winner = exp_data.get("has_winner", False)
+            winning_variant = exp_data.get("winning_variant", "No clear winner")
+            
+            # Status badge
+            status_color = "success" if has_winner else "warning"
+            status_text = "Has Winner" if has_winner else "Inconclusive"
+            
+            experiment_card = dbc.Card(
+                dbc.CardBody([
+                    html.H5(exp_data["name"], className="card-title"),
+                    html.Div([
+                        html.Strong("Status: "),
+                        dbc.Badge(status_text, color=status_color, className="ml-2 mb-3")
+                    ]),
+                    html.P(f"Type: {exp_data.get('type', 'Unknown')}"),
+                    html.P(f"Completed: {exp_data.get('end_time', 'Unknown')}"),
+                    html.P(f"Total Traffic: {exp_data.get('total_traffic', 0)} requests"),
+                    html.Div([
+                        html.Strong("Winner: "),
+                        html.Span(winning_variant)
+                    ]) if has_winner else html.Div()
+                ]),
+                className="mb-3"
+            )
+            
+            results_cards.append(experiment_card)
+        
+        return html.Div(results_cards)
+    
+    except Exception as e:
+        return html.Div([
+            html.P(f"Error loading experiment results: {str(e)}"),
+            html.P("Check if the AB testing framework is properly initialized.")
+        ], className="text-danger")
+
+
+@callback(
+    Output("experiment-selector", "options"),
+    [Input("improvement-dashboard-interval", "n_intervals")]
+)
+def update_experiment_dropdown(n_intervals):
+    """Update the experiment selector dropdown."""
+    try:
+        # Get analyzed and completed experiments
+        experiments = ab_testing_framework.list_experiments(
+            status=[ExperimentStatus.ANALYZED, ExperimentStatus.COMPLETED, ExperimentStatus.IMPLEMENTED]
+        )
+        
+        if not experiments:
+            return []
+        
+        # Create options for dropdown
+        options = []
+        for exp in experiments:
+            options.append({
+                "label": exp["name"],
+                "value": exp["id"]
+            })
+        
+        return options
+    
+    except Exception as e:
+        print(f"Error updating experiment dropdown: {e}")
+        return []
+
+
+@callback(
+    Output("bayesian-analysis-results", "children"),
+    [Input("experiment-selector", "value")]
+)
+def update_bayesian_analysis(experiment_id):
+    """Update the Bayesian analysis results for the selected experiment."""
+    if not experiment_id:
+        return html.P("Select an experiment to view Bayesian analysis results.")
+    
+    try:
+        # Get the experiment
+        experiment = ab_testing_framework.get_experiment(experiment_id)
+        
+        if not experiment:
+            return html.P(f"Experiment with ID {experiment_id} not found.")
+        
+        # Get stopping criteria evaluation
+        stopping_criteria_eval = stopping_criteria_manager.evaluate_experiment(experiment)
+        
+        # Run Bayesian analysis
+        analysis_results = bayesian_analyzer.analyze_experiment(experiment)
+        
+        # Get the summary
+        summary = analysis_results.get_summary()
+        
+        # Generate visualizations
+        visualizations = generate_experiment_visualizations(experiment, stopping_criteria_eval)
+        
+        # Create tabs for different visualizations
+        tabs = dbc.Tabs([
+            # Summary tab
+            dbc.Tab([
+                html.Div([
+                    html.H5("Bayesian Analysis Summary"),
+                    html.Pre(summary, style={"whiteSpace": "pre-wrap"}),
+                ], className="p-3")
+            ], label="Summary", tab_id="summary-tab"),
+            
+            # Winning probability tab
+            dbc.Tab([
+                html.Div([
+                    html.H5("Winning Probability by Variant"),
+                    dcc.Graph(
+                        figure=visualizations.get("winning_probability", go.Figure()),
+                        config={"responsive": True}
+                    )
+                ], className="p-3")
+            ], label="Winning Probability", tab_id="probability-tab"),
+            
+            # Posterior distributions tab
+            dbc.Tab([
+                html.Div([
+                    html.H5("Posterior Distributions"),
+                    html.Div([
+                        dbc.Card([
+                            dbc.CardHeader(metric.replace("_", " ").title()),
+                            dbc.CardBody([
+                                dcc.Graph(
+                                    figure=visualizations.get(f"posterior_{metric}", go.Figure()),
+                                    config={"responsive": True}
+                                )
+                            ])
+                        ], className="mb-3")
+                        for metric in ["sentiment_accuracy", "direction_accuracy", "calibration_error", "confidence_score"]
+                        if f"posterior_{metric}" in visualizations
+                    ])
+                ], className="p-3")
+            ], label="Posterior Distributions", tab_id="posterior-tab"),
+            
+            # Lift estimation tab
+            dbc.Tab([
+                html.Div([
+                    html.H5("Lift Estimation"),
+                    dcc.Graph(
+                        figure=visualizations.get("lift_estimation", go.Figure()),
+                        config={"responsive": True}
+                    )
+                ], className="p-3")
+            ], label="Lift Estimation", tab_id="lift-tab"),
+            
+            # Expected loss tab
+            dbc.Tab([
+                html.Div([
+                    html.H5("Expected Loss (Regret)"),
+                    dcc.Graph(
+                        figure=visualizations.get("expected_loss", go.Figure()),
+                        config={"responsive": True}
+                    )
+                ], className="p-3")
+            ], label="Expected Loss", tab_id="loss-tab"),
+            
+            # Credible intervals tab
+            dbc.Tab([
+                html.Div([
+                    html.H5("Credible Intervals"),
+                    dcc.Graph(
+                        figure=visualizations.get("credible_intervals", go.Figure()),
+                        config={"responsive": True}
+                    )
+                ], className="p-3")
+            ], label="Credible Intervals", tab_id="credible-tab"),
+            
+            # Experiment progress tab
+            dbc.Tab([
+                html.Div([
+                    html.H5("Experiment Progress"),
+                    dcc.Graph(
+                        figure=visualizations.get("experiment_progress", go.Figure()),
+                        config={"responsive": True}
+                    ),
+                    
+                    html.H6("Stopping Criteria Status", className="mt-4"),
+                    html.Div(id="experiment-stopping-criteria")
+                ], className="p-3")
+            ], label="Experiment Progress", tab_id="progress-tab"),
+            
+            # Multi-variant comparison tab
+            dbc.Tab([
+                html.Div([
+                    html.H5("Multi-Variant Comparison"),
+                    dcc.Graph(
+                        figure=visualizations.get("multi_variant_comparison", go.Figure()),
+                        config={"responsive": True}
+                    )
+                ], className="p-3")
+            ], label="Multi-Variant Analysis", tab_id="multi-variant-tab"),
+            
+        ], id="analysis-tabs", active_tab="summary-tab")
+        
+        # Create summary card at the top
+        winning_variant = analysis_results.get_winning_variant()
+        has_winner = analysis_results.has_clear_winner()
+        
+        status_color = "success" if has_winner else "warning"
+        status_text = "Has Clear Winner" if has_winner else "No Clear Winner"
+        
+        summary_card = dbc.Card([
             dbc.CardBody([
-                dcc.Graph(
-                    id="cumulative-improvement-graph",
-                    figure=cum_fig
-                )
+                html.Div([
+                    html.H4(experiment.name, className="card-title"),
+                    dbc.Badge(status_text, color=status_color, className="ml-2")
+                ], className="d-flex align-items-center mb-2"),
+                
+                html.P(f"Type: {experiment.experiment_type.value}"),
+                
+                html.Div([
+                    html.Strong("Sample Sizes: "),
+                    html.Span(", ".join([
+                        f"{v.name}: {experiment.variant_metrics[v.id].requests}"
+                        for v in experiment.variants
+                    ]))
+                ]),
+                
+                html.Div([
+                    html.Strong("Winning Variant: "),
+                    html.Span(winning_variant if winning_variant else "No clear winner")
+                ]) if has_winner else html.Div(),
+                
+                html.Div([
+                    html.Strong("Should Stop: "),
+                    dbc.Badge(
+                        "Yes" if stopping_criteria_eval["should_stop"] else "No", 
+                        color="success" if stopping_criteria_eval["should_stop"] else "warning",
+                        className="ml-2"
+                    )
+                ], className="mt-2")
             ])
         ], className="mb-4")
-    else:
-        cumulative_card = None
-    
-    # Arrange graphs in rows
-    metric_rows = []
-    for i in range(0, len(metrics_graphs), 2):
-        metric_rows.append(dbc.Row(metrics_graphs[i:i+2], className="mb-4"))
-    
-    return html.Div([
-        # Cumulative improvement chart
-        cumulative_card,
         
-        # Individual metric charts
-        html.Div(metric_rows)
-    ])
-
-
-@callback(
-    Output("ci-configuration-container", "children"),
-    [Input("ci-data-store", "data")]
-)
-def update_configuration(data):
-    """Update configuration display.
-    
-    Args:
-        data: Continuous improvement data
+        # Combine everything
+        results_div = html.Div([
+            summary_card,
+            tabs
+        ])
         
-    Returns:
-        Configuration content
-    """
-    if not data or "error" in data:
-        return html.Div("No data available", className="alert alert-warning")
-    
-    status = data.get("status", {})
-    
-    # Create configuration form
-    return dbc.Form([
-        dbc.FormGroup([
-            dbc.Label("System Enabled:"),
-            dbc.Select(
-                id="system-enabled-config",
-                options=[
-                    {"label": "Enabled", "value": "enabled"},
-                    {"label": "Disabled", "value": "disabled"}
+        # Add callback to update stopping criteria details
+        @callback(
+            Output("experiment-stopping-criteria", "children"),
+            [Input("analysis-tabs", "active_tab")]
+        )
+        def update_stopping_criteria_details(active_tab):
+            if active_tab != "progress-tab":
+                return html.Div()
+            
+            criteria_rows = []
+            for criterion_name, result in stopping_criteria_eval["criteria_results"].items():
+                status_color = "success" if result["should_stop"] else "warning"
+                status_text = "Stop" if result["should_stop"] else "Continue"
+                
+                row = html.Tr([
+                    html.Td(criterion_name.replace("_", " ").title()),
+                    html.Td(dbc.Badge(status_text, color=status_color)),
+                    html.Td(result["reason"])
+                ])
+                criteria_rows.append(row)
+            
+            # Create stopping criteria table
+            criteria_table = dbc.Table(
+                [
+                    # Header
+                    html.Thead(
+                        html.Tr([
+                            html.Th("Criterion"),
+                            html.Th("Status"),
+                            html.Th("Reason")
+                        ])
+                    ),
+                    # Body
+                    html.Tbody(criteria_rows)
                 ],
-                value="enabled" if status.get("enabled", False) else "disabled"
+                bordered=True,
+                hover=True,
+                responsive=True,
+                size="sm",
+                striped=True,
             )
-        ]),
+            
+            return criteria_table
         
-        dbc.FormGroup([
-            dbc.Label("Auto-Implementation:"),
-            dbc.Select(
-                id="auto-implement-config",
-                options=[
-                    {"label": "Enabled", "value": "enabled"},
-                    {"label": "Disabled", "value": "disabled"}
-                ],
-                value="enabled" if status.get("auto_implement", False) else "disabled"
-            )
-        ]),
-        
-        dbc.FormGroup([
-            dbc.Label("Check Interval (seconds):"),
-            dbc.Input(
-                id="check-interval-config",
-                type="number",
-                value=3600,  # 1 hour
-                min=300,  # 5 minutes
-                max=86400  # 1 day
-            )
-        ]),
-        
-        dbc.FormGroup([
-            dbc.Label("Experiment Generation Interval (seconds):"),
-            dbc.Input(
-                id="generation-interval-config",
-                type="number",
-                value=86400,  # 1 day
-                min=3600,  # 1 hour
-                max=604800  # 1 week
-            )
-        ]),
-        
-        dbc.FormGroup([
-            dbc.Label("Maximum Concurrent Experiments:"),
-            dbc.Input(
-                id="max-concurrent-config",
-                type="number",
-                value=3,
-                min=1,
-                max=10
-            )
-        ]),
-        
-        dbc.FormGroup([
-            dbc.Label("Significance Threshold:"),
-            dbc.Input(
-                id="significance-threshold-config",
-                type="number",
-                value=0.95,
-                min=0.9,
-                max=0.99,
-                step=0.01
-            )
-        ]),
-        
-        dbc.FormGroup([
-            dbc.Label("Improvement Threshold (%):"),
-            dbc.Input(
-                id="improvement-threshold-config",
-                type="number",
-                value=5,
-                min=1,
-                max=20
-            )
-        ]),
-        
-        # Submit button
-        dbc.Button(
-            "Save Configuration", 
-            id="save-config-btn",
-            color="primary"
-        ),
-        
-        html.Div(id="save-config-result", className="mt-3")
-    ])
-
-
-@callback(
-    Output("save-config-result", "children"),
-    [Input("save-config-btn", "n_clicks")],
-    [State("system-enabled-config", "value"),
-     State("auto-implement-config", "value"),
-     State("check-interval-config", "value"),
-     State("generation-interval-config", "value"),
-     State("max-concurrent-config", "value"),
-     State("significance-threshold-config", "value"),
-     State("improvement-threshold-config", "value")]
-)
-def save_configuration(
-    n_clicks, system_enabled, auto_implement, check_interval,
-    generation_interval, max_concurrent, significance_threshold, improvement_threshold
-):
-    """Save configuration changes.
+        return results_div
     
-    Args:
-        n_clicks: Button click count
-        system_enabled: System enabled value
-        auto_implement: Auto implement value
-        check_interval: Check interval value
-        generation_interval: Generation interval value
-        max_concurrent: Max concurrent experiments value
-        significance_threshold: Significance threshold value
-        improvement_threshold: Improvement threshold value
-        
-    Returns:
-        Save result message
-    """
-    if not n_clicks:
-        return ""
-    
-    try:
-        # Convert values to appropriate types
-        enabled = system_enabled == "enabled"
-        auto_impl = auto_implement == "enabled"
-        check_int = int(check_interval)
-        gen_int = int(generation_interval)
-        max_conc = int(max_concurrent)
-        sig_thresh = float(significance_threshold)
-        imp_thresh = float(improvement_threshold) / 100.0  # Convert from percentage
-        
-        # Create a dictionary of updates
-        updates = {
-            "sentiment_analysis.continuous_improvement.enabled": enabled,
-            "sentiment_analysis.continuous_improvement.auto_implement": auto_impl,
-            "sentiment_analysis.continuous_improvement.check_interval": check_int,
-            "sentiment_analysis.continuous_improvement.experiment_generation_interval": gen_int,
-            "sentiment_analysis.continuous_improvement.max_concurrent_experiments": max_conc,
-            "sentiment_analysis.continuous_improvement.significance_threshold": sig_thresh,
-            "sentiment_analysis.continuous_improvement.improvement_threshold": imp_thresh
-        }
-        
-        # Apply updates to the continuous improvement manager
-        continuous_improvement_manager._update_config(updates)
-        
-        return html.Div("Configuration saved successfully!", className="alert alert-success")
-        
     except Exception as e:
-        logger.error(f"Error saving configuration: {str(e)}")
-        return html.Div(f"Error saving configuration: {str(e)}", className="alert alert-danger")
-
-
-@callback(
-    Output("ci-data-store", "data", allow_duplicate=True),
-    [Input("generate-experiments-btn", "n_clicks")],
-    prevent_initial_call=True
-)
-def generate_experiments(n_clicks):
-    """Generate new experiments.
-    
-    Args:
-        n_clicks: Button click count
-        
-    Returns:
-        Updated data
-    """
-    if not n_clicks:
-        raise dash.exceptions.PreventUpdate
-    
-    try:
-        # Run the experiment generation
-        asyncio.create_task(continuous_improvement_manager.generate_experiments())
-        
-        # Return updated data (after a slight delay to allow generation to complete)
-        time.sleep(1)
-        return update_ci_data(None, None)
-        
-    except Exception as e:
-        logger.error(f"Error generating experiments: {str(e)}")
-        raise dash.exceptions.PreventUpdate
-
-
-@callback(
-    Output("ci-data-store", "data", allow_duplicate=True),
-    [Input("run-maintenance-btn", "n_clicks")],
-    prevent_initial_call=True
-)
-def run_maintenance(n_clicks):
-    """Run maintenance task.
-    
-    Args:
-        n_clicks: Button click count
-        
-    Returns:
-        Updated data
-    """
-    if not n_clicks:
-        raise dash.exceptions.PreventUpdate
-    
-    try:
-        # Run the maintenance task
-        asyncio.create_task(continuous_improvement_manager.run_maintenance())
-        
-        # Return updated data (after a slight delay to allow maintenance to complete)
-        time.sleep(1)
-        return update_ci_data(None, None)
-        
-    except Exception as e:
-        logger.error(f"Error running maintenance: {str(e)}")
-        raise dash.exceptions.PreventUpdate
-
-
-@callback(
-    Output("ci-data-store", "data", allow_duplicate=True),
-    [Input("auto-implement-toggle", "value")],
-    prevent_initial_call=True
-)
-def toggle_auto_implement(value):
-    """Toggle auto-implementation.
-    
-    Args:
-        value: Toggle value
-        
-    Returns:
-        Updated data
-    """
-    try:
-        # Set auto-implement based on value
-        enabled = value == "enabled"
-        continuous_improvement_manager._update_config({
-            "sentiment_analysis.continuous_improvement.auto_implement": enabled
-        })
-        
-        # Return updated data
-        return update_ci_data(None, None)
-        
-    except Exception as e:
-        logger.error(f"Error toggling auto-implement: {str(e)}")
-        raise dash.exceptions.PreventUpdate
-
-
-# Event handlers for experiment actions
-for action in ["pause", "complete"]:
-    @callback(
-        Output("ci-data-store", "data", allow_duplicate=True),
-        [Input({"type": f"{action}-auto-experiment-btn", "index": ALL}, "n_clicks")],
-        prevent_initial_call=True
-    )
-    def handle_experiment_action(btn_clicks):
-        """Handle experiment actions.
-        
-        Args:
-            btn_clicks: Button click counts
-            
-        Returns:
-            Updated data
-        """
-        ctx = dash.callback_context
-        
-        if not ctx.triggered:
-            raise dash.exceptions.PreventUpdate
-        
-        trigger_id = ctx.triggered[0]["prop_id"]
-        
-        if not trigger_id or "n_clicks" not in trigger_id:
-            raise dash.exceptions.PreventUpdate
-        
-        try:
-            # Extract experiment ID from the trigger ID
-            trigger_dict = json.loads(trigger_id.split(".")[0])
-            experiment_id = trigger_dict["index"]
-            action_type = trigger_dict["type"].split("-")[0]
-            
-            # Perform the requested action
-            if action_type == "pause":
-                success = ab_testing_framework.pause_experiment(experiment_id)
-            elif action_type == "complete":
-                success = ab_testing_framework.complete_experiment(experiment_id)
-            else:
-                success = False
-            
-            if not success:
-                logger.warning(f"Failed to {action_type} experiment {experiment_id}")
-            
-            # Return updated data
-            time.sleep(0.5)  # Small delay to allow action to complete
-            return update_ci_data(None, None)
-            
-        except Exception as e:
-            logger.error(f"Error performing experiment action: {str(e)}")
-            raise dash.exceptions.PreventUpdate
-
-
-def format_date(date_str):
-    """Format a date string.
-    
-    Args:
-        date_str: ISO date string
-        
-    Returns:
-        Formatted date string
-    """
-    if not date_str:
-        return ""
-        
-    try:
-        dt = datetime.fromisoformat(date_str)
-        return dt.strftime("%Y-%m-%d %H:%M")
-    except:
-        return date_str
-
-
-def create_improvement_graph(improvements):
-    """Create a graph showing improvements over time.
-    
-    Args:
-        improvements: List of improvement records
-        
-    Returns:
-        Plotly figure
-    """
-    # Extract dates and metrics
-    dates = []
-    metrics = {}
-    
-    for improvement in improvements:
-        timestamp = improvement.get("timestamp", "")
-        if not timestamp:
-            continue
-            
-        try:
-            date = datetime.fromisoformat(timestamp).strftime("%Y-%m-%d")
-            dates.append(date)
-        except:
-            continue
-            
-        metrics_improvement = improvement.get("metrics_improvement", {})
-        for metric, value in metrics_improvement.items():
-            if metric not in metrics:
-                metrics[metric] = []
-            
-            if isinstance(value, (int, float)):
-                metrics[metric].append(value)
-            else:
-                try:
-                    metrics[metric].append(float(value))
-                except:
-                    metrics[metric].append(0)
-    
-    # Create the figure
-    fig = go.Figure()
-    
-    # Add a trace for each metric
-    for metric, values in metrics.items():
-        if len(values) > 1:
-            fig.add_trace(go.Scatter(
-                x=dates[:len(values)],
-                y=values,
-                mode='lines+markers',
-                name=metric.replace("_", " ").title()
-            ))
-    
-    # Update layout
-    fig.update_layout(
-        title="Improvement Metrics Over Time",
-        xaxis_title="Date",
-        yaxis_title="Improvement (%)",
-        legend_title="Metrics",
-        height=400
-    )
-    
-    return fig
+        return html.Div([
+            html.P(f"Error running Bayesian analysis: {str(e)}"),
+            html.P("Check if the Bayesian analyzer is properly configured.")
+        ], className="text-danger")

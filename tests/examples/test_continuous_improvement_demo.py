@@ -9,8 +9,8 @@ import pytest
 import unittest.mock as mock
 
 from examples.continuous_improvement_demo import (
-    initialize_system, demonstrate_auto_improvement, demonstrate_opportunity_detection,
-    demonstrate_experiment_tracking, demonstrate_metrics_monitoring, run_demo
+    setup_demo, demonstrate_auto_improvement, generate_opportunities,
+    simulate_sentiment_analysis, trigger_maintenance, main
 )
 
 
@@ -62,23 +62,20 @@ def mock_ab_testing_framework():
 
 
 @pytest.fixture
-def mock_performance_tracker():
-    """Mock for the performance tracker."""
-    with mock.patch("examples.continuous_improvement_demo.performance_tracker") as mock_tracker:
+def mock_logger():
+    """Mock for the logger."""
+    with mock.patch("examples.continuous_improvement_demo.logger") as mock_logger:
         # Mock methods
-        mock_tracker.initialize = mock.AsyncMock()
-        mock_tracker.get_recent_metrics = mock.MagicMock(return_value={
-            "sentiment_accuracy": 0.75,
-            "direction_accuracy": 0.65
-        })
+        mock_logger.info = mock.MagicMock()
+        mock_logger.error = mock.MagicMock()
         
-        yield mock_tracker
+        yield mock_logger
 
 
 @pytest.fixture
 def mock_print():
     """Mock print function for cleaner test output."""
-    with mock.patch("examples.continuous_improvement_demo.print") as mock_print:
+    with mock.patch("builtins.print") as mock_print:
         yield mock_print
 
 
@@ -86,94 +83,152 @@ class TestContinuousImprovementDemo:
     """Tests for the continuous improvement demo."""
 
     @pytest.mark.asyncio
-    async def test_initialize_system(self, mock_continuous_improvement_manager, mock_ab_testing_framework, mock_performance_tracker, mock_print):
-        """Test system initialization."""
-        await initialize_system()
-        
-        # Check that all required components were initialized
-        assert mock_continuous_improvement_manager.initialize.called
-        assert mock_ab_testing_framework.initialize.called
-        assert mock_performance_tracker.initialize.called
-        
-        # Check output
-        assert mock_print.called
-        initialization_output = " ".join(str(args[0]) for args, _ in mock_print.call_args_list)
-        assert "initialized" in initialization_output.lower()
+    async def test_setup_demo(self, mock_continuous_improvement_manager, mock_ab_testing_framework, mock_print):
+        """Test demo setup."""
+        # Mock LLMService
+        with mock.patch("examples.continuous_improvement_demo.LLMService") as mock_llm_service_class:
+            mock_llm_service = mock.MagicMock()
+            mock_llm_service.initialize = mock.AsyncMock()
+            mock_llm_service_class.return_value = mock_llm_service
+            
+            # Call setup_demo
+            result = await setup_demo()
+            
+            # Check that all required components were initialized
+            assert mock_continuous_improvement_manager.initialize.called
+            assert mock_ab_testing_framework.initialize.called
+            assert mock_llm_service.initialize.called
+            
+            # Check that LLM service was returned
+            assert result == mock_llm_service
 
     @pytest.mark.asyncio
-    async def test_demonstrate_auto_improvement(self, mock_continuous_improvement_manager, mock_print):
+    async def test_demonstrate_auto_improvement(self, mock_continuous_improvement_manager, mock_ab_testing_framework):
         """Test auto improvement demonstration."""
-        await demonstrate_auto_improvement()
-        
-        # Check that the required methods were called
-        assert mock_continuous_improvement_manager.run_maintenance.called
-        
-        # Check output
-        assert mock_print.called
-        improvement_output = " ".join(str(args[0]) for args, _ in mock_print.call_args_list)
-        assert "auto improvement" in improvement_output.lower()
+        # Mock LLMService
+        with mock.patch("examples.continuous_improvement_demo.LLMService") as mock_llm_service_class:
+            mock_llm_service = mock.MagicMock()
+            mock_llm_service.analyze_sentiment = mock.AsyncMock(return_value={
+                "sentiment_value": 0.7,
+                "direction": "bullish",
+                "confidence": 0.8,
+                "explanation": "Test explanation"
+            })
+            mock_llm_service.initialize = mock.AsyncMock()
+            mock_llm_service.close = mock.AsyncMock()
+            mock_llm_service_class.return_value = mock_llm_service
+            
+            # Mock experiment functions
+            with mock.patch("examples.continuous_improvement_demo.generate_demo_experiment") as mock_generate:
+                mock_generate.return_value = "test_exp_id"
+                
+                with mock.patch("examples.continuous_improvement_demo.check_experiment_status") as mock_check:
+                    # Mock experiment object
+                    mock_experiment = mock.MagicMock()
+                    mock_experiment.variants = [mock.MagicMock(), mock.MagicMock()]
+                    mock_experiment.analyze_results = mock.MagicMock()
+                    mock_ab_testing_framework.get_experiment.return_value = mock_experiment
+                    
+                    # Mock get_improvement_history
+                    mock_continuous_improvement_manager.get_improvement_history.return_value = [{
+                        "action": "improvement_implemented",
+                        "timestamp": "2025-03-24T12:00:00",
+                        "details": {
+                            "experiment_name": "Test Experiment",
+                            "experiment_id": "test_exp_id",
+                            "winning_variant": "Enhanced Template"
+                        }
+                    }]
+                    
+                    # Call the function
+                    await demonstrate_auto_improvement()
+                    
+                    # Check that required methods were called
+                    assert mock_continuous_improvement_manager.run_maintenance.called
+                    assert mock_ab_testing_framework.complete_experiment.called
+                    assert mock_experiment.analyze_results.called
+                    assert mock_continuous_improvement_manager.get_improvement_history.called
 
     @pytest.mark.asyncio
-    async def test_demonstrate_opportunity_detection(self, mock_continuous_improvement_manager, mock_performance_tracker, mock_print):
-        """Test opportunity detection demonstration."""
-        await demonstrate_opportunity_detection()
+    async def test_generate_opportunities(self, mock_continuous_improvement_manager, mock_ab_testing_framework):
+        """Test opportunity generation function."""
+        # Setup needed mocks
+        opportunities = [
+            {
+                "type": mock.MagicMock(value="prompt_template"),
+                "reason": "Sentiment accuracy is below target",
+                "metrics": {"sentiment_accuracy": 0.75},
+                "potential_impact": 0.8
+            },
+            {
+                "type": mock.MagicMock(value="model_selection"),
+                "reason": "Calibration error is high",
+                "metrics": {"calibration_error": 0.12},
+                "potential_impact": 0.7
+            }
+        ]
+        mock_continuous_improvement_manager._identify_improvement_opportunities.return_value = opportunities
         
-        # Check that the required methods were called
+        # Mock experiment objects
+        mock_experiments = [mock.MagicMock()]
+        mock_ab_testing_framework.active_experiment_ids = ["test_exp_id"]
+        mock_ab_testing_framework.get_experiment.return_value = mock_experiments[0]
+        mock_experiments[0].metadata = {"auto_generated": True}
+        mock_experiments[0].name = "Test Auto Experiment"
+        mock_experiments[0].experiment_type = mock.MagicMock(value="prompt_template")
+        
+        # Test the function
+        await generate_opportunities()
+        
+        # Check that required methods were called
         assert mock_continuous_improvement_manager._identify_improvement_opportunities.called
         
-        # Check output
-        assert mock_print.called
-        opportunity_output = " ".join(str(args[0]) for args, _ in mock_print.call_args_list)
-        assert "opportunity" in opportunity_output.lower()
-        assert "prompt_template" in opportunity_output.lower()
-        assert "model_selection" in opportunity_output.lower()
+        if mock_continuous_improvement_manager.enabled:
+            assert mock_continuous_improvement_manager.generate_experiments.called
 
     @pytest.mark.asyncio
-    async def test_demonstrate_experiment_tracking(self, mock_continuous_improvement_manager, mock_ab_testing_framework, mock_print):
-        """Test experiment tracking demonstration."""
-        await demonstrate_experiment_tracking()
-        
-        # Check that the required methods were called
-        assert mock_ab_testing_framework.list_experiments.called
-        
-        # Check output
-        assert mock_print.called
-        tracking_output = " ".join(str(args[0]) for args, _ in mock_print.call_args_list)
-        assert "experiment" in tracking_output.lower()
-        assert "test_exp_001" in tracking_output.lower()
+    async def test_simulate_sentiment_analysis(self):
+        """Test sentiment analysis simulation."""
+        # Mock LLMService
+        with mock.patch("examples.continuous_improvement_demo.LLMService") as mock_llm_service_class:
+            mock_llm_service = mock.MagicMock()
+            mock_llm_service.analyze_sentiment = mock.AsyncMock(return_value={
+                "sentiment_value": 0.7,
+                "direction": "bullish",
+                "confidence": 0.8,
+                "explanation": "Test explanation"
+            })
+            
+            # Call function with small iteration count to speed up test
+            await simulate_sentiment_analysis(mock_llm_service, iterations=2)
+            
+            # Verify sentiment analysis was called
+            assert mock_llm_service.analyze_sentiment.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_demonstrate_metrics_monitoring(self, mock_continuous_improvement_manager, mock_performance_tracker, mock_print):
-        """Test metrics monitoring demonstration."""
-        await demonstrate_metrics_monitoring()
+    async def test_trigger_maintenance(self, mock_continuous_improvement_manager):
+        """Test trigger maintenance function."""
+        await trigger_maintenance()
         
-        # Check that the required methods were called
-        assert mock_performance_tracker.get_recent_metrics.called
-        
-        # Check output
-        assert mock_print.called
-        metrics_output = " ".join(str(args[0]) for args, _ in mock_print.call_args_list)
-        assert "metrics" in metrics_output.lower()
-        assert "sentiment_accuracy" in metrics_output.lower()
-        assert "direction_accuracy" in metrics_output.lower()
+        # Check that maintenance was triggered
+        assert mock_continuous_improvement_manager.run_maintenance.called
 
     @pytest.mark.asyncio
-    async def test_run_demo(self, mock_continuous_improvement_manager, mock_ab_testing_framework, mock_performance_tracker, mock_print, monkeypatch):
-        """Test the full demo run with mocked user input."""
-        # Mock input function to return '5' (exit option)
-        monkeypatch.setattr('builtins.input', lambda _: '5')
+    async def test_main(self, mock_continuous_improvement_manager, mock_ab_testing_framework, monkeypatch):
+        """Test the main function."""
+        # Mock input to exit immediately
+        monkeypatch.setattr('builtins.input', lambda _: '6')
         
-        # Run the demo
-        await run_demo()
-        
-        # Check that initialization was called
-        assert mock_continuous_improvement_manager.initialize.called
-        assert mock_ab_testing_framework.initialize.called
-        assert mock_performance_tracker.initialize.called
-        
-        # Check output
-        assert mock_print.called
-        demo_output = " ".join(str(args[0]) for args, _ in mock_print.call_args_list)
-        assert "continuous improvement" in demo_output.lower()
-        assert "demo" in demo_output.lower()
-        assert "exiting" in demo_output.lower()
+        # Mock LLMService
+        with mock.patch("examples.continuous_improvement_demo.LLMService") as mock_llm_service_class:
+            mock_llm_service = mock.MagicMock()
+            mock_llm_service.initialize = mock.AsyncMock()
+            mock_llm_service.close = mock.AsyncMock()
+            mock_llm_service_class.return_value = mock_llm_service
+            
+            # Run the main function
+            await main()
+            
+            # Check that initialization was performed
+            assert mock_continuous_improvement_manager.initialize.called
+            assert mock_ab_testing_framework.initialize.called

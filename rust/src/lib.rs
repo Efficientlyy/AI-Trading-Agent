@@ -11,6 +11,7 @@ pub mod market_data;
 pub mod technical;
 pub mod backtesting;
 pub mod execution;
+pub mod sentiment;
 pub mod python;
 
 // Library information

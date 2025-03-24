@@ -1,8 +1,10 @@
-"""Continuous Improvement System for sentiment analysis.
+"""
+Continuous Improvement module for sentiment analysis.
 
-This module provides automatic optimization of the sentiment analysis system
-through experiment generation, performance monitoring, and automated implementation
-of effective improvements.
+This module provides components for automated identification, experimentation,
+and implementation of improvements to the sentiment analysis system.
 """
 
 from .improvement_manager import continuous_improvement_manager
+
+__all__ = ["continuous_improvement_manager"]

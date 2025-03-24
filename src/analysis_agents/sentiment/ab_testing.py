@@ -616,7 +616,78 @@ class Experiment:
         # Get control metrics
         control_metrics = self.variant_metrics[control_variant.id]
         
-        # Analysis results
+        # Try to use Rust-optimized implementation first
+        try:
+            from src.rust_bridge import analyze_experiment_results
+            
+            # Prepare experiment data for Rust analysis
+            experiment_data = {
+                "id": self.id,
+                "name": self.name,
+                "experiment_type": self.experiment_type.value,
+                "variants": []
+            }
+            
+            # Convert variants to format expected by Rust
+            for variant in self.variants:
+                metrics = self.variant_metrics[variant.id].to_dict()
+                variant_data = {
+                    "id": variant.id,
+                    "name": variant.name,
+                    "control": variant.control,
+                    "metrics": metrics
+                }
+                experiment_data["variants"].append(variant_data)
+            
+            # Call Rust-optimized function
+            rust_results = analyze_experiment_results(
+                experiment_data, 
+                self.min_confidence, 
+                0.05  # Default improvement threshold
+            )
+            
+            if rust_results:
+                # Update timestamps
+                rust_results["timestamp"] = datetime.utcnow().isoformat()
+                
+                # Add experiment metadata
+                rust_results["experiment_id"] = self.id
+                rust_results["control_variant"] = control_variant.name
+                rust_results["total_traffic"] = sum(m.requests for m in self.variant_metrics.values())
+                rust_results["variants_analyzed"] = len(self.variants)
+                
+                # Generate recommendation if needed
+                if rust_results.get("has_clear_winner", False) and rust_results.get("winning_variant"):
+                    winning_variant = rust_results["winning_variant"]
+                    significant_metrics = []
+                    
+                    # Count significant metrics if available in results
+                    if "metrics_differences" in rust_results:
+                        for metric, diff in rust_results["metrics_differences"].get(winning_variant, {}).items():
+                            if "p_values" in rust_results and metric in rust_results["p_values"].get(winning_variant, {}):
+                                p_val = rust_results["p_values"][winning_variant][metric]
+                                if p_val < (1 - self.min_confidence):
+                                    significant_metrics.append(metric)
+                    
+                    rust_results["recommendation"] = (
+                        f"Implement variant '{winning_variant}' as it shows significant "
+                        f"improvements in {len(significant_metrics)} metrics."
+                    )
+                
+                # Store the analysis and update timestamp
+                self.results = rust_results
+                self.updated_at = datetime.utcnow()
+                
+                return rust_results
+            
+        except Exception as e:
+            # Log error and fall back to Python implementation
+            import logging
+            logger = logging.getLogger("analysis_agents.ab_testing")
+            logger.warning(f"Error using Rust-optimized experiment analysis: {e}")
+            logger.info("Falling back to Python implementation for experiment analysis")
+        
+        # Fallback to original Python implementation if Rust optimization fails
         analysis = {
             "control_variant": control_variant.name,
             "experiment_id": self.id,
