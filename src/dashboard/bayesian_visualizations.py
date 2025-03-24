@@ -280,7 +280,7 @@ def create_lift_estimation_chart(
     
     # Add bars and error bars for each metric
     for i, metric in enumerate(metrics):
-        metric_data = df[df['metric'] == metric]
+        metric_data = df[df["metric"] = = metric]
         
         # Create mapping of variant to x-position
         variant_positions = {variant: j + offsets[i] for j, variant in enumerate(variants)}
@@ -633,7 +633,7 @@ def create_credible_interval_chart(
     # Create groups by metric
     for i, metric in enumerate(metrics):
         color = px.colors.qualitative.Plotly[i % len(px.colors.qualitative.Plotly)]
-        metric_data = df[df['metric'] == metric]
+        metric_data = df[df["metric"] = = metric]
         
         # Add a trace for each variant's credible interval
         for j, (_, row) in enumerate(metric_data.iterrows()):
@@ -786,7 +786,7 @@ def create_multi_variant_comparison_chart(
     
     # Create a plot for each metric
     for i, metric in enumerate(metrics):
-        metric_data = df[df['metric'] == metric]
+        metric_data = df[df["metric"] = = metric]
         
         # Sort by control status first, then by value
         if metric == "Calibration Error":  # Lower is better

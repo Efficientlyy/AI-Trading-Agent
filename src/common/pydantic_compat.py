@@ -42,7 +42,7 @@ except ImportError:
             class MockAnnotatedTypes:
                 BaseMetadata = MockBaseMetadata
             
-            sys.modules['annotated_types'] = MockAnnotatedTypes()
+            sys.modules["annotated_types"] = MockAnnotatedTypes()
         
         # Now we can import it
         from annotated_types import BaseMetadata
@@ -102,7 +102,7 @@ def create_model_compat(name, **field_definitions):
     """Create a model class compatible with both old and new pydantic."""
     try:
         # Try the pydantic way first
-        from pydantic import create_model
+        from src.common.pydantic_compat import create_model_compat as create_model
         return create_model(name, **field_definitions)
     except ImportError:
         # Fall back to a basic implementation
