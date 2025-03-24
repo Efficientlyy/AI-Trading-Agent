@@ -189,11 +189,11 @@ class ContinuousImprovementManager:
         
         # Check if it's time to generate experiments
         if (now - self.last_experiment_generation).total_seconds() > self.experiment_generation_interval:
-            await self.generate_experiments()
+            self.generate_experiments()
             self.last_experiment_generation = now
         
         # Check active experiments for potential implementation
-        await self.check_experiments()
+        self.check_experiments()
         
         # Update last check time
         self.last_check = now

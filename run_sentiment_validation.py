@@ -1,3 +1,4 @@
+
 """
 Simplified Validation Script for Sentiment Analysis System
 
@@ -33,7 +34,8 @@ def check_imports():
     ]
     
     all_passed = True
-    print("\nChecking key module imports:")
+    print("
+Checking key module imports:")
     
     for name, module_path, class_name in modules_to_check:
         try:

@@ -137,7 +137,7 @@ class TestStoppingCriteriaIntegration(unittest.TestCase):
         with patch("src.analysis_agents.sentiment.continuous_improvement.improvement_manager.ab_testing_framework", mock_ab_framework):
             with patch("src.analysis_agents.sentiment.continuous_improvement.improvement_manager.stopping_criteria_manager", mock_stopping_manager):
                 # Run the check experiments method
-                await manager.check_experiments()
+                manager.check_experiments()
                 
                 # Verify that stopping criteria were evaluated
                 mock_stopping_manager.evaluate_experiment.assert_called_once_with(self.experiment)
