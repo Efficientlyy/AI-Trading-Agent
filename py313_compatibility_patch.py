@@ -26,6 +26,12 @@ MOCK_MODULES = {
     },
     'pydantic.json': {
         'pydantic_encoder': lambda obj: str(obj)
+    },
+    'dateutil.tz': {
+        'tz': type('tz', (), {
+            'local': lambda: None,
+            'utc': lambda: None,
+        })
     }
 }
 
@@ -35,6 +41,7 @@ PACKAGE_REMAPPINGS = {
     'from pydantic import BaseModel': 'from src.common.pydantic_compat import BaseModel',
     'from pydantic import validator': 'from src.common.pydantic_compat import validator_compat as validator',
     'from pydantic import create_model': 'from src.common.pydantic_compat import create_model_compat as create_model',
+    'from dateutil.tz import tz': 'from src.common.dateutil_compat import tz',
 }
 
 # 3. Syntax fixes (regex patterns and replacements)
@@ -296,6 +303,37 @@ except ImportError:
         with open(pydantic_compat_path, 'w', encoding='utf-8') as f:
             f.write(pydantic_compat_code)
         print(f"Created {pydantic_compat_path}")
+    
+    # Create dateutil_compat.py if it doesn't exist
+    dateutil_compat_path = common_dir / 'dateutil_compat.py'
+    if not dateutil_compat_path.exists():
+        dateutil_compat_code = """
+\"\"\"Dateutil compatibility layer for Python 3.13
+
+This module provides a compatibility layer for the dateutil package,
+ensuring that it works correctly with Python 3.13.
+\"\"\"
+
+import os
+import sys
+from pathlib import Path
+
+class tz:
+    \"\"\"Mock tz class for dateutil compatibility.\"\"\"
+    
+    @classmethod
+    def local(cls):
+        \"\"\"Mock local method.\"\"\"
+        return None
+    
+    @classmethod
+    def utc(cls):
+        \"\"\"Mock utc method.\"\"\"
+        return None
+"""
+        with open(dateutil_compat_path, 'w', encoding='utf-8') as f:
+            f.write(dateutil_compat_code)
+        print(f"Created {dateutil_compat_path}")
 
 def create_custom_validation_script():
     """Create a custom validation script for testing core functionality."""
