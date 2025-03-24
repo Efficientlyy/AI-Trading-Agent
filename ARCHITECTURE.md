@@ -422,6 +422,76 @@ graph TD
 
 *Implementation Progress: 100%*
 
+### Provider Failover System
+
+```mermaid
+graph TD
+    subgraph "Provider Failover System"
+        PFM[Provider Failover Manager] --> HST[Health Status Tracking]
+        HST --> CBP[Circuit Breaker Pattern]
+        CBP --> ARM[Automatic Routing & Mapping]
+        ARM --> FRC[Fallback Response Cache]
+        FRC --> SCT[Self-healing Check Tasks]
+        SCT --> PHD[Provider Health Dashboard]
+    end
+
+    subgraph "Integration Points"
+        LLM[LLM Service] --> PFM
+        MON[Monitoring System] --> HST
+        ALT[Alerting System] --> CBP
+        DASH[Dashboard] --> PHD
+    end
+    
+    subgraph "Failure Handling"
+        ED[Error Detection] --> TH[Threshold Evaluation]
+        TH --> FR[Failover Routing]
+        FR --> CR[Circuit Reset]
+        CR --> RCH[Recovery Check]
+    end
+    
+    LLM --> ED
+    HST --> ED
+    FR --> ARM
+    RCH --> SCT
+```
+
+#### Components
+
+1. **Provider Failover Manager**
+   - Centralized coordinator for LLM provider health and routing
+   - Tracks health statistics and status for all providers
+   - Implements circuit breaker pattern for failing providers
+   - Provides automated recovery mechanisms
+   - Maintains fallback response cache for emergency scenarios
+
+2. **Health Status Tracking**
+   - Monitors success rates, error counts, and latency
+   - Categorizes providers as HEALTHY, DEGRADED, or UNHEALTHY
+   - Tracks consecutive errors and error rates
+   - Records detailed statistics for diagnostics
+
+3. **Provider Selection & Routing**
+   - Maps models across providers for equivalent capabilities
+   - Prioritizes providers based on configurable weights
+   - Routes requests to healthy providers when primary fails
+   - Falls back to cached responses when all providers are unavailable
+
+4. **Health Dashboard**
+   - Visualizes real-time provider health status
+   - Tracks metrics over time with interactive charts
+   - Displays detailed provider statistics
+   - Shows failover events and circuit breaker status
+
+#### Benefits
+
+- Ensures continuous operation during provider outages
+- Prevents cascading failures with circuit breaker pattern
+- Provides graceful degradation with fallback responses
+- Offers transparent routing without application changes
+- Delivers clear visibility into provider health and performance
+
+*Implementation Progress: 100%*
+
 ### ML Analysis Framework
 
 - [x] Feature Importance Visualization
