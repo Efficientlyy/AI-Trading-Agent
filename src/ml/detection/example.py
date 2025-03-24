@@ -31,7 +31,7 @@ def download_market_data(symbol: str = 'SPY', period: str = '2y') -> Dict[str, A
     df = ticker.history(period=period)
     
     # Calculate returns
-    df['Return'] = df['Close'].pct_change()
+    df["Return"] = df['Close'].pct_change()
     
     # Convert to dictionary
     data = {

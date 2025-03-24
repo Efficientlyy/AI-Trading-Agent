@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
+from src.common.pydantic_compat import BaseModel, Field
 from typing import Dict, List, Optional, Union, Any
 import numpy as np
 import pandas as pd

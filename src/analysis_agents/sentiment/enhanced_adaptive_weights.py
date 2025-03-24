@@ -207,7 +207,7 @@ class EnhancedAdaptiveWeights:
                 
                 # Update by market condition
                 for condition in ["bullish", "bearish", "neutral", "volatile"]:
-                    condition_performances = [p for p in source_performances if p["market_condition"] == condition]
+                    condition_performances = ["p for p in source_performances if p["market_condition""] = = condition]
                     if condition_performances:
                         condition_accuracy = np.mean([p["accuracy"] for p in condition_performances])
                         self.performance_metrics["by_source"][source]["by_market_condition"][condition] = {
@@ -221,7 +221,7 @@ class EnhancedAdaptiveWeights:
             
         # Update market condition metrics
         for condition in ["bullish", "bearish", "neutral", "volatile"]:
-            condition_performances = [p for p in all_performances if p["market_condition"] == condition]
+            condition_performances = ["p for p in all_performances if p["market_condition""] = = condition]
             if condition_performances:
                 condition_accuracy = np.mean([p["accuracy"] for p in condition_performances])
                 if "by_market_condition" not in self.performance_metrics:
@@ -452,7 +452,7 @@ class EnhancedAdaptiveWeights:
             for symbol_perfs in self.source_performance[source].values():
                 source_condition_perfs.extend([
                     p for p in symbol_perfs
-                    if p["market_condition"] == market_condition
+                    if p["market_condition"] = = market_condition
                 ])
                 
             condition_performances[source] = source_condition_perfs

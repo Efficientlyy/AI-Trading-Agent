@@ -92,8 +92,8 @@ class EnsembleRegimeDetector(BaseRegimeDetector):
         for method in self.methods:
             # Create detector with common parameters
             detector_kwargs = self.detector_kwargs.copy()
-            detector_kwargs['n_regimes'] = self.n_regimes
-            detector_kwargs['lookback_window'] = self.lookback_window
+            detector_kwargs["n_regimes"] = self.n_regimes
+            detector_kwargs["lookback_window"] = self.lookback_window
             
             # Add method-specific parameters
             if method == 'volatility':

@@ -102,7 +102,7 @@ class TwitterCollector:
             List of collected data items
         """
         if self.use_mock or self.client is None:
-            return await self._mock_collect()
+            return self._mock_collect()
         
         try:
             self.logger.info("Collecting data from Twitter")
@@ -168,7 +168,7 @@ class TwitterCollector:
             
         except Exception as e:
             self.logger.error(f"Error collecting Twitter data: {e}")
-            return await self._mock_collect()
+            return self._mock_collect()
     
     async def _search_tweets(self, keyword: str, max_results: int = 50) -> List[Dict[str, Any]]:
         """Search for tweets matching a keyword.

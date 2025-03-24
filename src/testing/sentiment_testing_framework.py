@@ -710,7 +710,7 @@ def time_execution(func):
         
         # If result is a dictionary, add execution time
         if isinstance(result, dict):
-            result['execution_time'] = execution_time
+            result["execution_time"] = execution_time
             
         return result
     return wrapper

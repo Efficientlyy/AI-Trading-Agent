@@ -92,7 +92,7 @@ class FearGreedClient:
         url = f"{self.base_url}?limit={limit}"
         
         try:
-            session = await self._get_session()
+            session = self._get_session()
             
             # Make request to API
             self.logger.debug("Fetching Fear & Greed data from API", url=url)
@@ -103,7 +103,7 @@ class FearGreedClient:
                     raise Exception(f"API error: {response.status}")
                 
                 # Parse JSON response
-                data = await response.json()
+                data = response.json()
                 
                 # Validate response structure
                 if not data or 'data' not in data:

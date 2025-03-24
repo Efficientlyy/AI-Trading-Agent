@@ -42,9 +42,9 @@ class RegimeEvaluator:
         report = classification_report(true_regimes, pred_regimes, output_dict=True)
         
         # Overall metrics
-        metrics['accuracy'] = report['accuracy']
-        metrics['weighted_f1'] = report['weighted avg']['f1-score']
-        metrics['macro_f1'] = report['macro avg']['f1-score']
+        metrics["accuracy"] = report['accuracy']
+        metrics["weighted_f1"] = report['weighted avg']['f1-score']
+        metrics["macro_f1"] = report['macro avg']['f1-score']
         
         # Per-regime metrics
         for regime in np.unique(true_regimes):
@@ -66,9 +66,9 @@ class RegimeEvaluator:
                 ]
                 timing_errors.append(abs(closest_pred - true_trans))
             
-            metrics['mean_transition_delay'] = np.mean(timing_errors)
-            metrics['max_transition_delay'] = np.max(timing_errors)
-            metrics['transition_delay_std'] = np.std(timing_errors)
+            metrics["mean_transition_delay"] = np.mean(timing_errors)
+            metrics["max_transition_delay"] = np.max(timing_errors)
+            metrics["transition_delay_std"] = np.std(timing_errors)
         
         # Store metrics
         key = (method_name, timeframe)
@@ -136,9 +136,9 @@ class RegimeEvaluator:
         total_pred = len(pred_transitions)
         total_matched = len(matched_transitions)
         
-        metrics['transition_precision'] = total_matched / total_pred if total_pred > 0 else 0
-        metrics['transition_recall'] = total_matched / total_true if total_true > 0 else 0
-        metrics['transition_f1'] = 2 * (metrics['transition_precision'] * metrics['transition_recall']) / (metrics['transition_precision'] + metrics['transition_recall']) if (metrics['transition_precision'] + metrics['transition_recall']) > 0 else 0
+        metrics["transition_precision"] = total_matched / total_pred if total_pred > 0 else 0
+        metrics["transition_recall"] = total_matched / total_true if total_true > 0 else 0
+        metrics["transition_f1"] = 2 * (metrics['transition_precision'] * metrics['transition_recall']) / (metrics['transition_precision'] + metrics['transition_recall']) if (metrics['transition_precision'] + metrics['transition_recall']) > 0 else 0
         
         # Timing metrics for matched transitions
         if matched_transitions:
@@ -146,9 +146,9 @@ class RegimeEvaluator:
                 abs(true['time'] - pred['time']).total_seconds()
                 for true, pred in matched_transitions
             ]
-            metrics['mean_prediction_lead_time'] = np.mean(timing_errors)
-            metrics['max_prediction_lead_time'] = np.max(timing_errors)
-            metrics['prediction_lead_time_std'] = np.std(timing_errors)
+            metrics["mean_prediction_lead_time"] = np.mean(timing_errors)
+            metrics["max_prediction_lead_time"] = np.max(timing_errors)
+            metrics["prediction_lead_time_std"] = np.std(timing_errors)
         
         # Store metrics
         key = (method_name, timeframe)
@@ -182,13 +182,13 @@ class RegimeEvaluator:
         regime_changes = np.diff(regimes) != 0
         regime_durations = np.diff(np.where(np.append(regime_changes, True))[0])
         
-        metrics['mean_regime_duration'] = np.mean(regime_durations)
-        metrics['min_regime_duration'] = np.min(regime_durations)
-        metrics['max_regime_duration'] = np.max(regime_durations)
-        metrics['regime_duration_std'] = np.std(regime_durations)
+        metrics["mean_regime_duration"] = np.mean(regime_durations)
+        metrics["min_regime_duration"] = np.min(regime_durations)
+        metrics["max_regime_duration"] = np.max(regime_durations)
+        metrics["regime_duration_std"] = np.std(regime_durations)
         
         # Calculate regime transition frequency
-        metrics['transition_frequency'] = np.sum(regime_changes) / len(regimes)
+        metrics["transition_frequency"] = np.sum(regime_changes) / len(regimes)
         
         # Calculate rolling stability metrics
         rolling_transitions = []
@@ -206,9 +206,9 @@ class RegimeEvaluator:
             probs = counts / window_size
             rolling_entropy.append(entropy(probs))
         
-        metrics['mean_rolling_transition_rate'] = np.mean(rolling_transitions)
-        metrics['mean_rolling_entropy'] = np.mean(rolling_entropy)
-        metrics['max_rolling_entropy'] = np.max(rolling_entropy)
+        metrics["mean_rolling_transition_rate"] = np.mean(rolling_transitions)
+        metrics["mean_rolling_entropy"] = np.mean(rolling_entropy)
+        metrics["max_rolling_entropy"] = np.max(rolling_entropy)
         
         # Store metrics
         key = (method_name, timeframe)

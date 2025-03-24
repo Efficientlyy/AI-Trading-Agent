@@ -274,7 +274,7 @@ class VolumeAbsorptionStrategy(OrderBookStrategy):
             remaining_size = 0.0
             
             # Check the appropriate side
-            if order["side"] == "buy":
+            if order["side"] = = "buy":
                 for price, size in current["bids"]:
                     if abs(price - order["price"]) < 0.0001:
                         remaining_size = size
@@ -355,7 +355,7 @@ class VolumeAbsorptionStrategy(OrderBookStrategy):
         # Determine the direction of the signal
         # If a large sell order was absorbed, it's bullish (go long)
         # If a large buy order was absorbed, it's bearish (go short)
-        direction = "long" if order["side"] == "sell" else "short"
+        direction = "long" if order["side"] = = "sell" else "short"
         
         # Calculate the size based on absorption strength
         # More complete absorption gets larger size

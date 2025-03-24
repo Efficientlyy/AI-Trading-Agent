@@ -79,7 +79,7 @@ class DataQualityFactor(ConfidenceFactor):
             weights.get('validity', 0.2) * validity_score
         )
         
-        self._quality_metadata['final_quality_score'] = final_score
+        self._quality_metadata["final_quality_score"] = final_score
         
         return final_score
     
@@ -115,7 +115,7 @@ class DataQualityFactor(ConfidenceFactor):
                 completeness_scores[column] = 0.0
                 
         # Store column-wise completeness for metadata
-        self._quality_metadata['column_completeness'] = completeness_scores
+        self._quality_metadata["column_completeness"] = completeness_scores
                 
         # Overall completeness is the average of column completeness
         if not completeness_scores:
@@ -183,8 +183,8 @@ class DataQualityFactor(ConfidenceFactor):
         expected_update_hours = self.config.get('expected_update_hours', 24)
         
         # Store time difference for metadata
-        self._quality_metadata['time_diff_hours'] = time_diff_hours
-        self._quality_metadata['expected_update_hours'] = expected_update_hours
+        self._quality_metadata["time_diff_hours"] = time_diff_hours
+        self._quality_metadata["expected_update_hours"] = expected_update_hours
         
         # Calculate recency score (1.0 if up-to-date, decreasing as data ages)
         if time_diff_hours <= 0:
@@ -244,7 +244,7 @@ class DataQualityFactor(ConfidenceFactor):
             validity_scores[column] = max(0.0, column_validity)
             
         # Store column-wise validity for metadata
-        self._quality_metadata['column_validity'] = validity_scores
+        self._quality_metadata["column_validity"] = validity_scores
             
         # Overall validity is the average of column validity scores
         if not validity_scores:

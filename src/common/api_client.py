@@ -44,11 +44,11 @@ class CircuitBreaker:
         circuit = cls._circuits[circuit_key]
         
         # Check if it's time to try resetting the circuit
-        if (circuit["state"] == "open" and 
+        if (circuit["state"] = = "open" and 
             (time.time() - circuit["last_failure"]) > cls._reset_timeout):
             circuit["state"] = "half-open"
             
-        return circuit["state"] == "open"
+        return circuit["state"] = = "open"
     
     @classmethod
     def record_success(cls, circuit_key: str) -> None:
@@ -62,7 +62,7 @@ class CircuitBreaker:
             
         circuit = cls._circuits[circuit_key]
         
-        if circuit["state"] == "half-open":
+        if circuit["state"] = = "half-open":
             circuit["state"] = "closed"
             
         circuit["failures"] = 0

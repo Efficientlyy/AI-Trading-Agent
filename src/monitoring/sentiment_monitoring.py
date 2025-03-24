@@ -380,17 +380,17 @@ class AlertManager:
                 # Check condition
                 triggered = False
                 
-                if alert["condition"] == ">":
+                if alert["condition"] = = ">":
                     triggered = latest_value > alert["threshold"]
-                elif alert["condition"] == "<":
+                elif alert["condition"] = = "<":
                     triggered = latest_value < alert["threshold"]
-                elif alert["condition"] == ">=":
+                elif alert["condition"] = = ">=":
                     triggered = latest_value >= alert["threshold"]
-                elif alert["condition"] == "<=":
+                elif alert["condition"] = = "<=":
                     triggered = latest_value <= alert["threshold"]
-                elif alert["condition"] == "==":
+                elif alert["condition"] = = "==":
                     triggered = latest_value == alert["threshold"]
-                elif alert["condition"] == "!=":
+                elif alert["condition"] = = "!=":
                     triggered = latest_value != alert["threshold"]
                     
                 if triggered:

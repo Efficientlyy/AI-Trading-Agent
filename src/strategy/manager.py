@@ -57,7 +57,7 @@ class StrategyManager(Component):
                 self.strategies[strategy_id] = strategy
                 
                 # Initialize the strategy
-                success = await strategy.initialize()
+                success = strategy.initialize()
                 if not success:
                     self.logger.error("Failed to initialize strategy", strategy=strategy_id)
                     continue
@@ -89,7 +89,7 @@ class StrategyManager(Component):
         # Start all strategies
         for strategy_id, strategy in self.strategies.items():
             try:
-                success = await strategy.start()
+                success = strategy.start()
                 if not success:
                     self.logger.error("Failed to start strategy", strategy=strategy_id)
                     continue
@@ -118,7 +118,7 @@ class StrategyManager(Component):
         # Stop all strategies in reverse order
         for strategy_id, strategy in reversed(list(self.strategies.items())):
             try:
-                success = await strategy.stop()
+                success = strategy.stop()
                 if not success:
                     self.logger.error("Failed to stop strategy", strategy=strategy_id)
                     continue

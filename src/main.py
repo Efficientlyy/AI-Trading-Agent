@@ -59,10 +59,10 @@ class Application:
             self.register_event_types()
             
             # Start the event bus
-            await event_bus.start()
+            event_bus.start()
             
             # Start all enabled components
-            await self.start_components()
+            self.start_components()
             
             # Application started successfully
             self.running = True
@@ -240,14 +240,14 @@ class Application:
             try:
                 if hasattr(component, "stop"):
                     if asyncio.iscoroutinefunction(component.stop):
-                        await component.stop()
+                        component.stop()
                     else:
                         component.stop()
             except Exception as e:
                 logger.error("Error stopping component", component=component.__class__.__name__, error=str(e))
         
         # Stop the event bus
-        await event_bus.stop()
+        event_bus.stop()
         
         # Set shutdown event to release the main task
         self.shutdown_event.set()
@@ -285,7 +285,7 @@ class Application:
 async def main():
     """Main application entry point."""
     app = Application()
-    await app.start()
+    app.start()
 
 
 if __name__ == "__main__":

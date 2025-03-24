@@ -56,7 +56,7 @@ def run_simple_backtest(
     data = data.sort_index()
     
     # Calculate returns
-    data['Returns'] = data['Close'].pct_change().fillna(0)
+    data["Returns"] = data['Close'].pct_change().fillna(0)
     
     # Default detector parameters if none provided
     if detector_params is None:

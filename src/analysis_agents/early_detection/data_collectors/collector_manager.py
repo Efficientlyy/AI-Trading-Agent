@@ -180,7 +180,7 @@ class DataCollectorManager:
         # Initialize each collector
         for collector_type, collector in self.collectors.items():
             try:
-                await collector.initialize()
+                collector.initialize()
                 self.logger.info(f"Initialized {collector_type.value} collector")
             except Exception as e:
                 self.logger.error(f"Error initializing {collector_type.value} collector: {e}")

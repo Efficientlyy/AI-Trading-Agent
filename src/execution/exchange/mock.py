@@ -119,7 +119,7 @@ class MockExchangeConnector(BaseExchangeConnector):
             bool: True if initialization was successful
         """
         self.logger.info("Initializing mock exchange connector")
-        await self.simulate_latency()
+        self.simulate_latency()
         
         self.active = True
         
@@ -150,7 +150,7 @@ class MockExchangeConnector(BaseExchangeConnector):
         Returns:
             Dict containing exchange information
         """
-        await self.simulate_latency()
+        self.simulate_latency()
         return copy.deepcopy(self.exchange_info)
     
     async def get_account_balance(self) -> Dict[str, Decimal]:
@@ -159,7 +159,7 @@ class MockExchangeConnector(BaseExchangeConnector):
         Returns:
             Dict mapping asset symbol to balance amount
         """
-        await self.simulate_latency()
+        self.simulate_latency()
         return copy.deepcopy(self.balances)
     
     async def get_ticker(self, symbol: str) -> Dict[str, Any]:
@@ -171,7 +171,7 @@ class MockExchangeConnector(BaseExchangeConnector):
         Returns:
             Dict containing ticker information
         """
-        await self.simulate_latency()
+        self.simulate_latency()
         
         if symbol not in self.prices:
             return {}
@@ -201,7 +201,7 @@ class MockExchangeConnector(BaseExchangeConnector):
         Returns:
             Dict containing order book data
         """
-        await self.simulate_latency()
+        self.simulate_latency()
         
         if symbol not in self.prices:
             return {"bids": [], "asks": []}
@@ -243,7 +243,7 @@ class MockExchangeConnector(BaseExchangeConnector):
         Returns:
             Tuple of (success, exchange_order_id, error_message)
         """
-        await self.simulate_latency()
+        self.simulate_latency()
         
         symbol = order.symbol
         
@@ -297,7 +297,7 @@ class MockExchangeConnector(BaseExchangeConnector):
         Returns:
             Tuple of (success, error_message)
         """
-        await self.simulate_latency()
+        self.simulate_latency()
         
         if order_id not in self.orders:
             return False, "Order not found"
@@ -323,7 +323,7 @@ class MockExchangeConnector(BaseExchangeConnector):
         Returns:
             Dict containing order information or None if not found
         """
-        await self.simulate_latency()
+        self.simulate_latency()
         
         if order_id not in self.orders:
             return None
@@ -339,12 +339,12 @@ class MockExchangeConnector(BaseExchangeConnector):
         Returns:
             List of dictionaries containing order information
         """
-        await self.simulate_latency()
+        self.simulate_latency()
         
         result = []
         for order_id, order in self.orders.items():
             if order["status"] in ["open", "partially_filled"]:
-                if symbol is None or order["symbol"] == symbol:
+                if symbol is None or order["symbol"] = = symbol:
                     result.append(copy.deepcopy(order))
         
         return result
@@ -367,7 +367,7 @@ class MockExchangeConnector(BaseExchangeConnector):
         Returns:
             List of dictionaries containing trade information
         """
-        await self.simulate_latency()
+        self.simulate_latency()
         
         if symbol not in self.trade_history:
             return []
@@ -418,7 +418,7 @@ class MockExchangeConnector(BaseExchangeConnector):
         current_price = self.prices[symbol]
         
         # Apply a small slippage for market orders
-        if order["side"] == "buy":
+        if order["side"] = = "buy":
             fill_price = current_price * Decimal("1.001")  # 0.1% slippage
         else:
             fill_price = current_price * Decimal("0.999")  # 0.1% slippage
@@ -467,8 +467,8 @@ class MockExchangeConnector(BaseExchangeConnector):
                 if limit_price is not None:
                     # For buy orders, fill when price <= limit price
                     # For sell orders, fill when price >= limit price
-                    if (order["side"] == "buy" and current_price <= limit_price) or \
-                       (order["side"] == "sell" and current_price >= limit_price):
+                    if (order["side"] = = "buy" and current_price <= limit_price) or \
+                       (order["side"] = = "sell" and current_price >= limit_price):
                         
                         # Determine if the order should fill based on probability
                         if random.random() <= self.fill_probability:

@@ -49,7 +49,7 @@ class EarlyEventIntegration:
         await self.detection_system.initialize()
         
         # Register event handlers
-        await self._register_event_handlers()
+        self._register_event_handlers()
         
         self.is_initialized = True
         self.logger.info("Early event integration initialized")
@@ -179,6 +179,6 @@ async def setup_early_event_integration():
         The initialized integration object
     """
     integration = EarlyEventIntegration()
-    await integration.initialize()
-    await integration.start()
+    integration.initialize()
+    integration.start()
     return integration

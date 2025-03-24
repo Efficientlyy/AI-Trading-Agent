@@ -93,7 +93,7 @@ class RedditCollector:
             List of collected data items
         """
         if self.use_mock or self.client is None:
-            return await self._mock_collect()
+            return self._mock_collect()
         
         try:
             self.logger.info("Collecting data from Reddit")
@@ -153,7 +153,7 @@ class RedditCollector:
             
         except Exception as e:
             self.logger.error(f"Error collecting Reddit data: {e}")
-            return await self._mock_collect()
+            return self._mock_collect()
     
     async def _get_subreddit_posts(self, subreddit_name: str, sort_type: str = "hot", 
                                   limit: int = 25, time_filter: str = "all") -> List[Dict[str, Any]]:

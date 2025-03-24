@@ -126,3 +126,44 @@ signals:
 integration:
   enabled: true
   signal_confidence_threshold: 0.7
+
+# Real-time event detection settings
+realtime:
+  enabled: true
+  batch_size: 5
+  batch_interval: 60  # Process batches every 60 seconds
+  min_confidence: 0.7
+  min_severity: 5  # 1-10 scale
+  
+  # Source credibility scores (0-1)
+  source_credibility:
+    official: 0.9
+    verified_news: 0.8
+    financial_data: 0.85
+    major_social: 0.7
+    community: 0.5
+    unverified: 0.3
+  
+  # Event types to detect (used for filtering)
+  event_types:
+    - monetary_policy
+    - regulation
+    - trade_war
+    - geopolitical
+    - economic_data
+    - corporate
+    - market
+    - technology
+    - security
+
+# Sentiment integration settings
+sentiment_integration:
+  enabled: true
+  min_consensus_confidence: 0.85
+  min_disagreement_level: 0.3
+  
+  # Event subscriptions
+  event_subscriptions:
+    - sentiment_event
+    - EarlyEventSignal
+    - RealtimeEventDetected

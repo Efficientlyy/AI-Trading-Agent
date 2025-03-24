@@ -107,7 +107,7 @@ class MetaStrategy(Strategy):
         # Initialize all sub-strategies
         for strategy in self.sub_strategies:
             if not strategy.is_initialized:
-                await strategy.initialize()
+                strategy.initialize()
         
         # Initialize signal storage
         for strategy in self.sub_strategies:
@@ -125,7 +125,7 @@ class MetaStrategy(Strategy):
         # Start all sub-strategies
         for strategy in self.sub_strategies:
             if not strategy.is_running:
-                await strategy.start()
+                strategy.start()
     
     async def _strategy_stop(self) -> None:
         """Stop the meta-strategy and all sub-strategies."""
@@ -134,7 +134,7 @@ class MetaStrategy(Strategy):
         # Stop all sub-strategies
         for strategy in self.sub_strategies:
             if strategy.is_running:
-                await strategy.stop()
+                strategy.stop()
     
     # Implement required abstract methods from Strategy
     async def process_candle(self, symbol: str, timeframe: TimeFrame, candle: Dict[str, Any]) -> None:

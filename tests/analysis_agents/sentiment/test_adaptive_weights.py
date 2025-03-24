@@ -22,10 +22,10 @@ class TestAdaptiveSentimentWeights:
         weights = adaptive_weights.get_weights()
         
         # Verify default weights
-        assert weights["social_media"] == 0.25
-        assert weights["news"] == 0.25
-        assert weights["market_sentiment"] == 0.3
-        assert weights["onchain"] == 0.2
+        assert weights["social_media"] = = 0.25
+        assert weights["news"] = = 0.25
+        assert weights["market_sentiment"] = = 0.3
+        assert weights["onchain"] = = 0.2
         
         # Verify weights sum to 1
         assert sum(weights.values()) == 1.0
@@ -47,9 +47,9 @@ class TestAdaptiveSentimentWeights:
         # Verify performance was recorded
         assert len(adaptive_weights.source_performance["social_media"]) == 1
         perf = adaptive_weights.source_performance["social_media"][0]
-        assert perf["prediction"] == 0.7
-        assert perf["actual"] == 0.8
-        assert perf["timestamp"] == now
+        assert perf["prediction"] = = 0.7
+        assert perf["actual"] = = 0.8
+        assert perf["timestamp"] = = now
         assert perf["accuracy"] > 0.9  # High accuracy for close prediction
     
     def test_performance_window_cleanup(self):

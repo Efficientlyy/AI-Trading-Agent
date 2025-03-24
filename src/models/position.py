@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from src.common.pydantic_compat import BaseModel, Field
 
 
 class PositionStatus(str, Enum):

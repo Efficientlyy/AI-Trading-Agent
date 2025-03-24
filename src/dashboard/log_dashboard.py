@@ -153,7 +153,7 @@ class LogAnalyzer:
         
         # Add timestamp as datetime
         if 'timestamp' in df.columns:
-            df['datetime'] = pd.to_datetime(df['timestamp'])
+            df["datetime"] = pd.to_datetime(df['timestamp'])
             
         # Count by level
         level_counts = df.get('level', pd.Series()).value_counts().to_dict()
@@ -617,7 +617,7 @@ def create_dashboard():
             # Initialize with light theme
             return {"theme": "light"}, "bi bi-moon", dbc.themes.BOOTSTRAP
         
-        if data["theme"] == "light":
+        if data["theme"] = = "light":
             # Switch to dark theme
             return {"theme": "dark"}, "bi bi-sun", dbc.themes.DARKLY
         else:
@@ -872,7 +872,7 @@ def create_dashboard():
             # Convert to dataframe and group by hour
             df = pd.DataFrame(error_logs)
             if 'timestamp' in df.columns:
-                df['datetime'] = pd.to_datetime(df['timestamp'])
+                df["datetime"] = pd.to_datetime(df['timestamp'])
                 hourly_errors = df.groupby(pd.Grouper(key='datetime', freq='1H')).size().reset_index(name='count')
                 
                 # Create the figure
@@ -933,9 +933,9 @@ def create_dashboard():
             # Create filter for the replay
             filters = {}
             if component:
-                filters['component'] = component
+                filters["component"] = component
             if request_id:
-                filters['request_id'] = request_id
+                filters["request_id"] = request_id
             
             # Create a log replay handler that captures output
             replay_output = []

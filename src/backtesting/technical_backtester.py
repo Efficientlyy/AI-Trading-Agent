@@ -202,7 +202,7 @@ class StrategyBacktester:
         
         # Ensure we have a datetime index
         if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df["timestamp"] = pd.to_datetime(df['timestamp'])
             df.set_index('timestamp', inplace=True)
         
         # Filter by date range if provided
@@ -296,10 +296,10 @@ class StrategyBacktester:
         # Reset DataFrame index to make sure it's a proper datetime index
         df = df.reset_index()
         if 'timestamp' in df.columns:
-            df['timestamp'] = pd.to_datetime(df['timestamp'])
+            df["timestamp"] = pd.to_datetime(df['timestamp'])
         else:
             # If no timestamp column, we need to create one
-            df['timestamp'] = pd.to_datetime(df.index)
+            df["timestamp"] = pd.to_datetime(df.index)
         
         # Now process each row
         for i, row in df.iterrows():

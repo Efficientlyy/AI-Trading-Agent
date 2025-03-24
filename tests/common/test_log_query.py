@@ -36,8 +36,8 @@ def test_parser():
     parser = Parser(lexer)
     ast = parser.parse()
     
-    assert ast["type"] == "binary_op"
-    assert ast["operator"] == "AND"
+    assert ast["type"] = = "binary_op"
+    assert ast["operator"] = = "AND"
     assert ast["left"]["type"] == "condition"
     assert ast["left"]["field"] == "level"
     assert ast["left"]["value"] == "error"
@@ -176,7 +176,7 @@ def test_file_search(temp_log_file):
     
     results = log_query.search_file(str(temp_log_file))
     assert len(results) == 2
-    assert all(r["level"] == "error" for r in results)
+    assert all(r["level"] = = "error" for r in results)
 
 
 def test_invalid_query():

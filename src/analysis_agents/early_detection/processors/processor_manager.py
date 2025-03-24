@@ -428,7 +428,7 @@ class ProcessorManager:
         # Initialize each processor
         for processor_name, processor in self.processors.items():
             try:
-                await processor.initialize()
+                processor.initialize()
                 self.logger.info(f"Initialized {processor_name} processor")
             except Exception as e:
                 self.logger.error(f"Error initializing {processor_name} processor: {e}")

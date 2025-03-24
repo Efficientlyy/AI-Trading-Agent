@@ -548,19 +548,19 @@ class OrderBookProcessor:
         self._stats['levels_removed'] += levels_removed
         
         # Update timing statistics
-        if (self._stats['min_processing_time_us'] == 0 or 
+        if (self._stats["min_processing_time_us"] = = 0 or 
             processing_time_us < self._stats['min_processing_time_us']):
-            self._stats['min_processing_time_us'] = processing_time_us
+            self._stats["min_processing_time_us"] = processing_time_us
         
         if processing_time_us > self._stats['max_processing_time_us']:
-            self._stats['max_processing_time_us'] = processing_time_us
+            self._stats["max_processing_time_us"] = processing_time_us
         
         # Exponential moving average for processing time
-        if self._stats['avg_processing_time_us'] == 0.0:
-            self._stats['avg_processing_time_us'] = float(processing_time_us)
+        if self._stats["avg_processing_time_us"] = = 0.0:
+            self._stats["avg_processing_time_us"] = float(processing_time_us)
         else:
             alpha = 0.05  # Smoothing factor
-            self._stats['avg_processing_time_us'] = (
+            self._stats["avg_processing_time_us"] = (
                 alpha * float(processing_time_us) + 
                 (1.0 - alpha) * self._stats['avg_processing_time_us']
             ) 

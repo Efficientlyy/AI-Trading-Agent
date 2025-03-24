@@ -10,6 +10,8 @@ This project implements an AI trading agent with sentiment analysis capabilities
 - Enhanced trading strategies combining sentiment with technical indicators
 - Market regime detection
 - Visualization tools for sentiment-price relationships
+- Robust Provider Failover System for LLM APIs
+- Comprehensive monitoring and alerting system
 
 ## Installation
 
@@ -65,10 +67,23 @@ python examples/enhanced_sentiment_trading_strategy.py
 python examples/early_event_detection_demo.py
 ```
 
+### Provider Failover System Demo
+
+```bash
+python examples/provider_failover_demo.py
+```
+
+### Provider Health Dashboard
+
+```bash
+python run_provider_health_dashboard.py
+```
+
 ## Documentation
 
 - [Sentiment Analysis Guide](docs/SENTIMENT_ANALYSIS_GUIDE.md)
 - [Early Event Detection System](docs/EARLY_EVENT_DETECTION_SYSTEM.md)
+- [Provider Failover System](docs/PROVIDER_FAILOVER_SYSTEM.md)
 - [Twitter Setup Guide](TWITTER_SETUP.md)
 - [Implementation Summary](SENTIMENT_IMPLEMENTATION_SUMMARY.md)
 

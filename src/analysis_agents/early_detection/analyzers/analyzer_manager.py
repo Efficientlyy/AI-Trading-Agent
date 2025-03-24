@@ -913,7 +913,7 @@ class AnalyzerManager:
         # Initialize each analyzer
         for analyzer_name, analyzer in self.analyzers.items():
             try:
-                await analyzer.initialize()
+                analyzer.initialize()
                 self.logger.info(f"Initialized {analyzer_name} analyzer")
             except Exception as e:
                 self.logger.error(f"Error initializing {analyzer_name} analyzer: {e}")

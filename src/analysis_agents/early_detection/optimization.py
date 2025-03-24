@@ -791,6 +791,6 @@ async def get_cost_optimizer() -> CostOptimizer:
     
     if _cost_optimizer is None:
         _cost_optimizer = CostOptimizer()
-        await _cost_optimizer.initialize()
+        _cost_optimizer.initialize()
     
     return _cost_optimizer

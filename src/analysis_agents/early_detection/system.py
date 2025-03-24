@@ -104,7 +104,7 @@ class EarlyEventDetectionSystem:
         
         while self.is_running:
             try:
-                await self._detection_cycle()
+                self._detection_cycle()
                 self.last_update = datetime.now()
                 
                 # Wait for the next update interval
@@ -289,7 +289,7 @@ class EarlyEventDetectionSystem:
             Dictionary with market impact assessment
         """
         # Get active events
-        active_events = await self.get_active_events()
+        active_events = self.get_active_events()
         
         if not active_events:
             return {

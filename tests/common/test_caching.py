@@ -127,9 +127,9 @@ class TestCache:
         stats = cache.get_stats()
         
         # Verify stats
-        assert stats["size"] == 2
+        assert stats["size"] = = 2
         assert set(stats["keys"]) == {"key1", "key2"}
-        assert stats["ttl"] == 300
+        assert stats["ttl"] = = 300
     
     def test_cache_update_existing(self):
         """Test updating an existing cache entry."""

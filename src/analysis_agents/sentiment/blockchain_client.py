@@ -137,7 +137,7 @@ class BlockchainComClient(BaseBlockchainClient):
             params["api_key"] = self.api_key
         
         try:
-            session = await self._get_session()
+            session = self._get_session()
             
             # Make request
             self.logger.debug("Making API request", url=url)
@@ -146,11 +146,11 @@ class BlockchainComClient(BaseBlockchainClient):
                     self.logger.error("API request failed", 
                                       endpoint=endpoint, 
                                       status=response.status,
-                                      response=await response.text())
+                                      response=response.text())
                     raise Exception(f"API error: {response.status}")
                 
                 # Parse JSON response
-                data = await response.json()
+                data = response.json()
                 
                 # Cache result
                 self.cache[cache_key] = data
@@ -490,7 +490,7 @@ class GlassnodeClient(BaseBlockchainClient):
         params["api_key"] = self.api_key
         
         try:
-            session = await self._get_session()
+            session = self._get_session()
             
             # Make request
             self.logger.debug("Making API request", url=url)
@@ -499,11 +499,11 @@ class GlassnodeClient(BaseBlockchainClient):
                     self.logger.error("API request failed", 
                                       endpoint=endpoint, 
                                       status=response.status,
-                                      response=await response.text())
+                                      response=response.text())
                     raise Exception(f"API error: {response.status}")
                 
                 # Parse JSON response
-                data = await response.json()
+                data = response.json()
                 
                 # Cache result
                 self.cache[cache_key] = data
@@ -968,7 +968,7 @@ class BlockchainClient(BaseBlockchainClient):
     async def close(self):
         """Close all client sessions."""
         for client in self.clients.values():
-            await client.close()
+            client.close()
     
     async def _call_clients(self, method_name: str, *args, **kwargs) -> Dict[str, Any]:
         """Call a method across multiple clients until one succeeds.

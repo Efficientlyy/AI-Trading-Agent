@@ -66,7 +66,7 @@ class StorageManager(Component):
         # Initialize all storage backends
         for name, backend in self.storage_backends.items():
             try:
-                success = await backend.initialize()
+                success = backend.initialize()
                 if not success:
                     self.logger.error("Failed to initialize storage backend", backend=name)
                 else:
@@ -123,12 +123,12 @@ class StorageManager(Component):
                 pass
         
         # Flush any remaining batches
-        await self._flush_all_batches()
+        self._flush_all_batches()
         
         # Close all storage backends
         for name, backend in self.storage_backends.items():
             try:
-                await backend.close()
+                backend.close()
                 self.logger.info("Closed storage backend", backend=name)
             except Exception as e:
                 self.logger.error("Error closing storage backend", 
@@ -274,7 +274,7 @@ class StorageManager(Component):
         try:
             while True:
                 await asyncio.sleep(self.batch_interval)
-                await self._flush_all_batches()
+                self._flush_all_batches()
                 
         except asyncio.CancelledError:
             self.logger.debug("Batch flush task cancelled")
@@ -291,7 +291,7 @@ class StorageManager(Component):
         try:
             while True:
                 await asyncio.sleep(interval)
-                await self._run_retention()
+                self._run_retention()
                 
         except asyncio.CancelledError:
             self.logger.debug("Retention task cancelled")

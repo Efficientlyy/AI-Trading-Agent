@@ -60,7 +60,7 @@ class FinancialDataCollector:
         
         try:
             # Load historical data for baseline comparison
-            await self._load_historical_data()
+            self._load_historical_data()
             
             self.logger.info("Financial data collector initialized")
             
@@ -162,7 +162,7 @@ class FinancialDataCollector:
             
         except Exception as e:
             self.logger.error(f"Error collecting financial data: {e}")
-            return await self._mock_collect()
+            return self._mock_collect()
     
     async def _collect_price_data(self, asset: str) -> List[Dict[str, Any]]:
         """Collect price data for an asset.
@@ -536,7 +536,7 @@ class FinancialDataCollector:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=api_key_header) as response:
                     if response.status == 200:
-                        data = await response.json()
+                        data = response.json()
                         
                         # Extract data
                         if "RAW" in data and asset in data["RAW"] and currency in data["RAW"][asset]:
@@ -612,7 +612,7 @@ class FinancialDataCollector:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=api_key_header) as response:
                     if response.status == 200:
-                        data = await response.json()
+                        data = response.json()
                         
                         # Extract data
                         if "Data" in data and "Data" in data["Data"]:
@@ -652,7 +652,7 @@ class FinancialDataCollector:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, headers=api_key_header) as response:
                     if response.status == 200:
-                        data = await response.json()
+                        data = response.json()
                         
                         # Extract data
                         if "Data" in data and "Data" in data["Data"]:
@@ -808,7 +808,7 @@ class FinancialDataCollector:
         
         # Extract volatility indicators from price and volume data
         for item in collected_data:
-            if item["data_type"] == "price":
+            if item["data_type"] = = "price":
                 # Extract price change percentage
                 change_pct = item["data"].get("change_pct_24h", 0)
                 
@@ -816,7 +816,7 @@ class FinancialDataCollector:
                 volatility_score = min(1.0, abs(change_pct) / 20)
                 volatility_scores.append(volatility_score)
                 
-            elif item["data_type"] == "volume":
+            elif item["data_type"] = = "volume":
                 # Check if this item has anomaly info
                 anomaly_score = item["metadata"].get("anomaly_score", 0)
                 

@@ -275,7 +275,7 @@ class SentimentCollector:
                 
                 if source == "fear_greed":
                     # Fear & Greed data
-                    data = await source_client.get_data()
+                    data = source_client.get_data()
                     data = [data]  # Wrap in list for consistent formatting
                 elif hasattr(source_client, "get_sentiment"):
                     # Use standard sentiment method
@@ -436,7 +436,7 @@ class SentimentCollector:
         filled = resampled.fillna(method='ffill')
         
         # Add a combined sentiment column (simple average)
-        filled['combined'] = filled.mean(axis=1)
+        filled["combined"] = filled.mean(axis=1)
         
         return filled
 

@@ -343,7 +343,7 @@ class TestEnhancedSentimentValidator:
         stats = validator.get_validation_stats()
         
         # Verify stats
-        assert stats["total_processed"] == 2
+        assert stats["total_processed"] = = 2
         assert "rejected_count" in stats
         assert "anomaly_count" in stats
         assert "adjusted_count" in stats

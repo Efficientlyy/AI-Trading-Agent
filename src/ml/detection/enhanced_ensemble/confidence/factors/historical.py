@@ -65,7 +65,7 @@ class HistoricalAccuracyFactor(ConfidenceFactor):
             for detector in detector_outputs.keys():
                 accuracies[detector] = self.get_accuracy(detector)
                 
-            self._last_calculation_metadata['overall_accuracies'] = accuracies
+            self._last_calculation_metadata["overall_accuracies"] = accuracies
             
             if not accuracies:
                 return 0.5
@@ -75,7 +75,7 @@ class HistoricalAccuracyFactor(ConfidenceFactor):
             regime_specific_accuracies = self._get_regime_specific_accuracies(
                 detector_outputs.keys(), current_regime)
             
-            self._last_calculation_metadata['regime_specific_accuracies'] = regime_specific_accuracies
+            self._last_calculation_metadata["regime_specific_accuracies"] = regime_specific_accuracies
             
             if regime_specific_accuracies:
                 # Weight regime-specific accuracy higher when available
@@ -90,7 +90,7 @@ class HistoricalAccuracyFactor(ConfidenceFactor):
             if self.config.get('apply_recency_weighting', True):
                 recency_modifier = self._calculate_recency_modifier()
                 final_score = final_score * recency_modifier
-                self._last_calculation_metadata['recency_modifier'] = recency_modifier
+                self._last_calculation_metadata["recency_modifier"] = recency_modifier
             
             return min(1.0, max(0.0, final_score))
     

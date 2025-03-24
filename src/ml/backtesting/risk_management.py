@@ -256,7 +256,7 @@ class TrailingStopManager(RiskManager):
                 stop_level = entry_price * (1 - self.initial_stop_pct)
             else:  # short
                 stop_level = entry_price * (1 + self.initial_stop_pct)
-            updated_data['stop_level'] = stop_level
+            updated_data["stop_level"] = stop_level
         
         # Update highest/lowest seen price
         if position_type == 'long':
@@ -265,16 +265,16 @@ class TrailingStopManager(RiskManager):
                 # Update trailing stop
                 new_stop = highest_price * (1 - self.trailing_pct)
                 if new_stop > stop_level:
-                    updated_data['stop_level'] = new_stop
-            updated_data['highest_price'] = highest_price
+                    updated_data["stop_level"] = new_stop
+            updated_data["highest_price"] = highest_price
         else:  # short
             if current_price < lowest_price:
                 lowest_price = current_price
                 # Update trailing stop
                 new_stop = lowest_price * (1 + self.trailing_pct)
                 if new_stop < stop_level:
-                    updated_data['stop_level'] = new_stop
-            updated_data['lowest_price'] = lowest_price
+                    updated_data["stop_level"] = new_stop
+            updated_data["lowest_price"] = lowest_price
         
         return updated_data
 
@@ -429,7 +429,7 @@ class VolatilityBasedRiskManager(RiskManager):
             else:  # short
                 stop_loss = entry_price + (atr * self.atr_multiplier)
             
-            position_data['stop_loss'] = stop_loss
+            position_data["stop_loss"] = stop_loss
         
         # Update take profit if not already set and take_profit_atr_multiplier is specified
         if 'take_profit' not in position_data and self.take_profit_atr_multiplier is not None:
@@ -438,7 +438,7 @@ class VolatilityBasedRiskManager(RiskManager):
             else:  # short
                 take_profit = entry_price - (atr * self.take_profit_atr_multiplier)
             
-            position_data['take_profit'] = take_profit
+            position_data["take_profit"] = take_profit
         
         return position_data
 

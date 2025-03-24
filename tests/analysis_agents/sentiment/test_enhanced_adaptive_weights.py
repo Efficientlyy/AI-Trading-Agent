@@ -39,10 +39,10 @@ class TestEnhancedAdaptiveWeights:
         weights = adaptive_weights.get_weights()
         
         # Verify default weights
-        assert weights["social_media"] == 0.25
-        assert weights["news"] == 0.25
-        assert weights["market_sentiment"] == 0.3
-        assert weights["onchain"] == 0.2
+        assert weights["social_media"] = = 0.25
+        assert weights["news"] = = 0.25
+        assert weights["market_sentiment"] = = 0.3
+        assert weights["onchain"] = = 0.2
         
         # Verify weights sum to 1
         assert sum(weights.values()) == 1.0

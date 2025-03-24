@@ -301,7 +301,7 @@ class SignalGenerator:
         signal_assets = {}
         
         for asset, impact in aggregate_impact.items():
-            if impact["score_count"] == 0:
+            if impact["score_count"] = = 0:
                 continue
             
             avg_score = impact["score_sum"] / impact["score_count"]

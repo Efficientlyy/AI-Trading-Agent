@@ -163,7 +163,7 @@ class NewsCollector:
             
         except Exception as e:
             self.logger.error(f"Error collecting news data: {e}")
-            return await self._mock_collect()
+            return self._mock_collect()
     
     async def _collect_from_newsapi(self) -> List[Dict[str, Any]]:
         """Collect news from NewsAPI.
