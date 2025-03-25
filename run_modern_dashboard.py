@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 """
-AI Trading Agent - Modern Dashboard Launcher
-
-This script launches the redesigned modern dashboard.
+Fixed modern dashboard launcher with template error fixes
 """
 
 import os
@@ -57,11 +55,36 @@ def main():
     if not os.path.exists(static_dir):
         logger.warning(f"Static directory does not exist: {static_dir}")
     
+    # Fix recursive tooltip include before starting the dashboard
+    tooltip_path = os.path.join(templates_dir, "tooltip.html")
+    if os.path.exists(tooltip_path):
+        with open(tooltip_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # Check if this might cause recursion
+        if "{% include 'tooltip.html' %}" in content:
+            logger.warning("Found potential recursive include in tooltip.html, fixing it")
+            content = content.replace(
+                "{% include 'tooltip.html' %}", 
+                "<!-- WARNING: Do not include this template recursively -->"
+            )
+            with open(tooltip_path, "w", encoding="utf-8") as f:
+                f.write(content)
+    
     try:
+        # Set environment variables for the Flask app to use
+        os.environ["FLASK_TEMPLATE_FOLDER"] = templates_dir
+        os.environ["FLASK_STATIC_FOLDER"] = static_dir
+        
         # Create and run the dashboard
         dashboard = ModernDashboard()
         print(f"\n🚀 AI Trading Agent Modern Dashboard is running at: http://{args.host}:{args.port}\n")
-        print(f"Press Ctrl+C to stop the server\n")
+        print(f"Login Credentials:")
+        print(f"  - Username: admin, Password: admin123")
+        print(f"  - Username: operator, Password: operator123")
+        print(f"  - Username: viewer, Password: viewer123")
+        print(f"\nPress Ctrl+C to stop the server\n")
+        
         dashboard.run(host=args.host, port=args.port, debug=args.debug)
     except KeyboardInterrupt:
         print("\n🛑 Dashboard server stopped")

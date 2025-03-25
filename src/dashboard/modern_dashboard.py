@@ -52,79 +52,74 @@ logger = logging.getLogger("ai_trading_dashboard")
 
 # Import local modules - adjust paths as needed
 try:
-    from src.common.config import Config
-    from src.common.utils import format_currency, format_percentage
-    from src.common.datetime_utils import get_current_timestamp, format_timestamp
-    from src.common.log_query import LogQuery
-    from src.analytics.performance_tracker import PerformanceTracker
-    from src.common.monitoring import SystemMonitor
-    REAL_DATA_AVAILABLE = True
+    # Use mock implementations instead of trying to import modules that may not exist
+    REAL_DATA_AVAILABLE = False
 except ImportError:
     logger.warning("Could not import local modules. Running in standalone mode.")
     REAL_DATA_AVAILABLE = False
-    
-    # Login required decorator for routes
-    def login_required(f):
+
+# Login required decorator for routes
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Role required decorator for routes
+def role_required(required_roles):
+    def decorator(f):
         @wraps(f)
+        @login_required
         def decorated_function(*args, **kwargs):
-            if 'user_id' not in session:
-                return redirect(url_for('login', next=request.url))
+            if 'user_role' not in session or session['user_role'] not in required_roles:
+                flash('You do not have permission to access this page', 'error')
+                return redirect(url_for('dashboard'))
             return f(*args, **kwargs)
         return decorated_function
+    return decorator
 
-    # Role required decorator for routes
-    def role_required(required_roles):
-        def decorator(f):
-            @wraps(f)
-            @login_required
-            def decorated_function(*args, **kwargs):
-                if 'user_role' not in session or session['user_role'] not in required_roles:
-                    flash('You do not have permission to access this page', 'error')
-                    return redirect(url_for('dashboard'))
-                return f(*args, **kwargs)
-            return decorated_function
-        return decorator
-    
-    # Mock implementations for standalone mode
-    class Config:
-        @staticmethod
-        def get(key, default=None):
-            return default
+# Mock implementations for standalone mode
+class Config:
+    @staticmethod
+    def get(key, default=None):
+        return default
         
-    def format_currency(value, currency="$"):
-        return f"{currency}{value:,.2f}"
+def format_currency(value, currency="$"):
+    return f"{currency}{value:,.2f}"
         
-    def format_percentage(value, include_sign=True):
-        sign = "+" if value > 0 and include_sign else ""
-        return f"{sign}{value:.2f}%"
+def format_percentage(value, include_sign=True):
+    sign = "+" if value > 0 and include_sign else ""
+    return f"{sign}{value:.2f}%"
         
-    def get_current_timestamp():
-        return datetime.now()
+def get_current_timestamp():
+    return datetime.now()
         
-    def format_timestamp(dt):
-        return dt.strftime("%Y-%m-%d %H:%M:%S")
+def format_timestamp(dt):
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
         
-    class LogQuery:
-        """Mock Log Query class"""
-        @staticmethod
-        def get_logs(limit=100, level=None, component=None, search=None):
-            return []
+class LogQuery:
+    """Mock Log Query class"""
+    @staticmethod
+    def get_logs(limit=100, level=None, component=None, search=None):
+        return []
             
-    class PerformanceTracker:
-        """Mock Performance Tracker class"""
-        @staticmethod
-        def get_performance_summary(period="daily"):
-            return {}
+class PerformanceTracker:
+    """Mock Performance Tracker class"""
+    @staticmethod
+    def get_performance_summary(period="daily"):
+        return {}
             
-        @staticmethod
-        def get_performance_metrics():
-            return {}
+    @staticmethod
+    def get_performance_metrics():
+        return {}
             
-    class SystemMonitor:
-        """Mock System Monitor class"""
-        @staticmethod
-        def get_system_health():
-            return {}
+class SystemMonitor:
+    """Mock System Monitor class"""
+    @staticmethod
+    def get_system_health():
+        return {}
 
 # System state enum
 class SystemState:
@@ -1767,14 +1762,25 @@ class MockDataGenerator:
 
 # Dashboard application class
 class ModernDashboard:
-    def __init__(self):
+    def __init__(self, template_folder=None, static_folder=None):
         """Initialize the modern dashboard application"""
+        # Use provided template and static folders, environment variables, or default paths
+        template_folder = template_folder or os.environ.get("FLASK_TEMPLATE_FOLDER", os.path.abspath("templates"))
+        static_folder = static_folder or os.environ.get("FLASK_STATIC_FOLDER", os.path.abspath("static"))
+        
         self.app = Flask(
             __name__, 
-            template_folder=os.path.abspath("templates"),
-            static_folder=os.path.abspath("static")
+            template_folder=template_folder,
+            static_folder=static_folder
         )
         self.app.secret_key = os.environ.get("FLASK_SECRET_KEY", "ai-trading-dashboard-secret")
+        
+        # Mock user database - in production, use a real database
+        self.users = {
+            'admin': {'password': 'admin123', 'role': 'admin'},
+            'operator': {'password': 'operator123', 'role': 'operator'},
+            'viewer': {'password': 'viewer123', 'role': 'viewer'}
+        }
         
         # Initialize SocketIO
         self.socketio = SocketIO(self.app, cors_allowed_origins="*", async_mode='threading')
