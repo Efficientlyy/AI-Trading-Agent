@@ -6,22 +6,22 @@ This guide explains the testing setup for the AI Trading Agent's modern dashboar
 
 The testing architecture is designed to verify the functionality of all key dashboard components through different types of tests:
 
-1. **Unit Tests**: Test individual components and functions in isolation
-2. **Integration Tests**: Test interactions between components
-3. **Frontend Tests**: Test JavaScript functionality and UI components
-4. **API Tests**: Test backend API endpoints
-5. **Authentication Tests**: Test user authentication and authorization
-6. **WebSocket Tests**: Test real-time data transmission
+1. **DataService and Theme System Tests**: Tests for data retrieval, caching, and theme management
+2. **WebSocket Tests**: Tests for real-time data updates
+3. **Flask Routes and Authentication Tests**: Tests for API endpoints and user authorization
+4. **UI Component Tests**: Tests for UI elements like notifications, guided tour, and tooltips
+5. **Performance Optimization Tests**: Tests for lazy loading, chunked rendering, and other performance features
+6. **Data Export Tests**: Tests for exporting data in various formats
 
 ## Test Files
 
 The following test files have been implemented:
 
-- `test_modern_dashboard.py`: Tests for core dashboard components and the DataService class
+- `test_modern_dashboard.py`: Tests for the DataService class and theme system
 - `test_websocket.py`: Tests for WebSocket functionality and data emissions
 - `test_flask_routes.py`: Tests for Flask routes and authentication
-- `test_frontend_utils.py`: Tests for frontend JavaScript utilities
-- `test_notifications_export.py`: Tests for notifications system and data export functionality
+- `test_frontend_utils.py`: Tests for UI components and performance optimizations
+- `test_notifications_export.py`: Tests for notification system and data export functionality
 
 ## Running Tests
 
@@ -31,17 +31,25 @@ To run the dashboard tests, use the `run_dashboard_tests.py` script:
 # Run all tests
 python run_dashboard_tests.py
 
-# Run only unit tests
-python run_dashboard_tests.py --unit
+# Run tests for specific components
+python run_dashboard_tests.py --data-service
+python run_dashboard_tests.py --websocket
+python run_dashboard_tests.py --flask-routes
+python run_dashboard_tests.py --ui-components
+python run_dashboard_tests.py --performance
+python run_dashboard_tests.py --export
+
+# Run tests from a specific file
+python run_dashboard_tests.py --file=test_modern_dashboard.py
 
 # Generate code coverage report
 python run_dashboard_tests.py --coverage
 
-# Run specific test types
-python run_dashboard_tests.py --websocket --api
-
 # Run tests with verbose output
 python run_dashboard_tests.py --verbose
+
+# Combine options
+python run_dashboard_tests.py --data-service --websocket --coverage
 ```
 
 ## Code Coverage
@@ -61,39 +69,53 @@ python run_dashboard_tests.py --coverage
 
 Each component type has a specific testing approach:
 
-### DataService
+### DataService and Theme System
 
-- Test caching mechanisms
-- Test data source switching
-- Test fallback to mock data
+- Test caching mechanisms with different expiry times
+- Test data source switching between mock and real data
+- Test fallback to mock data when real data sources fail
 - Test data refresh and expiration
+- Test theme persistence and switching between light/dark modes
 
-### Authentication
+### WebSocket Communication
 
-- Test user registration
-- Test login validation
+- Test event emission for different data types
+- Test connection handling and initialization
+- Test reconnection logic during network issues
+- Test data update broadcasting to clients
+- Test client-initiated data requests
+
+### Flask Routes and Authentication
+
+- Test route protection with login requirements
 - Test role-based access control
+- Test login validation and error handling
 - Test password hashing and verification
+- Test user registration and management
+- Test API endpoints for data retrieval
 
-### WebSocket
+### UI Components
 
-- Test event emission
-- Test connection handling
-- Test reconnection logic
-- Test data updates
+- Test notification creation and management
+- Test settings persistence in localStorage
+- Test guided tour functionality
+- Test tooltip initialization and display
+- Test interactive controls and state management
 
-### Frontend Utils
+### Performance Optimizations
 
-- Test theme toggling
-- Test lazy loading
-- Test settings persistence
-- Test pagination and chunked rendering
+- Test lazy loading of tab content
+- Test chunked rendering for large tables
+- Test pagination for large datasets
+- Test debouncing and throttling for user interactions
+- Test caching mechanisms for API responses
 
-### Notifications and Export
+### Data Export Functionality
 
-- Test notification management
-- Test export to different formats (CSV, JSON, Excel)
-- Test scheduled exports
+- Test export to different formats (CSV, JSON, Excel, PDF)
+- Test scheduled export functionality
+- Test export configuration and persistence
+- Test export file generation and downloading
 
 ## Mock Objects
 
@@ -103,15 +125,19 @@ The tests use various mock objects to isolate components and simulate behavior:
 - `MockDocument` and `MockElement`: For testing DOM manipulation
 - `MockLocalStorage`: For testing browser storage
 - `MockSocketIO`: For testing WebSocket communication
+- `MockEvent`: For simulating DOM events
+- `MockTour`: For testing guided tour functionality
 
 ## Extending Tests
 
 When adding new features to the dashboard, follow these steps to maintain test coverage:
 
-1. Create unit tests for new components
-2. Update integration tests if the component interacts with others
-3. Add function-specific tests to the appropriate test file
-4. Run the full test suite to ensure no regressions
+1. Identify the appropriate test file for your new feature
+2. Create focused test methods for each aspect of the feature
+3. Use the appropriate mock objects to simulate dependencies
+4. Ensure tests verify both success cases and error handling
+5. Run the tests with coverage to identify any gaps
+6. Update the test runner if needed for new test categories
 
 ## Continuous Integration
 
@@ -130,3 +156,5 @@ If tests fail, check these common issues:
 2. **Mock conflicts**: Ensure mocks don't interfere with each other
 3. **Test isolation**: Each test should clean up after itself
 4. **Async timing**: For WebSocket tests, ensure proper handling of async operations
+5. **DOM manipulation**: Verify DOM mock objects accurately simulate browser behavior
+6. **Local storage**: Check localStorage mock implementation for state persistence issues
