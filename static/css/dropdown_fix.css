@@ -1,0 +1,103 @@
+/* 
+ * Direct CSS fixes for the dropdown menu 
+ * This file is loaded directly in the head to fix any caching issues
+ */
+
+/* User Profile Styles */
+.user-profile {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    z-index: 1000;
+}
+
+/* Dropdown Menu Styles */
+.user-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 200px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    margin-top: 8px;
+    overflow: hidden;
+    display: none;
+}
+
+/* Dropdown Items */
+.user-dropdown-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.user-dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 15px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    color: #333;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    text-decoration: none;
+    font-size: 14px;
+}
+
+.user-dropdown-item:hover {
+    background-color: #f5f5f5;
+}
+
+.user-dropdown-item i, 
+.user-dropdown-item svg {
+    width: 16px;
+    height: 16px;
+    color: #666;
+}
+
+/* Direct override for API Keys Panel */
+.api-keys-panel {
+    position: fixed;
+    top: 0;
+    right: -500px;
+    width: 450px;
+    height: 100vh;
+    background-color: white;
+    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+    z-index: 1000;
+    transition: right 0.3s ease;
+    overflow-y: auto;
+}
+
+.api-keys-panel.active {
+    right: 0;
+}
+
+.panel-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    display: none;
+}
+
+.panel-overlay.active {
+    display: block;
+}
+
+/* Force this version to be used with !important */
+.user-profile:hover .user-dropdown {
+    display: block !important;
+}

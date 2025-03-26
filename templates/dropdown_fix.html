@@ -1,0 +1,232 @@
+<!-- Dropdown menu fix -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dropdown_fix.css') }}">
+<!-- API Keys Panel Styling with cache busting -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/api_keys_panel_20250326122016.css') }}?v=1">
+
+<!-- Manual CSS injection as a fallback -->
+<script>
+    // Create a style element to inject custom CSS in case the stylesheet doesn't load
+    document.addEventListener('DOMContentLoaded', function() {
+        // API keys panel styles
+        const apiKeysPanelStyles = `
+            /* Main Panel Container */
+            .api-keys-panel {
+                position: fixed;
+                top: 0;
+                right: -500px;
+                width: 450px;
+                height: 100vh;
+                background-color: #ffffff;
+                box-shadow: -5px 0 15px rgba(0, 0, 0, 0.15);
+                z-index: 1000;
+                transition: right 0.3s ease;
+                overflow-y: auto;
+                font-family: 'Inter', sans-serif;
+            }
+            
+            .api-keys-panel.active {
+                right: 0;
+            }
+            
+            /* Panel Overlay */
+            .panel-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background-color: rgba(0, 0, 0, 0.5);
+                z-index: 999;
+                display: none;
+            }
+            
+            .panel-overlay.active {
+                display: block;
+            }
+            
+            /* Panel Header */
+            .panel-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 18px 24px;
+                border-bottom: 1px solid #e5e7eb;
+                background-color: #f8f9fa;
+            }
+            
+            .panel-header h2 {
+                margin: 0;
+                font-size: 20px;
+                font-weight: 600;
+                color: #1e293b;
+            }
+            
+            .close-panel {
+                background: none;
+                border: none;
+                color: #64748b;
+                cursor: pointer;
+                padding: 4px;
+            }
+            
+            /* Panel Content */
+            .panel-content {
+                padding: 24px;
+            }
+            
+            /* API Keys Section */
+            .api-keys-section {
+                margin-bottom: 32px;
+            }
+            
+            .section-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 16px;
+            }
+            
+            .section-header h3 {
+                margin: 0;
+                font-size: 16px;
+                font-weight: 600;
+                color: #334155;
+            }
+            
+            /* Form */
+            .api-key-form {
+                background-color: #f8fafc;
+                padding: 20px;
+                border-radius: 8px;
+                border: 1px solid #e2e8f0;
+            }
+            
+            .form-group {
+                margin-bottom: 16px;
+            }
+            
+            .form-group label {
+                display: block;
+                margin-bottom: 6px;
+                color: #334155;
+                font-weight: 500;
+                font-size: 14px;
+            }
+            
+            .form-group input,
+            .form-group select {
+                width: 100%;
+                padding: 10px 12px;
+                border: 1px solid #cbd5e1;
+                border-radius: 6px;
+                background-color: #ffffff;
+                color: #0f172a;
+                font-size: 14px;
+            }
+            
+            .form-actions {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 20px;
+            }
+            
+            .validate-btn, .submit-btn {
+                background-color: #3b82f6;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 10px 16px;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+            }
+        `;
+        
+        // Create and inject the style element
+        const styleElement = document.createElement('style');
+        styleElement.textContent = apiKeysPanelStyles;
+        document.head.appendChild(styleElement);
+        
+        console.log('Injected API Keys Panel styles as fallback');
+    });
+</script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Direct fix for user dropdown menu
+        const userProfile = document.querySelector('.user-profile');
+        const userDropdown = document.querySelector('.user-dropdown');
+        
+        if (userProfile && userDropdown) {
+            // Force the dropdown to be visible on hover
+            userProfile.addEventListener('mouseenter', function() {
+                userDropdown.style.display = 'block';
+            });
+            
+            userProfile.addEventListener('mouseleave', function() {
+                setTimeout(() => {
+                    if (!userDropdown.matches(':hover')) {
+                        userDropdown.style.display = 'none';
+                    }
+                }, 200);
+            });
+            
+            userDropdown.addEventListener('mouseleave', function() {
+                userDropdown.style.display = 'none';
+            });
+            
+            // Also handle clicks for touch devices
+            userProfile.addEventListener('click', function(event) {
+                if (userDropdown.style.display === 'none' || !userDropdown.style.display) {
+                    event.preventDefault();
+                    userDropdown.style.display = 'block';
+                }
+            });
+            
+            // Close when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!userProfile.contains(event.target) && !userDropdown.contains(event.target)) {
+                    userDropdown.style.display = 'none';
+                }
+            });
+            
+            console.log("Dropdown menu fix applied!");
+        } else {
+            console.warn("User profile or dropdown elements not found");
+        }
+        
+        // Fix API Keys button
+        const apiKeysBtn = document.getElementById('apiKeysBtn');
+        const apiKeysPanel = document.getElementById('apiKeysPanel');
+        const apiKeysOverlay = document.getElementById('apiKeysOverlay');
+        const closeApiKeys = document.getElementById('closeApiKeys');
+        
+        if (apiKeysBtn && apiKeysPanel) {
+            apiKeysBtn.addEventListener('click', function(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                apiKeysPanel.classList.add('active');
+                if (apiKeysOverlay) {
+                    apiKeysOverlay.classList.add('active');
+                }
+            });
+            
+            if (closeApiKeys) {
+                closeApiKeys.addEventListener('click', function() {
+                    apiKeysPanel.classList.remove('active');
+                    if (apiKeysOverlay) {
+                        apiKeysOverlay.classList.remove('active');
+                    }
+                });
+            }
+            
+            if (apiKeysOverlay) {
+                apiKeysOverlay.addEventListener('click', function() {
+                    apiKeysPanel.classList.remove('active');
+                    apiKeysOverlay.classList.remove('active');
+                });
+            }
+            
+            console.log("API Keys panel fix applied!");
+        }
+    });
+</script>
