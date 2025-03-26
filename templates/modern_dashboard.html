@@ -21,6 +21,8 @@
     {% include 'tooltip.html' %}
     <!-- Include Socket.IO for real-time updates -->
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
+    <!-- Include dashboard optimizer for performance optimizations -->
+    <script src="{{ url_for('static', filename='js/dashboard_optimizer.js') }}"></script>
 </head>
 <body class="dashboard-body">
     <!-- Main container -->
@@ -627,6 +629,12 @@
                         </div>
                     </div>
                     
+                    <!-- Risk-Adjusted Performance Metrics Card -->
+                    {% include 'risk_performance_metrics_panel.html' %}
+                    
+                    <!-- Portfolio Stress Testing Card -->
+                    {% include 'portfolio_stress_testing_panel.html' %}
+                    
                     <!-- Recent Trades Card -->
                     <div class="card recent-trades-performance">
                         <div class="card-header">
@@ -960,6 +968,16 @@
                         </div>
                     </div>
                     
+                    <!-- Sentiment Spike Analysis Card -->
+                    <div class="card sentiment-spike-card">
+                        <div class="card-header">
+                            <h2>Sentiment Spike Analysis</h2>
+                        </div>
+                        <div class="card-body">
+                            {% include 'sentiment_spike_panel.html' %}
+                        </div>
+                    </div>
+                    
                     <!-- Sentiment Correlation Card -->
                     <div class="card sentiment-correlation">
                         <div class="card-header">
@@ -1084,6 +1102,66 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Multi-Timeframe Analysis Card -->
+                    <div class="card multi-timeframe-card">
+                        <div class="card-header">
+                            <h2>Multi-Timeframe Market Analysis</h2>
+                        </div>
+                        <div class="card-body">
+                            {% include 'multi_timeframe_panel.html' %}
+                        </div>
+                    </div>
+                    
+                    <!-- Market Regime Analysis Dashboard -->
+                    <div class="card market-regime-analysis-card">
+                        <div class="card-header">
+                            <h2>Advanced Market Regime Analysis</h2>
+                        </div>
+                        <div class="card-body">
+                            {% include 'market_regime_panel.html' %}
+                        </div>
+                    </div>
+                    
+                    <!-- Cross-Asset Correlation Networks -->
+                    <div class="card cross-asset-correlation-card">
+                        <div class="card-header">
+                            <h2>Cross-Asset Correlation Networks</h2>
+                        </div>
+                        <div class="card-body">
+                            {% include 'cross_asset_correlation_panel.html' %}
+                        </div>
+                    </div>
+                    
+                    <!-- Market Breadth Analysis -->
+                    <div class="card market-breadth-card">
+                        <div class="card-header">
+                            <h2>Market Breadth Analysis</h2>
+                        </div>
+                        <div class="card-body">
+                            {% include 'market_breadth_panel.html' %}
+                        </div>
+                    </div>
+                    
+                    <!-- Anomaly Detection Card -->
+                    <div class="card anomaly-detection-card">
+                        <div class="card-header">
+                            <h2>Market Anomaly Detection</h2>
+                        </div>
+                        <div class="card-body">
+                            {% include 'anomaly_detection_panel.html' %}
+                        </div>
+                    </div>
+                    
+                    <!-- Algorithm Explainability Analysis -->
+                    <div class="card algorithm-explainability-card">
+                        <div class="card-header">
+                            <h2>Algorithm Decision Explainability</h2>
+                        </div>
+                        <div class="card-body">
+                            {% include 'algorithm_explainability_panel.html' %}
+                        </div>
+                    </div>
                 </div>
                 
                 {% elif active_tab == 'risk' %}
@@ -1171,6 +1249,9 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <!-- Drawdown Analysis Card -->
+                    {% include 'drawdown_analysis_panel.html' %}
                     
                     <!-- Asset Risk Card -->
                     <div class="card asset-risk">
@@ -1563,6 +1644,16 @@
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Order Flow Card -->
+                    <div class="card advanced-order-flow">
+                        <div class="card-header">
+                            <h2>Advanced Order Flow</h2>
+                        </div>
+                        <div class="card-body">
+                            {% include 'advanced_order_flow_panel.html' %}
                         </div>
                     </div>
                 </div>
@@ -6262,3 +6353,59 @@
         <i data-feather="x"></i>
     </button>
 </div>
+<!-- Multi-timeframe Analysis JS -->
+<script src="{{ url_for('static', filename='js/multi_timeframe_analysis.js') }}"></script>
+<!-- Strategy Comparison JS -->
+<script src="{{ url_for('static', filename='js/strategy_comparison.js') }}"></script>
+<!-- Risk Performance Metrics JS -->
+<script src="{{ url_for('static', filename='js/risk_performance_metrics.js') }}"></script>
+<!-- Portfolio Stress Testing JS -->
+<script src="{{ url_for('static', filename='js/portfolio_stress_testing.js') }}"></script>
+<!-- Market Regime Analysis JS -->
+<script src="{{ url_for('static', filename='js/market_regime_analysis.js') }}"></script>
+<!-- Cross-Asset Correlation JS -->
+<script src="{{ url_for('static', filename='js/cross_asset_correlation.js') }}"></script>
+<!-- Market Breadth Indicators JS -->
+<script src="{{ url_for('static', filename='js/market_breadth_indicators.js') }}"></script>
+<!-- Algorithm Explainability JS -->
+<script src="{{ url_for('static', filename='js/algorithm_explainability.js') }}"></script>
+<!-- Trade Quality Analysis JS -->
+<script src="{{ url_for('static', filename='js/trade_quality_analysis.js') }}"></script>
+<!-- Execution Quality Analytics JS -->
+<script src="{{ url_for('static', filename='js/execution_quality_analysis.js') }}"></script>
+<!-- Advanced Order Flow JS -->
+<script src="{{ url_for('static', filename='js/advanced_order_flow.js') }}"></script>
+
+<!-- Add Trade Quality and Execution Quality Panels to the Performance section -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Find the performance container
+    const perfContainer = document.querySelector('.performance-content-container');
+    if (perfContainer) {
+        // Create a new section for Trade Quality Analysis
+        const tradeQualitySection = document.createElement('div');
+        tradeQualitySection.className = 'performance-section';
+        tradeQualitySection.innerHTML = `
+            <h2 class="section-title">Trade Quality Analysis</h2>
+            <div class="performance-card-container">
+                {% include 'trade_quality_panel.html' %}
+            </div>
+        `;
+        
+        // Create a new section for Execution Quality Analytics
+        const executionQualitySection = document.createElement('div');
+        executionQualitySection.className = 'performance-section';
+        executionQualitySection.innerHTML = `
+            <h2 class="section-title">Execution Quality Analytics</h2>
+            <div class="performance-card-container">
+                {% include 'execution_quality_panel.html' %}
+            </div>
+        `;
+        
+        // Append both sections to the performance container
+        perfContainer.appendChild(tradeQualitySection);
+        perfContainer.appendChild(executionQualitySection);
+    }
+});
+</script>
+<!-- Duplicate script removed to prevent the trade quality panel from appearing twice -->
