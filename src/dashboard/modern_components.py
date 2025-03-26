@@ -396,6 +396,20 @@ def create_modern_app():
             # Implement exchange-specific validation
             validation_result = None
             
+            # Apply rate limiting
+            try:
+                from src.common.security.rate_limiter import get_rate_limiter
+                rate_limiter = get_rate_limiter()
+                
+                # Check if we can make the request (respecting rate limits)
+                if not rate_limiter.acquire(exchange, block=True):
+                    return jsonify({
+                        "success": False, 
+                        "message": f"Rate limit exceeded for {exchange}. Please try again later."
+                    })
+            except ImportError:
+                logger.warning("Rate limiter not available, proceeding without rate limiting")
+            
             # Dispatch to exchange-specific validation methods
             if exchange == "binance":
                 validation_result = _validate_binance(key, secret)
@@ -603,70 +617,261 @@ def create_modern_app():
                 return {"success": False, "message": f"Error validating Kraken API key: {str(e)}"}
 
         def _validate_ftx(key, secret):
-            """Validate FTX API key."""
-            logger.info("Validating FTX API key")
+            """Validate FTX API key by making a real API call."""
+            logger.info("Validating FTX API key with real API call")
             try:
-                # Here you would make a real API call to FTX
-                if key and len(key) >= 16 and secret and len(secret) >= 16:
-                    return {"success": True, "message": "FTX API key is valid"}
+                import time
+                import hmac
+                import requests
+                
+                # Constants for FTX API
+                BASE_URL = "https://ftx.com"
+                API_ENDPOINT = "/api/wallet/balances"
+                
+                # Create timestamp
+                ts = int(time.time() * 1000)
+                
+                # Create signature string
+                signature_payload = f'{ts}GET{API_ENDPOINT}'.encode()
+                signature = hmac.new(secret.encode(), signature_payload, 'sha256').hexdigest()
+                
+                # Set up headers
+                headers = {
+                    'FTX-KEY': key,
+                    'FTX-SIGN': signature,
+                    'FTX-TS': str(ts),
+                    'User-Agent': 'AI Trading Agent API Key Validation'
+                }
+                
+                # Make the request
+                response = requests.get(BASE_URL + API_ENDPOINT, headers=headers)
+                
+                # Check response
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get('success') == True:
+                        return {"success": True, "message": "FTX API key is valid"}
+                    else:
+                        error_msg = result.get('error', 'Unknown error')
+                        return {"success": False, "message": f"FTX API error: {error_msg}"}
+                elif response.status_code == 401:
+                    return {"success": False, "message": "Invalid FTX API credentials"}
                 else:
-                    return {"success": False, "message": "Invalid FTX API key format"}
+                    error_msg = f"FTX API error: {response.status_code} - {response.text}"
+                    logger.error(error_msg)
+                    return {"success": False, "message": error_msg}
             except Exception as e:
                 logger.error(f"Error validating FTX API key: {e}", exc_info=True)
                 return {"success": False, "message": f"Error validating FTX API key: {str(e)}"}
 
         def _validate_kucoin(key, secret, passphrase):
-            """Validate KuCoin API key."""
-            logger.info("Validating KuCoin API key")
+            """Validate KuCoin API key by making a real API call."""
+            logger.info("Validating KuCoin API key with real API call")
             try:
-                # Here you would make a real API call to KuCoin
+                import time
+                import base64
+                import hmac
+                import hashlib
+                import requests
+                
                 # Check if passphrase is provided (required for KuCoin)
                 if not passphrase:
                     return {"success": False, "message": "Passphrase is required for KuCoin"}
                 
-                if key and len(key) >= 16 and secret and len(secret) >= 16:
-                    return {"success": True, "message": "KuCoin API key is valid"}
+                # Constants for KuCoin API
+                BASE_URL = "https://api.kucoin.com"
+                API_ENDPOINT = "/api/v1/accounts"
+                
+                # Create timestamp
+                timestamp = int(time.time() * 1000)
+                
+                # Create signature string
+                str_to_sign = f"{timestamp}GET{API_ENDPOINT}"
+                signature = base64.b64encode(
+                    hmac.new(
+                        secret.encode('utf-8'), 
+                        str_to_sign.encode('utf-8'), 
+                        hashlib.sha256
+                    ).digest()
+                ).decode('utf-8')
+                
+                # Create passphrase signature
+                passphrase_bytes = base64.b64encode(
+                    hmac.new(
+                        secret.encode('utf-8'), 
+                        passphrase.encode('utf-8'), 
+                        hashlib.sha256
+                    ).digest()
+                ).decode('utf-8')
+                
+                # Set up headers
+                headers = {
+                    'KC-API-KEY': key,
+                    'KC-API-SIGN': signature,
+                    'KC-API-TIMESTAMP': str(timestamp),
+                    'KC-API-PASSPHRASE': passphrase_bytes,
+                    'KC-API-KEY-VERSION': '2',  # Version 2 signature
+                    'User-Agent': 'AI Trading Agent API Key Validation'
+                }
+                
+                # Make the request
+                response = requests.get(BASE_URL + API_ENDPOINT, headers=headers)
+                
+                # Check response
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get('code') == '200000':
+                        return {"success": True, "message": "KuCoin API key is valid"}
+                    else:
+                        error_msg = result.get('msg', 'Unknown error')
+                        return {"success": False, "message": f"KuCoin API error: {error_msg}"}
+                elif response.status_code == 401:
+                    return {"success": False, "message": "Invalid KuCoin API credentials"}
                 else:
-                    return {"success": False, "message": "Invalid KuCoin API key format"}
+                    error_msg = f"KuCoin API error: {response.status_code} - {response.text}"
+                    logger.error(error_msg)
+                    return {"success": False, "message": error_msg}
             except Exception as e:
                 logger.error(f"Error validating KuCoin API key: {e}", exc_info=True)
                 return {"success": False, "message": f"Error validating KuCoin API key: {str(e)}"}
 
         def _validate_twitter(key, secret):
-            """Validate Twitter API key."""
-            logger.info("Validating Twitter API key")
+            """Validate Twitter API key by making a real API call."""
+            logger.info("Validating Twitter API key with real API call")
             try:
-                # Here you would make a real API call to Twitter
-                if key and len(key) >= 16 and secret and len(secret) >= 16:
-                    return {"success": True, "message": "Twitter API key is valid"}
+                import base64
+                import requests
+                
+                # Constants for Twitter API
+                BASE_URL = "https://api.twitter.com"
+                API_VERSION = "/2"
+                TOKEN_ENDPOINT = "/oauth2/token"
+                
+                # Create the Authorization header using basic auth
+                # Format: 'Basic base64(consumer_key:consumer_secret)'
+                credentials = f"{key}:{secret}"
+                encoded_credentials = base64.b64encode(credentials.encode()).decode()
+                auth_header = f"Basic {encoded_credentials}"
+                
+                # Set up headers and data for request
+                headers = {
+                    'Authorization': auth_header,
+                    'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    'User-Agent': 'AI Trading Agent API Key Validation'
+                }
+                
+                # Request body for obtaining a bearer token
+                data = {
+                    'grant_type': 'client_credentials'
+                }
+                
+                # Make the request
+                response = requests.post(
+                    BASE_URL + TOKEN_ENDPOINT,
+                    headers=headers,
+                    data=data
+                )
+                
+                # Check response
+                if response.status_code == 200:
+                    result = response.json()
+                    if 'access_token' in result:
+                        return {"success": True, "message": "Twitter API key is valid"}
+                    else:
+                        return {"success": False, "message": "Invalid Twitter API response"}
+                elif response.status_code == 401:
+                    return {"success": False, "message": "Invalid Twitter API credentials"}
                 else:
-                    return {"success": False, "message": "Invalid Twitter API key format"}
+                    error_msg = f"Twitter API error: {response.status_code} - {response.text}"
+                    logger.error(error_msg)
+                    return {"success": False, "message": error_msg}
             except Exception as e:
                 logger.error(f"Error validating Twitter API key: {e}", exc_info=True)
                 return {"success": False, "message": f"Error validating Twitter API key: {str(e)}"}
 
         def _validate_newsapi(key):
-            """Validate News API key."""
-            logger.info("Validating News API key")
+            """Validate News API key by making a real API call."""
+            logger.info("Validating News API key with real API call")
             try:
-                # Here you would make a real API call to News API
-                if key and len(key) >= 16:
-                    return {"success": True, "message": "News API key is valid"}
+                import requests
+                
+                # Constants for News API
+                BASE_URL = "https://newsapi.org/v2/top-headlines"
+                
+                # Set up parameters for a simple request
+                params = {
+                    'country': 'us',
+                    'category': 'business',
+                    'apiKey': key
+                }
+                
+                # Set up headers
+                headers = {
+                    'User-Agent': 'AI Trading Agent API Key Validation'
+                }
+                
+                # Make the request
+                response = requests.get(BASE_URL, params=params, headers=headers)
+                
+                # Check response
+                if response.status_code == 200:
+                    result = response.json()
+                    if result.get('status') == 'ok':
+                        return {"success": True, "message": "News API key is valid"}
+                    else:
+                        error_msg = result.get('message', 'Unknown error')
+                        return {"success": False, "message": f"News API error: {error_msg}"}
+                elif response.status_code == 401:
+                    result = response.json()
+                    error_msg = result.get('message', 'Invalid API key')
+                    return {"success": False, "message": f"News API error: {error_msg}"}
                 else:
-                    return {"success": False, "message": "Invalid News API key format"}
+                    error_msg = f"News API error: {response.status_code} - {response.text}"
+                    logger.error(error_msg)
+                    return {"success": False, "message": error_msg}
             except Exception as e:
                 logger.error(f"Error validating News API key: {e}", exc_info=True)
                 return {"success": False, "message": f"Error validating News API key: {str(e)}"}
 
         def _validate_cryptocompare(key):
-            """Validate CryptoCompare API key."""
-            logger.info("Validating CryptoCompare API key")
+            """Validate CryptoCompare API key by making a real API call."""
+            logger.info("Validating CryptoCompare API key with real API call")
             try:
-                # Here you would make a real API call to CryptoCompare
-                if key and len(key) >= 16:
-                    return {"success": True, "message": "CryptoCompare API key is valid"}
+                import requests
+                
+                # Constants for CryptoCompare API
+                BASE_URL = "https://min-api.cryptocompare.com/data/price"
+                
+                # Set up parameters for a simple request
+                params = {
+                    'fsym': 'BTC',
+                    'tsyms': 'USD'
+                }
+                
+                # Set up headers with API key
+                headers = {
+                    'Authorization': f"Apikey {key}",
+                    'User-Agent': 'AI Trading Agent API Key Validation'
+                }
+                
+                # Make the request
+                response = requests.get(BASE_URL, params=params, headers=headers)
+                
+                # Check response
+                if response.status_code == 200:
+                    result = response.json()
+                    if 'USD' in result:
+                        return {"success": True, "message": "CryptoCompare API key is valid"}
+                    elif 'Message' in result and 'Rate limit' in result['Message']:
+                        return {"success": False, "message": "CryptoCompare API rate limit exceeded"}
+                    else:
+                        return {"success": False, "message": "Invalid CryptoCompare API response"}
+                elif response.status_code == 401:
+                    return {"success": False, "message": "Invalid CryptoCompare API key"}
                 else:
-                    return {"success": False, "message": "Invalid CryptoCompare API key format"}
+                    error_msg = f"CryptoCompare API error: {response.status_code} - {response.text}"
+                    logger.error(error_msg)
+                    return {"success": False, "message": error_msg}
             except Exception as e:
                 logger.error(f"Error validating CryptoCompare API key: {e}", exc_info=True)
                 return {"success": False, "message": f"Error validating CryptoCompare API key: {str(e)}"}
