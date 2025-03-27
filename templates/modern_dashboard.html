@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <!-- Base styles -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/modern_dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/api_keys_panel.css') }}">
     <!-- Include Plotly.js for charts -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <!-- Include Feather Icons -->
@@ -23,6 +24,10 @@
     <script src="https://cdn.socket.io/4.6.0/socket.io.min.js"></script>
     <!-- Include dashboard optimizer for performance optimizations -->
     <script src="{{ url_for('static', filename='js/dashboard_optimizer.js') }}"></script>
+    <!-- Include user menu functionality -->
+    <script src="{{ url_for('static', filename='js/user_menu.js') }}"></script>
+    <!-- Include dropdown menu fix -->
+    {% include 'dropdown_fix.html' %}
 </head>
 <body class="dashboard-body">
     <!-- Main container -->
@@ -180,6 +185,12 @@
                                         <i data-feather="users"></i>
                                         <span>User Management</span>
                                     </a>
+                                </li>
+                                <li>
+                                    <button id="apiKeysBtn" class="user-dropdown-item">
+                                        <i data-feather="key"></i>
+                                        <span>API Keys</span>
+                                    </button>
                                 </li>
                                 {% endif %}
                                 <li>
@@ -5962,8 +5973,18 @@
     
     <!-- Include settings panel -->
     {% include 'settings_panel.html' %}
+    
+    <!-- Include API keys panel -->
+    <!-- API Key Management Panel -->
+    {% include 'api_keys_panel.html' %}
+
+    <!-- API Key Management JS -->
+    <script src="{{ url_for('static', filename='js/api_key_management.js') }}"></script>
 </body>
-</html><div id="settingsPanel" class="settings-panel">
+</html>
+
+<!-- Settings Panel (moved to correct location) -->
+<div id="settingsPanel" class="settings-panel">
     <div class="settings-header">
         <h2>Dashboard Settings</h2>
         <button id="closeSettings" class="close-settings">
@@ -6409,3 +6430,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 <!-- Duplicate script removed to prevent the trade quality panel from appearing twice -->
+<script>console.log('User menu dropdown behavior fixed by adding proper CSS transitions and click/hover handling');</script>

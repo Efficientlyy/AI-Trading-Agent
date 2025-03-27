@@ -1,103 +1,105 @@
-/* 
- * Direct CSS fixes for the dropdown menu 
- * This file is loaded directly in the head to fix any caching issues
+/**
+ * Dropdown menu fixes
+ * 
+ * This stylesheet fixes dropdown menu visibility issues by using more direct CSS 
+ * with !important flags to override any conflicts.
  */
 
-/* User Profile Styles */
-.user-profile {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    border-radius: 4px;
-    cursor: pointer;
-    z-index: 1000;
+/* Base dropdown styles with important flags to override conflicts */
+.dropdown {
+    position: relative !important;
+    display: inline-block !important;
 }
 
-/* Dropdown Menu Styles */
+/* Fix visibility issues by using more direct selectors with !important */
+.dropdown-menu, 
 .user-dropdown {
-    position: absolute;
-    top: 100%;
-    right: 0;
-    width: 200px;
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 1001;
-    margin-top: 8px;
-    overflow: hidden;
-    display: none;
+    position: absolute !important;
+    background-color: #ffffff !important;
+    min-width: 160px !important;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2) !important;
+    z-index: 9999 !important; /* Very high z-index to prevent being hidden */
+    border-radius: 4px !important;
+    border: 1px solid #ddd !important;
+    padding: 8px 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
 }
 
-/* Dropdown Items */
-.user-dropdown-menu {
-    list-style: none;
-    padding: 0;
-    margin: 0;
+/* Hidden state - using opacity for smoother transitions */
+.dropdown-menu:not(.show) {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
 }
 
-.user-dropdown-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 15px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-    color: #333;
-    background: none;
-    border: none;
-    width: 100%;
-    text-align: left;
-    text-decoration: none;
-    font-size: 14px;
-}
-
-.user-dropdown-item:hover {
-    background-color: #f5f5f5;
-}
-
-.user-dropdown-item i, 
-.user-dropdown-item svg {
-    width: 16px;
-    height: 16px;
-    color: #666;
-}
-
-/* Direct override for API Keys Panel */
-.api-keys-panel {
-    position: fixed;
-    top: 0;
-    right: -500px;
-    width: 450px;
-    height: 100vh;
-    background-color: white;
-    box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-    transition: right 0.3s ease;
-    overflow-y: auto;
-}
-
-.api-keys-panel.active {
-    right: 0;
-}
-
-.panel-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5);
-    z-index: 999;
-    display: none;
-}
-
-.panel-overlay.active {
-    display: block;
-}
-
-/* Force this version to be used with !important */
-.user-profile:hover .user-dropdown {
+/* Visible state with !important to override any conflicting rules */
+.dropdown-menu.show,
+.user-dropdown.show {
     display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    top: 100% !important;
+    right: 0 !important;
+}
+
+/* Specific fix for user dropdown positioning */
+.user-dropdown {
+    top: 100% !important;
+    right: 0 !important;
+    left: auto !important;
+    min-width: 200px !important;
+}
+
+/* Dropdown items with stronger specificity */
+.dropdown-menu .dropdown-item,
+.user-dropdown .dropdown-item {
+    display: block !important;
+    width: 100% !important;
+    padding: 8px 16px !important;
+    clear: both !important;
+    font-weight: normal !important;
+    color: #212529 !important;
+    text-align: left !important;
+    white-space: nowrap !important;
+    background-color: transparent !important;
+    border: 0 !important;
+    text-decoration: none !important;
+}
+
+.dropdown-menu .dropdown-item:hover,
+.user-dropdown .dropdown-item:hover {
+    background-color: #f8f9fa !important;
+    color: #16181b !important;
+}
+
+/* Dark mode support */
+[data-theme="dark"] .dropdown-menu,
+[data-theme="dark"] .user-dropdown {
+    background-color: #343a40 !important;
+    border-color: #495057 !important;
+}
+
+[data-theme="dark"] .dropdown-item {
+    color: #f8f9fa !important;
+}
+
+[data-theme="dark"] .dropdown-item:hover {
+    background-color: #495057 !important;
+    color: #ffffff !important;
+}
+
+/* Mobile specific fixes */
+@media (max-width: 768px) {
+    .dropdown-menu,
+    .user-dropdown {
+        position: fixed !important;
+        top: 60px !important;
+        right: 10px !important;
+        left: auto !important;
+        width: auto !important;
+        max-width: 90vw !important;
+    }
 }
