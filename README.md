@@ -1,190 +1,127 @@
-# AI Trading Agent with Sentiment Analysis & Market Regime Detection
+# AI Crypto Trading Agent
 
-This project implements a comprehensive AI trading system with sentiment analysis, market regime detection, and adaptive strategy capabilities, allowing you to create sophisticated trading strategies based on social media sentiment, market data, and machine learning models.
+This project implements an AI-powered crypto trading system with modules for market data collection, sentiment analysis, strategy execution, risk management, and portfolio optimization.
 
 ## Features
 
-- Multi-source sentiment analysis (Twitter, Reddit, news)
-- Market regime detection with ensemble methods
-- Early event detection system for market-moving events
-- Real-time market data integration
-- Enhanced trading strategies combining sentiment with technical indicators
-- Visualization tools for sentiment-price relationships
-- Robust Provider Failover System for LLM APIs
-- Comprehensive monitoring and alerting system
-- Continuous Improvement System with automated A/B testing
-- Production-ready deployment infrastructure
+- **Data Collection**: Integration with multiple exchange APIs
+- **Sentiment Analysis**: Process news, social media, and on-chain metrics
+- **Strategy Framework**: Extensible strategy system with multiple implementations
+- **Decision Engine**: Combines signals from technical and sentiment analysis
+- **Execution Layer**: Optimized order execution with smart routing
+- **Risk Management**: Comprehensive risk controls and position sizing
+- **Dashboard**: Real-time monitoring and visualization
 
-## Installation
+## New Features
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/ai-trading-agent.git
-   cd ai-trading-agent
-   ```
+### Modular Dashboard Architecture
 
-2. Install dependencies using the Makefile:
-   ```bash
-   make setup
-   ```
+We've refactored the dashboard to follow a modular architecture with improved maintainability:
 
-   Or manually:
-   ```bash
-   pip install -r requirements.txt
-   ```
+- **Component-Based Structure**: Separation of concerns with dedicated modules for distinct functionality
+- **Single Responsibility Principle**: Each file handles only one aspect of the system
+- **Reduced File Sizes**: All modules kept under 300 lines for better readability and maintenance
+- **Mock Data Generation**: Dedicated mock data generator for development and testing
+- **Data Service Layer**: Abstraction for seamless switching between mock and real data
+- **Authentication Module**: Separate module for secure user authentication and authorization
+- **Runner Script**: Improved launcher with auto-detection of available ports
 
-3. Optional: Build Rust components for performance:
-   ```bash
-   cd rust && cargo build --release
-   ```
-
-## API Credentials Setup
-
-This project uses various APIs that require credentials:
-
-1. Set up exchange credentials:
-   ```bash
-   # Interactive setup
-   python setup_exchange_credentials.py add --exchange binance --validate
-   
-   # List configured exchanges
-   python setup_exchange_credentials.py list
-   
-   # Validate credentials
-   python setup_exchange_credentials.py validate
-   ```
-
-2. Set up other API credentials:
-   - Copy the environment template: `cp .env.example .env`
-   - Edit the `.env` file with your API credentials (Twitter, Reddit, etc.)
-   - For Twitter API setup, see [TWITTER_SETUP.md](TWITTER_SETUP.md)
-
-3. Never commit your `.env` file or API keys to version control!
-
-## Running the System
-
-The system can be run in different modes using the Makefile:
+To run the new modular dashboard:
 
 ```bash
-# Development mode (with mock exchange)
-make run-dev
-
-# Testing mode
-make run-test
-
-# Production mode
-make run-prod
-
-# Run with specific components
-make run-sentiment
-
-# Run dashboard
-make dashboard
+python run_modular_dashboard.py
 ```
 
-Or directly:
+The modular architecture includes:
+- `src/dashboard/utils/auth.py`: Authentication and user management
+- `src/dashboard/utils/data_service.py`: Data service abstraction layer
+- `src/dashboard/utils/enums.py`: Centralized enums for the dashboard
+- `src/dashboard/utils/mock_data.py`: Mock data generation for development
+- `src/dashboard/modern_dashboard_refactored.py`: Main dashboard application
+
+### API Key Management
+
+We've added a comprehensive API key management system to the dashboard:
+
+- **Secure Storage**: Encrypted storage for exchange API keys
+- **Validation**: Real-time validation against actual exchange APIs
+- **User Interface**: Intuitive panel for adding, viewing, and managing keys
+- **Pagination**: Efficient handling of large numbers of API keys
+- **Role-Based Access**: Admin-only access to sensitive credentials
+
+#### API Key Validation
+
+The system validates API keys against actual exchange APIs using the following methods:
+
+- **Binance**: Uses account endpoint with HMAC-SHA256 authentication
+- **Coinbase**: Uses accounts endpoint with timestamp-based signatures
+- **Kraken**: Uses balance endpoint with incremental nonce verification
+- **Other Exchanges**: Exchange-specific validation methods
+
+#### Pagination
+
+The API key list supports pagination to handle large numbers of keys:
+
+- **Server-side pagination**: Efficient retrieval of only necessary data
+- **Customizable page size**: Adjust items per page
+- **Navigation controls**: Intuitive page navigation UI
+- **Status indicators**: Shows current page, total items, and page count
+
+## Automated Tests
+
+The system includes comprehensive tests for the API key management functionality:
+
+- **Validation Tests**: Verify that API key validation works correctly for each exchange
+- **Pagination Tests**: Ensure the pagination system handles all edge cases
+- **Error Handling Tests**: Confirm proper handling of invalid keys and API errors
+- **Mock Response Tests**: Test behavior when exchanges are unavailable
+
+## Setup and Installation
+
+1. Clone the repository
+2. Install dependencies: `pip install -r requirements.txt`
+3. Set up configuration in the `config/` directory
+4. Run the system: `python run_trading_system.py`
+
+## Dashboard
+
+To run the dashboard:
 
 ```bash
-# Run with advanced options
-python run_trading_system.py --env production --validate-keys
-
-# Command-line help
-python run_trading_system.py --help
-```
-
-## Usage Examples
-
-### Trading System Components
-
-```bash
-# Full trading system demo
-python examples/ai_trading_agent_demo.py
-
-# Sentiment-based trading
-python examples/enhanced_sentiment_trading_strategy.py
-
-# Market regime detection
-python examples/regime_detection_demo.py
-
-# Multi-strategy system
-python examples/multi_strategy_demo.py
-```
-
-### Analysis Tools
-
-```bash
-# Sentiment analysis demo
-python examples/sentiment_real_integration_demo.py
-
-# Early event detection
-python examples/early_event_detection_demo.py
-
-# Provider failover system
-python examples/provider_failover_demo.py
-```
-
-### Dashboards
-
-```bash
-# Main system dashboard
 python run_dashboard.py
-
-# Sentiment analysis dashboard
-python run_sentiment_dashboard.py
-
-# Provider health monitoring
-python run_provider_health_dashboard.py
-
-# Performance analysis
-python run_performance_dashboard.py
 ```
 
-## Production Deployment
+The dashboard is available at `http://localhost:8050/` by default.
 
-For production deployment, refer to our comprehensive guide:
+## Configuration
 
-[Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md)
+Configuration files are stored in the `config/` directory in YAML format.
 
-Key production features:
-- Systemd service configuration
-- Environment-specific settings
-- API key security
-- Monitoring and alerting
-- High availability configuration
-- Backup and recovery procedures
+## Development
 
-## Documentation
+### Requirements
 
-- [Architecture Overview](ARCHITECTURE.md)
-- [Sentiment Analysis Guide](docs/SENTIMENT_ANALYSIS_GUIDE.md)
-- [Market Regime Detection](docs/market_regime_detection.md)
-- [Early Event Detection System](docs/EARLY_EVENT_DETECTION_SYSTEM.md)
-- [Provider Failover System](docs/PROVIDER_FAILOVER_SYSTEM.md)
-- [Continuous Improvement System](docs/CONTINUOUS_IMPROVEMENT_SYSTEM.md)
-- [Production Deployment Guide](docs/PRODUCTION_DEPLOYMENT.md)
-- [Configuration Management](CONFIG_MANAGEMENT.md)
-- [Project Standards](PROJECT_STANDARDS.md)
-- [Twitter Setup Guide](TWITTER_SETUP.md)
-- [Implementation Summary](SENTIMENT_IMPLEMENTATION_SUMMARY.md)
+- Python 3.9+
+- Required packages in `requirements.txt`
+- Rust compiler (for optimized components)
 
-## Security Best Practices
+### Testing
 
-- All API credentials are managed by a secure key manager
-- Environment-specific configurations with production hardening
-- Encrypted API key storage and secure transport
-- Network security guidelines in the deployment documentation
-- Production-ready permissions and access controls
+Run tests with pytest:
 
-## Contributing
+```bash
+python -m pytest
+```
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+### Adding New Exchanges
 
-See [PROJECT_STANDARDS.md](PROJECT_STANDARDS.md) for coding standards and guidelines.
+To add support for a new exchange:
+
+1. Create a connector in `src/data_collection/connectors/`
+2. Implement the exchange interface in `src/execution/exchange/`
+3. Add validation logic in `src/dashboard/modern_components.py`
+4. Update the UI to include the new exchange option
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+[License details here]
