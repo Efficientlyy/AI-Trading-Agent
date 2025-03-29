@@ -42,7 +42,7 @@ def component():
 @pytest.mark.asyncio
 async def test_initialization(component):
     """Test component initialization."""
-    await component.initialize()
+    component.initialize()
     
     assert component.initialized
     assert component.initialize_called
@@ -54,7 +54,7 @@ async def test_initialization(component):
 @pytest.mark.asyncio
 async def test_start(component):
     """Test component start."""
-    await component.start()
+    component.start()
     
     assert component.initialized
     assert component.initialize_called
@@ -66,8 +66,8 @@ async def test_start(component):
 @pytest.mark.asyncio
 async def test_stop(component):
     """Test component stop."""
-    await component.start()
-    await component.stop()
+    component.start()
+    component.stop()
     
     assert component.initialized
     assert component.initialize_called
@@ -106,7 +106,7 @@ async def test_publish_event(component):
     event_bus.subscribe("TestEvent", mock_subscriber)
     
     # Start the event bus
-    await event_bus.start()
+    event_bus.start()
     
     try:
         # Create a test event
@@ -123,7 +123,7 @@ async def test_publish_event(component):
         assert mock_subscriber.call_args[0][0].event_id == event.event_id
     finally:
         # Stop the event bus
-        await event_bus.stop()
+        event_bus.stop()
         
         # Unsubscribe from the test event
         event_bus.unsubscribe("TestEvent", mock_subscriber)
@@ -142,7 +142,7 @@ async def test_publish_error(component):
     event_bus.subscribe("ErrorEvent", mock_subscriber)
     
     # Start the event bus
-    await event_bus.start()
+    event_bus.start()
     
     try:
         # Publish an error event
@@ -162,7 +162,7 @@ async def test_publish_error(component):
         assert error_event.error_message == "Test error message"
     finally:
         # Stop the event bus
-        await event_bus.stop()
+        event_bus.stop()
         
         # Unsubscribe from the error event
         event_bus.unsubscribe("ErrorEvent", mock_subscriber)
@@ -181,7 +181,7 @@ async def test_publish_status(component):
     event_bus.subscribe("SystemStatusEvent", mock_subscriber)
     
     # Start the event bus
-    await event_bus.start()
+    event_bus.start()
     
     try:
         # Publish a status event
@@ -201,7 +201,7 @@ async def test_publish_status(component):
         assert status_event.message == "Test status message"
     finally:
         # Stop the event bus
-        await event_bus.stop()
+        event_bus.stop()
         
         # Unsubscribe from the status event
         event_bus.unsubscribe("SystemStatusEvent", mock_subscriber)

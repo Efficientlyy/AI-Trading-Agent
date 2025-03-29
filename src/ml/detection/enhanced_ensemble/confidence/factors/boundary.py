@@ -68,8 +68,8 @@ class RegimeBoundaryProximityFactor(ConfidenceFactor):
             proximity_score = self.config.get('default_error_score', 0.5)
             method = "default"
             
-        self._boundary_metadata['calculation_method'] = method
-        self._boundary_metadata['proximity_score'] = proximity_score
+        self._boundary_metadata["calculation_method"] = method
+        self._boundary_metadata["proximity_score"] = proximity_score
             
         return proximity_score
     
@@ -121,8 +121,8 @@ class RegimeBoundaryProximityFactor(ConfidenceFactor):
         avg_margin = sum(margins) / len(margins)
         
         # Store for metadata
-        self._boundary_metadata['probability_margins'] = margins
-        self._boundary_metadata['average_margin'] = avg_margin
+        self._boundary_metadata["probability_margins"] = margins
+        self._boundary_metadata["average_margin"] = avg_margin
         
         # Convert margin to confidence score
         # Small margin (close to 0) → low confidence (near boundary)
@@ -181,7 +181,7 @@ class RegimeBoundaryProximityFactor(ConfidenceFactor):
                 trend_strength = 0.5
                 
         # Store values for metadata
-        self._boundary_metadata['feature_values'] = {
+        self._boundary_metadata["feature_values"] = {
             'volatility': volatility,
             'avg_volatility': avg_volatility,
             'trend_strength': trend_strength
@@ -226,7 +226,7 @@ class RegimeBoundaryProximityFactor(ConfidenceFactor):
         )
         
         # Store combined confidence for metadata
-        self._boundary_metadata['feature_confidence'] = {
+        self._boundary_metadata["feature_confidence"] = {
             'volatility_confidence': volatility_confidence,
             'trend_confidence': trend_confidence,
             'combined_confidence': confidence

@@ -122,7 +122,7 @@ class NewsAPIClient:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params=params) as response:
                     if response.status == 200:
-                        json_data = await response.json()
+                        json_data = response.json()
                         
                         if json_data.get("status") == "ok":
                             articles = json_data.get("articles", [])
@@ -232,7 +232,7 @@ class NewsAPIClient:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params=params) as response:
                     if response.status == 200:
-                        json_data = await response.json()
+                        json_data = response.json()
                         
                         if json_data.get("status") == "ok":
                             articles = json_data.get("articles", [])
@@ -312,7 +312,7 @@ class NewsAPIClient:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params=params) as response:
                     if response.status == 200:
-                        json_data = await response.json()
+                        json_data = response.json()
                         
                         if json_data.get("status") == "ok":
                             sources = json_data.get("sources", [])

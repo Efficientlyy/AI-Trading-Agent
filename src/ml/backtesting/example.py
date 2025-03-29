@@ -73,7 +73,7 @@ def prepare_market_data(df: pd.DataFrame, symbol: str) -> Dict[str, Any]:
     """
     # Calculate returns if not already in the DataFrame
     if 'Returns' not in df.columns:
-        df['Returns'] = df['Close'].pct_change().fillna(0)
+        df["Returns"] = df['Close'].pct_change().fillna(0)
     
     # Prepare data dictionary
     data = {

@@ -143,9 +143,9 @@ class AnomalyDetector:
                 for log in logs:
                     if log.get('level') == level:
                         anomaly = log.copy()
-                        anomaly['anomaly_type'] = 'level_frequency'
-                        anomaly['anomaly_score'] = frequency / baseline_freq
-                        anomaly['anomaly_explanation'] = f"Unusually high frequency of {level} logs"
+                        anomaly["anomaly_type"] = 'level_frequency'
+                        anomaly["anomaly_score"] = frequency / baseline_freq
+                        anomaly["anomaly_explanation"] = f"Unusually high frequency of {level} logs"
                         anomalies.append(anomaly)
         
         return anomalies
@@ -178,9 +178,9 @@ class AnomalyDetector:
                 
                 if representative_log:
                     anomaly = representative_log.copy()
-                    anomaly['anomaly_type'] = 'component_activity'
-                    anomaly['anomaly_score'] = frequency / baseline_freq
-                    anomaly['anomaly_explanation'] = f"Unusual activity from component {component}"
+                    anomaly["anomaly_type"] = 'component_activity'
+                    anomaly["anomaly_score"] = frequency / baseline_freq
+                    anomaly["anomaly_explanation"] = f"Unusual activity from component {component}"
                     anomalies.append(anomaly)
         
         return anomalies
@@ -215,9 +215,9 @@ class AnomalyDetector:
                 # Find the most severe log in this hour
                 most_severe_log = max(hour_logs, key=lambda x: self._get_level_severity(x.get('level', 'info')))
                 anomaly = most_severe_log.copy()
-                anomaly['anomaly_type'] = 'temporal_pattern'
-                anomaly['anomaly_score'] = observed_freq / baseline_freq
-                anomaly['anomaly_explanation'] = f"Unusual activity during hour {hour}"
+                anomaly["anomaly_type"] = 'temporal_pattern'
+                anomaly["anomaly_score"] = observed_freq / baseline_freq
+                anomaly["anomaly_explanation"] = f"Unusual activity during hour {hour}"
                 anomalies.append(anomaly)
         
         return anomalies
@@ -273,10 +273,10 @@ class AnomalyDetector:
             representative_log = next((log for log in error_logs if log.get('event') == most_common_error), error_logs[0])
             
             anomaly = representative_log.copy()
-            anomaly['anomaly_type'] = 'error_burst'
-            anomaly['anomaly_score'] = error_rate / baseline_rate
-            anomaly['anomaly_explanation'] = f"Burst of errors detected ({len(error_logs)} errors in {time_span:.2f} hours)"
-            anomaly['related_count'] = len(error_logs)
+            anomaly["anomaly_type"] = 'error_burst'
+            anomaly["anomaly_score"] = error_rate / baseline_rate
+            anomaly["anomaly_explanation"] = f"Burst of errors detected ({len(error_logs)} errors in {time_span:.2f} hours)"
+            anomaly["related_count"] = len(error_logs)
             anomalies.append(anomaly)
         
         return anomalies

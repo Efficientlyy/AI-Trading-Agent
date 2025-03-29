@@ -514,11 +514,11 @@ class MonitoringService(Component):
         has_critical_errors = False
         
         for component_id, status in self.component_status.items():
-            if status["status"] == "warning":
+            if status["status"] = = "warning":
                 has_warnings = True
-            elif status["status"] == "error":
+            elif status["status"] = = "error":
                 has_errors = True
-            elif status["status"] == "critical":
+            elif status["status"] = = "critical":
                 has_critical_errors = True
         
         self.system_stats["status_summary"] = {

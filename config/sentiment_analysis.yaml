@@ -9,8 +9,49 @@ sentiment:
     sentiment_model: "distilbert-base-uncased-finetuned-sst-2-english"
     batch_size: 16
   
+  # LLM settings
+  llm:
+    primary_model: "gpt-4o"
+    financial_model: "gpt-4o"
+    batch_size: 5
+    use_cached_responses: true
+    cache_ttl: 3600  # 1 hour
+    
+    # Provider failover settings
+    failover:
+      # How many consecutive errors trigger unhealthy status
+      consecutive_errors_threshold: 3
+      
+      # Time window for calculating error rate (seconds)
+      error_window_seconds: 300
+      
+      # Error rate that triggers degraded status (0.0-1.0)
+      error_rate_threshold: 0.25
+      
+      # How often to check if unhealthy providers have recovered (seconds)
+      recovery_check_interval: 60
+      
+      # How many successful pings needed to consider a provider recovered
+      recovery_threshold: 3
+      
+      # How long to wait before testing an unhealthy provider (seconds)
+      circuit_breaker_reset_time: 300
+      
+      # Provider priorities (lower number = higher priority)
+      priorities:
+        openai: 1
+        anthropic: 2
+        azure: 3
+      
+      # Fallback response cache TTL (seconds)
+      fallback_cache_ttl: 86400
+      
+      # Path to fallback response cache file
+      fallback_cache_file: "data/cache/fallback_responses.json"
+  
   # API keys 
   apis:
+    # Traditional API keys
     twitter:
       api_key: "${TWITTER_API_KEY}"
       api_secret: "${TWITTER_API_SECRET}"
@@ -47,6 +88,20 @@ sentiment:
       api_key: "${GLASSNODE_API_KEY}"
       base_url: "https://api.glassnode.com/v1"
       cache_expiry: 900  # 15 minutes in seconds
+      
+    # LLM API keys
+    openai:
+      api_key: "${OPENAI_API_KEY}"
+    
+    anthropic:
+      api_key: "${ANTHROPIC_API_KEY}"
+    
+    azure_openai:
+      api_key: "${AZURE_OPENAI_API_KEY}"
+      endpoint: "${AZURE_OPENAI_ENDPOINT}"
+      deployments:
+        gpt-4o: "your-gpt4-deployment-name"
+        gpt-3.5-turbo: "your-gpt35-deployment-name"
   
   # Social Media Sentiment Agent
   social_media:
@@ -111,6 +166,97 @@ sentiment:
       market: 0.3
       onchain: 0.2
     max_history_size: 100
+  
+  # LLM Sentiment Agent
+  llm:
+    enabled: true
+    update_interval: 900  # 15 minutes
+    min_confidence: 0.7
+    sentiment_shift_threshold: 0.15
+    contrarian_threshold: 0.8
+    max_history_size: 100
+    data_sources:
+      - social_media
+      - news
+    use_primary_model: false  # Use financial model by default
+    model: null  # Use service default model
+    event_severity_threshold: 5  # Minimum severity for market events (0-10)
+    
+    # Prompt tuning system settings
+    prompt_tuning:
+      enabled: true
+      auto_optimize: true
+      experiment_enabled: true
+      experiment_ratio: 0.2  # 20% of requests use experimental prompts
+      min_usage_optimize: 20  # Minimum usage before optimization
+      max_versions: 5  # Maximum versions per prompt type
+      evaluation_interval: 3600  # 1 hour in seconds
+      storage_path: "data/prompts"
+  
+  # Multi-Model Consensus Agent
+  consensus:
+    enabled: true
+    update_interval: 900  # 15 minutes
+    min_confidence: 0.6
+    sentiment_shift_threshold: 0.1  # More sensitive for consensus events
+    max_history_size: 100
+    data_sources:
+      - llm
+      - social_media
+      - news
+      - market_sentiment
+      - onchain
+    
+    # Consensus system specific settings
+    consensus:
+      min_sources: 2
+      confidence_threshold: 0.6
+      max_age_hours: 24
+      use_bayesian: true
+      
+      # Model capability weights
+      model_weights:
+        gpt-4o: 1.0
+        claude-3-opus: 1.0
+        llama-3-70b: 0.9
+        gpt-3.5-turbo: 0.8
+        claude-3-sonnet: 0.8
+        mistral-7b: 0.7
+        llama-3-8b: 0.7
+        finbert: 0.6
+      
+      # Source type weights
+      source_type_weights:
+        llm: 1.0
+        social_media: 0.8
+        news: 0.9
+        market_sentiment: 0.7
+        onchain: 0.6
+        technical: 0.5
+        
+  # Usage Statistics
+  usage_statistics:
+    enabled: true
+    window_days: 90
+    save_interval: 300  # 5 minutes
+    storage_dir: "data/usage_statistics"
+    
+    # Dashboard settings
+    dashboard:
+      host: "0.0.0.0"
+      port: 8051  # Different port from main dashboard
+      
+  # A/B Testing Framework
+  ab_testing:
+    enabled: true
+    max_active_experiments: 5
+    results_ttl: 90  # Days to keep experiment results
+    storage_dir: "data/experiments"
+    
+    # Dashboard settings
+    dashboard:
+      host: "0.0.0.0"
+      port: 8052  # Different port from other dashboards
 
 # Symbols to monitor (for all sentiment agents)
 symbols:

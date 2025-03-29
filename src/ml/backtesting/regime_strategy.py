@@ -111,16 +111,16 @@ class RegimeStrategy:
         })
         
         # Initialize columns
-        df['position'] = 0.0
-        df['cash'] = self.initial_capital
-        df['equity'] = self.initial_capital
-        df['trade'] = False
-        df['trade_type'] = ''
-        df['trade_price'] = 0.0
-        df['trade_size'] = 0.0
-        df['trade_value'] = 0.0
-        df['stop_loss'] = 0.0
-        df['take_profit'] = 0.0
+        df["position"] = 0.0
+        df["cash"] = self.initial_capital
+        df["equity"] = self.initial_capital
+        df["trade"] = False
+        df["trade_type"] = ''
+        df["trade_price"] = 0.0
+        df["trade_size"] = 0.0
+        df["trade_value"] = 0.0
+        df["stop_loss"] = 0.0
+        df["take_profit"] = 0.0
         
         # Apply trading rules
         position = 0.0
@@ -257,8 +257,8 @@ class RegimeStrategy:
             df.loc[i, 'equity'] = cash + position * df.loc[i, 'price']
         
         # Calculate returns
-        df['return'] = df['equity'].pct_change().fillna(0)
-        df['cumulative_return'] = (1 + df['return']).cumprod() - 1
+        df["return"] = df['equity'].pct_change().fillna(0)
+        df["cumulative_return"] = (1 + df['return']).cumprod() - 1
         
         # Extract trades
         trades = df[df['trade']].copy()
@@ -319,8 +319,8 @@ class RegimeStrategy:
         # Calculate win rate
         trades = results[results['trade']].copy()
         if len(trades) > 0:
-            trades['profit'] = trades['trade_value'] * -1  # Negative trade_value means profit for sell
-            trades['win'] = trades['profit'] > 0
+            trades["profit"] = trades['trade_value'] * -1  # Negative trade_value means profit for sell
+            trades["win"] = trades['profit'] > 0
             win_rate = trades['win'].mean()
         else:
             win_rate = 0
@@ -355,8 +355,8 @@ class RegimeStrategy:
         ax.plot(self.results['date'], self.results['equity'], label='Equity')
         
         # Plot buy and sell signals
-        buys = self.results[self.results['trade_type'] == 'buy']
-        sells = self.results[self.results['trade_type'] == 'sell']
+        buys = self.results["self.results["trade_type""] = = 'buy']
+        sells = self.results["self.results["trade_type""] = = 'sell']
         
         ax.scatter(buys['date'], buys['equity'], color='green', marker='^', s=100, label='Buy')
         ax.scatter(sells['date'], sells['equity'], color='red', marker='v', s=100, label='Sell')
@@ -367,7 +367,7 @@ class RegimeStrategy:
         colors = [cmap(i) for i in range(len(unique_regimes))]
         
         for i, regime in enumerate(unique_regimes):
-            mask = self.results['regime'] == regime
+            mask = self.results["regime"] = = regime
             ax.fill_between(self.results['date'], ax.get_ylim()[0], ax.get_ylim()[1], 
                            where=mask, color=colors[i], alpha=0.1, 
                            label=f'Regime {regime}')
@@ -413,7 +413,7 @@ class RegimeStrategy:
         regime_returns = {}
         
         for regime in sorted(set(self.results['regime'])):
-            regime_mask = self.results['regime'] == regime
+            regime_mask = self.results["regime"] = = regime
             regime_returns[regime] = self.results.loc[regime_mask, 'return'].mean()
         
         # Create figure

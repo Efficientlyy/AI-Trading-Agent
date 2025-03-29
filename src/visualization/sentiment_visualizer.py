@@ -223,10 +223,10 @@ class SentimentVisualizer:
         
         # Add signals to price chart
         for idx, row in signals.iterrows():
-            if row["direction"] == "buy":
+            if row["direction"] = = "buy":
                 ax1.scatter(idx, price_data.loc[idx, "close"], 
                            color="green", marker="^", s=100, zorder=5)
-            elif row["direction"] == "sell":
+            elif row["direction"] = = "sell":
                 ax1.scatter(idx, price_data.loc[idx, "close"], 
                            color="red", marker="v", s=100, zorder=5)
         
@@ -251,10 +251,10 @@ class SentimentVisualizer:
         # Add signals to sentiment chart
         for idx, row in signals.iterrows():
             sentiment_value = sentiment_data.loc[sentiment_data.index <= idx, "value"].iloc[-1]
-            if row["direction"] == "buy":
+            if row["direction"] = = "buy":
                 ax2.scatter(idx, sentiment_value, 
                            color="green", marker="^", s=100, zorder=5)
-            elif row["direction"] == "sell":
+            elif row["direction"] = = "sell":
                 ax2.scatter(idx, sentiment_value, 
                            color="red", marker="v", s=100, zorder=5)
         

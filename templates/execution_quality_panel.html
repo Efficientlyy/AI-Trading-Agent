@@ -1,0 +1,740 @@
+<!-- 
+    Execution Quality Analytics Component
+    
+    This component provides visualizations to analyze the quality of order execution,
+    including fill rates, market impact, execution algorithm performance, and venue analytics 
+    to help users optimize their execution strategies.
+-->
+
+<div class="card execution-quality-panel">
+    <div class="card-header">
+        <div class="card-title">
+            <h3>Execution Quality Analytics</h3>
+            <div class="card-actions">
+                <button id="execution-quality-settings-btn" class="btn btn-icon" data-tooltip="Execution quality settings" data-position="top">
+                    <i data-feather="settings"></i>
+                </button>
+                <button id="download-execution-quality-data-btn" class="btn btn-icon" data-tooltip="Download data" data-position="top">
+                    <i data-feather="download"></i>
+                </button>
+                <button id="expand-execution-quality-panel-btn" class="btn btn-icon" data-tooltip="Expand panel" data-position="top">
+                    <i data-feather="maximize-2"></i>
+                </button>
+            </div>
+        </div>
+        <div class="execution-quality-controls">
+            <div class="strategy-selector">
+                <label for="execution-quality-strategy">Strategy:</label>
+                <select id="execution-quality-strategy" class="form-select">
+                    <option value="all" selected>All Strategies</option>
+                    <option value="twap">TWAP</option>
+                    <option value="vwap">VWAP</option>
+                    <option value="iceberg">Iceberg</option>
+                    <option value="smart_order_routing">Smart Order Routing</option>
+                </select>
+            </div>
+            <div class="asset-selector">
+                <label for="execution-quality-asset">Asset:</label>
+                <select id="execution-quality-asset" class="form-select">
+                    <option value="all" selected>All Assets</option>
+                    <option value="BTC-USD">BTC/USD</option>
+                    <option value="ETH-USD">ETH/USD</option>
+                    <option value="SOL-USD">SOL/USD</option>
+                    <option value="BNB-USD">BNB/USD</option>
+                </select>
+            </div>
+            <div class="time-range-selector">
+                <label for="execution-quality-timerange">Time Range:</label>
+                <select id="execution-quality-timerange" class="form-select">
+                    <option value="1w">1 Week</option>
+                    <option value="1m" selected>1 Month</option>
+                    <option value="3m">3 Months</option>
+                    <option value="6m">6 Months</option>
+                    <option value="1y">1 Year</option>
+                </select>
+            </div>
+            <div class="order-type-selector">
+                <label for="execution-quality-type">Order Type:</label>
+                <select id="execution-quality-type" class="form-select">
+                    <option value="all" selected>All Orders</option>
+                    <option value="market">Market Orders</option>
+                    <option value="limit">Limit Orders</option>
+                    <option value="algo">Algo Orders</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <div class="execution-quality-grid">
+            <!-- Fill Rate Analysis Chart -->
+            <div class="execution-quality-grid-item fill-rate-container">
+                <h4 class="chart-title">Fill Rate Analysis</h4>
+                <div class="visualization-controls">
+                    <div class="fill-rate-metric-selector">
+                        <label for="fill-rate-metric">Metric:</label>
+                        <select id="fill-rate-metric" class="form-select">
+                            <option value="percentage" selected>Fill Percentage</option>
+                            <option value="time">Fill Time</option>
+                            <option value="partial">Partial Fills</option>
+                        </select>
+                    </div>
+                    <div class="group-by-selector">
+                        <label for="fill-rate-group">Group By:</label>
+                        <select id="fill-rate-group" class="form-select">
+                            <option value="asset" selected>Asset</option>
+                            <option value="venue">Venue</option>
+                            <option value="strategy">Strategy</option>
+                            <option value="time">Time of Day</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="fill-rate-chart" class="execution-quality-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Market Impact Analysis Chart -->
+            <div class="execution-quality-grid-item market-impact-container">
+                <h4 class="chart-title">Market Impact Analysis</h4>
+                <div class="visualization-controls">
+                    <div class="impact-view-selector">
+                        <label for="impact-view">View:</label>
+                        <select id="impact-view" class="form-select">
+                            <option value="price" selected>Price Impact</option>
+                            <option value="spread">Spread Widening</option>
+                            <option value="depth">Order Book Depth</option>
+                        </select>
+                    </div>
+                    <div class="size-selector">
+                        <label for="order-size">Order Size:</label>
+                        <select id="order-size" class="form-select">
+                            <option value="all" selected>All Sizes</option>
+                            <option value="small">Small</option>
+                            <option value="medium">Medium</option>
+                            <option value="large">Large</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="market-impact-chart" class="execution-quality-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Algo Performance Comparison -->
+            <div class="execution-quality-grid-item algo-performance-container">
+                <h4 class="chart-title">Algorithm Performance Comparison</h4>
+                <div class="visualization-controls">
+                    <div class="performance-metric-selector">
+                        <label for="algo-metric">Metric:</label>
+                        <select id="algo-metric" class="form-select">
+                            <option value="vs_arrival" selected>vs. Arrival Price</option>
+                            <option value="vs_vwap">vs. VWAP</option>
+                            <option value="vs_twap">vs. TWAP</option>
+                            <option value="cost">Implementation Shortfall</option>
+                        </select>
+                    </div>
+                    <div class="chart-type-selector">
+                        <label for="algo-chart-type">Chart:</label>
+                        <select id="algo-chart-type" class="form-select">
+                            <option value="bar" selected>Bar Chart</option>
+                            <option value="box">Box Plot</option>
+                            <option value="scatter">Scatter Plot</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="algo-performance-chart" class="execution-quality-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Venue Analytics -->
+            <div class="execution-quality-grid-item venue-analytics-container">
+                <h4 class="chart-title">Venue Analytics</h4>
+                <div class="visualization-controls">
+                    <div class="venue-metric-selector">
+                        <label for="venue-metric">Metric:</label>
+                        <select id="venue-metric" class="form-select">
+                            <option value="fees" selected>Fees & Costs</option>
+                            <option value="latency">Latency</option>
+                            <option value="reliability">Reliability</option>
+                            <option value="combined">Combined Score</option>
+                        </select>
+                    </div>
+                    <div class="venue-view-selector">
+                        <label for="venue-view">View:</label>
+                        <select id="venue-view" class="form-select">
+                            <option value="comparison" selected>Comparison</option>
+                            <option value="ranking">Ranking</option>
+                            <option value="trend">Trend</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="venue-analytics-chart" class="execution-quality-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="execution-quality-insights">
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Execution Summary</h4>
+                </div>
+                <div class="insight-body">
+                    <div class="execution-summary">
+                        <div class="summary-metrics">
+                            <div class="metric-group">
+                                <div class="metric-item">
+                                    <span class="metric-label">Avg. Fill Rate:</span>
+                                    <span class="metric-value" id="avg-fill-rate">96.8%</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Avg. Fill Time:</span>
+                                    <span class="metric-value" id="avg-fill-time">1.2s</span>
+                                </div>
+                            </div>
+                            <div class="metric-group">
+                                <div class="metric-item">
+                                    <span class="metric-label">Avg. Price Impact:</span>
+                                    <span class="metric-value" id="avg-price-impact">0.18%</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Fulfilled Orders:</span>
+                                    <span class="metric-value" id="fulfilled-orders">94.2%</span>
+                                </div>
+                            </div>
+                            <div class="metric-group">
+                                <div class="metric-item">
+                                    <span class="metric-label">Best Algorithm:</span>
+                                    <span class="metric-value" id="best-algorithm">VWAP (+0.12%)</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Execution Cost:</span>
+                                    <span class="metric-value" id="execution-cost">0.32%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="trend-analysis">
+                            <h5>Execution Quality Trend</h5>
+                            <div id="execution-trend-chart" class="mini-chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Optimization Recommendations</h4>
+                </div>
+                <div class="insight-body">
+                    <div class="recommendations-list" id="execution-recommendations">
+                        <div class="recommendation-item high-priority">
+                            <div class="recommendation-header">
+                                <span class="recommendation-title">Optimize Order Sizes for BTC/USD</span>
+                                <span class="recommendation-priority">High Impact</span>
+                            </div>
+                            <div class="recommendation-description">
+                                Orders over 1.5 BTC show 2.8x higher market impact. Consider splitting large orders into smaller chunks of 0.75-1 BTC max to minimize price impact.
+                            </div>
+                        </div>
+                        <div class="recommendation-item medium-priority">
+                            <div class="recommendation-header">
+                                <span class="recommendation-title">Switch from TWAP to VWAP During High Volatility</span>
+                                <span class="recommendation-priority">Medium Impact</span>
+                            </div>
+                            <div class="recommendation-description">
+                                VWAP algorithm outperforms TWAP by 22 bps during high volatility periods. Consider switching default algorithm when volatility exceeds 1.5x normal levels.
+                            </div>
+                        </div>
+                        <div class="recommendation-item low-priority">
+                            <div class="recommendation-header">
+                                <span class="recommendation-title">Optimize Exchange Selection</span>
+                                <span class="recommendation-priority">Low Impact</span>
+                            </div>
+                            <div class="recommendation-description">
+                                Using Exchange B for orders under $10K could save approximately 6 bps in fees with equivalent fill rates and execution quality.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-footer">
+        <div class="execution-quality-metrics-summary">
+            <div class="metric-item">
+                <span class="metric-label">Best Venue:</span>
+                <span class="metric-value" id="best-venue">Exchange A (97.3% fills)</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Best Time Window:</span>
+                <span class="metric-value" id="best-time-window">09:00-11:00 UTC</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Cost Savings Potential:</span>
+                <span class="metric-value" id="cost-savings-potential">18 bps</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Updated:</span>
+                <span class="metric-value" id="execution-quality-last-updated">2 minutes ago</span>
+            </div>
+        </div>
+        <div class="execution-quality-actions">
+            <button class="btn btn-sm" id="execution-quality-learn-more">
+                <i data-feather="info"></i> Learn More
+            </button>
+            <button class="btn btn-sm" id="export-execution-quality-report">
+                <i data-feather="file-text"></i> Export Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Execution Quality Settings Modal -->
+<div id="execution-quality-settings-modal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Execution Quality Analysis Settings</h3>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="benchmark-selection">Price Benchmark:</label>
+                    <select id="benchmark-selection" class="form-select">
+                        <option value="arrival" selected>Arrival Price</option>
+                        <option value="mid">Mid-Price</option>
+                        <option value="vwap">VWAP</option>
+                        <option value="twap">TWAP</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="order-size-classification">Order Size Classification:</label>
+                    <div class="size-settings">
+                        <div class="size-item">
+                            <span class="size-label">Small:</span>
+                            <input type="text" id="small-order-threshold" class="form-input size-input" value="< 0.5 BTC">
+                        </div>
+                        <div class="size-item">
+                            <span class="size-label">Medium:</span>
+                            <input type="text" id="medium-order-threshold" class="form-input size-input" value="0.5 - 1.5 BTC">
+                        </div>
+                        <div class="size-item">
+                            <span class="size-label">Large:</span>
+                            <input type="text" id="large-order-threshold" class="form-input size-input" value="> 1.5 BTC">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="market-impact-window">Market Impact Window:</label>
+                    <div class="slider-container">
+                        <input type="range" id="market-impact-window" class="form-range" min="1" max="20" value="5">
+                        <span class="slider-value">5</span>
+                        <span class="slider-label">minutes</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="venue-latency-threshold">Venue Latency Threshold:</label>
+                    <div class="slider-container">
+                        <input type="range" id="venue-latency-threshold" class="form-range" min="50" max="500" step="50" value="200">
+                        <span class="slider-value">200</span>
+                        <span class="slider-label">ms</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Advanced Options:</label>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="include-canceled-orders">
+                        <label for="include-canceled-orders">Include Canceled Orders</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="normalize-by-market-volume" checked>
+                        <label for="normalize-by-market-volume">Normalize by Market Volume</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="exclude-outliers" checked>
+                        <label for="exclude-outliers">Exclude Outliers (±3σ)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="adjust-for-market-conditions" checked>
+                        <label for="adjust-for-market-conditions">Adjust for Market Conditions</label>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="fee-calculation-method">Fee Calculation Method:</label>
+                    <select id="fee-calculation-method" class="form-select">
+                        <option value="standard" selected>Standard (Maker/Taker)</option>
+                        <option value="tiered">Tiered Volume-Based</option>
+                        <option value="custom">Custom Fee Structure</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-execution-quality-settings">Apply Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add CSS for the execution quality panel -->
+<style>
+    .execution-quality-panel {
+        margin-bottom: 1.5rem;
+    }
+    
+    .execution-quality-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .strategy-selector,
+    .asset-selector,
+    .time-range-selector,
+    .order-type-selector {
+        min-width: 150px;
+    }
+    
+    .execution-quality-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 300px 300px;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .execution-quality-grid-item {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chart-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text);
+        margin: 0 0 0.5rem 0;
+        padding: 0 0 0.5rem 0;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .execution-quality-chart {
+        flex: 1;
+        position: relative;
+        min-height: 200px;
+        background-color: var(--card-bg);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .chart-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(var(--card-bg-rgb), 0.8);
+        font-size: 1rem;
+        color: var(--text-light);
+        z-index: 5;
+    }
+    
+    .visualization-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .fill-rate-metric-selector,
+    .group-by-selector,
+    .impact-view-selector,
+    .size-selector,
+    .performance-metric-selector,
+    .chart-type-selector,
+    .venue-metric-selector,
+    .venue-view-selector {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .visualization-controls label {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+    
+    .visualization-controls select {
+        max-width: 120px;
+        font-size: 0.8rem;
+    }
+    
+    .execution-quality-insights {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .insight-card {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .insight-header {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .insight-header h4 {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .insight-body {
+        padding: 0.75rem 1rem;
+    }
+    
+    .execution-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .summary-metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .metric-group {
+        flex: 1;
+        min-width: 150px;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .metric-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+    }
+    
+    .metric-label {
+        color: var(--text-light);
+    }
+    
+    .metric-value {
+        font-weight: 500;
+    }
+    
+    .trend-analysis {
+        margin-top: 0.5rem;
+    }
+    
+    .trend-analysis h5 {
+        font-size: 0.85rem;
+        margin: 0 0 0.5rem 0;
+        color: var(--text-light);
+    }
+    
+    .mini-chart {
+        height: 60px;
+        width: 100%;
+        background-color: var(--card-bg);
+        border-radius: 4px;
+    }
+    
+    .recommendations-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .recommendation-item {
+        padding: 0.75rem;
+        border-radius: 4px;
+        border-left: 3px solid var(--primary);
+        background-color: var(--card-bg);
+    }
+    
+    .recommendation-item.high-priority {
+        border-left-color: var(--danger);
+    }
+    
+    .recommendation-item.medium-priority {
+        border-left-color: var(--warning);
+    }
+    
+    .recommendation-item.low-priority {
+        border-left-color: var(--info);
+    }
+    
+    .recommendation-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.5rem;
+    }
+    
+    .recommendation-title {
+        font-weight: 500;
+        font-size: 0.85rem;
+    }
+    
+    .recommendation-priority {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.4rem;
+        border-radius: 3px;
+        background-color: var(--primary-light);
+        color: var(--primary);
+    }
+    
+    .high-priority .recommendation-priority {
+        background-color: rgba(var(--danger-rgb), 0.1);
+        color: var(--danger);
+    }
+    
+    .medium-priority .recommendation-priority {
+        background-color: rgba(var(--warning-rgb), 0.1);
+        color: var(--warning);
+    }
+    
+    .low-priority .recommendation-priority {
+        background-color: rgba(var(--info-rgb), 0.1);
+        color: var(--info);
+    }
+    
+    .recommendation-description {
+        font-size: 0.8rem;
+        color: var(--text-light);
+        line-height: 1.4;
+    }
+    
+    .execution-quality-metrics-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+    
+    .execution-quality-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    /* Modal specific styles */
+    .size-settings {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: 0.5rem;
+    }
+    
+    .size-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .size-label {
+        min-width: 70px;
+        font-size: 0.85rem;
+    }
+    
+    .size-input {
+        width: 100%;
+        padding: 0.25rem;
+        border: 1px solid var(--border-light);
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    
+    .form-range {
+        flex: 1;
+    }
+    
+    .slider-value {
+        min-width: 1.5rem;
+        text-align: right;
+    }
+    
+    .slider-label {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+    
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .checkbox-item label {
+        font-size: 0.85rem;
+        margin: 0;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .execution-quality-grid {
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(4, 300px);
+        }
+        
+        .execution-quality-insights {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .execution-quality-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .strategy-selector,
+        .asset-selector,
+        .time-range-selector,
+        .order-type-selector {
+            width: 100%;
+        }
+        
+        .execution-quality-metrics-summary {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .summary-metrics {
+            flex-direction: column;
+        }
+    }
+</style>
+
+<!-- JavaScript for execution quality panel functionality will be loaded separately -->

@@ -18,7 +18,7 @@ def download_market_data(symbol, start_date, end_date):
     data = ticker.history(start=start_date, end=end_date)
     
     # Calculate returns
-    data['return'] = data['Close'].pct_change()
+    data["return"] = data['Close'].pct_change()
     
     # Convert to API format
     api_data = []

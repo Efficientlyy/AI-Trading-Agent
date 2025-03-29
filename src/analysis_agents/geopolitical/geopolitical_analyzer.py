@@ -247,11 +247,11 @@ class GeopoliticalAnalyzer:
     async def initialize(self):
         """Initialize the geopolitical analyzer."""
         self.logger.info("Initializing geopolitical analyzer")
-        await self.load_events()
+        self.load_events()
         
         # Check if we need to load default events
         if not self.events:
-            await self.load_default_events()
+            self.load_default_events()
         
         self.logger.info(f"Loaded {len(self.events)} geopolitical events")
     
@@ -469,7 +469,7 @@ class GeopoliticalAnalyzer:
             event.market_impacts = await self._calculate_market_impacts(event)
         
         # Save default events
-        await self.save_events()
+        self.save_events()
     
     async def add_event(self, event_data: Dict[str, Any]) -> str:
         """Add a new geopolitical event.
@@ -522,7 +522,7 @@ class GeopoliticalAnalyzer:
         self.events[event_id] = event
         
         # Save changes
-        await self.save_events()
+        self.save_events()
         
         self.logger.info(f"Added geopolitical event: {event.title} (ID: {event_id})")
         
@@ -565,7 +565,7 @@ class GeopoliticalAnalyzer:
             event.market_impacts = await self._calculate_market_impacts(event)
         
         # Save changes
-        await self.save_events()
+        self.save_events()
         
         self.logger.info(f"Updated geopolitical event: {event.title} (ID: {event_id})")
         
@@ -832,7 +832,7 @@ class GeopoliticalAnalyzer:
                 }
         
         # Get active events
-        active_events = await self.get_active_events()
+        active_events = self.get_active_events()
         
         # Skip if no active events
         if not active_events:
@@ -908,7 +908,7 @@ class GeopoliticalAnalyzer:
             Dictionary with geopolitical summary
         """
         # Get active events
-        active_events = await self.get_active_events()
+        active_events = self.get_active_events()
         
         # Skip if no active events
         if not active_events:
@@ -948,7 +948,7 @@ class GeopoliticalAnalyzer:
         )[:3]  # Top 3 regions
         
         # Determine market outlook
-        market_signals = await self.get_market_signals()
+        market_signals = self.get_market_signals()
         crypto_impact = market_signals.get("crypto.overall", {}).get("value", 0.0)
         
         if crypto_impact >= 0.3:
@@ -1002,16 +1002,16 @@ async def analyze_geopolitical_situation() -> Dict[str, Any]:
     """
     # Initialize geopolitical analyzer
     analyzer = GeopoliticalAnalyzer()
-    await analyzer.initialize()
+    analyzer.initialize()
     
     # Get market signals
-    market_signals = await analyzer.get_market_signals()
+    market_signals = analyzer.get_market_signals()
     
     # Get geopolitical summary
-    geopolitical_summary = await analyzer.get_geopolitical_summary()
+    geopolitical_summary = analyzer.get_geopolitical_summary()
     
     # Get high impact events
-    high_impact_events = await analyzer.get_high_impact_events()
+    high_impact_events = analyzer.get_high_impact_events()
     
     # Format high impact events
     formatted_events = []

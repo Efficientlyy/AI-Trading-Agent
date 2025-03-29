@@ -198,7 +198,7 @@ class ConnectionEngine:
         await self._connect_news_and_geo(news_items, geo_events)
         
         # Identify key nodes and patterns in the network
-        await self._analyze_network()
+        self._analyze_network()
         
         self.logger.info(f"Connection analysis complete. Found {len(self.connections)} connections.")
         
@@ -604,7 +604,7 @@ class ConnectionEngine:
         """
         # Check if we have network analysis
         if not hasattr(self, "network_analysis"):
-            await self.analyze_connections()
+            self.analyze_connections()
         
         if not hasattr(self, "network_analysis") or not self.network_analysis["key_nodes"]:
             return []
@@ -776,16 +776,16 @@ class ConnectionEngine:
         """
         # First run connection analysis if not done already
         if not self.connections:
-            await self.analyze_connections()
+            self.analyze_connections()
         
         # Get geopolitical summary
         geo_summary = await self.geo_analyzer.get_geopolitical_summary()
         
         # Get key events
-        key_events = await self.get_key_events()
+        key_events = self.get_key_events()
         
         # Get market impact chains
-        impact_chains = await self.get_market_impact_chains()
+        impact_chains = self.get_market_impact_chains()
         
         # Get community themes if available
         community_themes = []
@@ -908,14 +908,14 @@ async def analyze_global_connections() -> Dict[str, Any]:
     """
     # Initialize connection engine
     engine = ConnectionEngine()
-    await engine.initialize()
+    engine.initialize()
     
     try:
         # Analyze connections
-        await engine.analyze_connections()
+        engine.analyze_connections()
         
         # Get market insights
-        insights = await engine.get_geopolitical_market_insights()
+        insights = engine.get_geopolitical_market_insights()
         
         return insights
     except Exception as e:

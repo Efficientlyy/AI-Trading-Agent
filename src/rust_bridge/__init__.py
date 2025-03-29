@@ -20,7 +20,7 @@ _crypto_trading_engine = None
 
 try:
     # Check if the compiled library exists
-    from crypto_trading_engine import market_data, technical, backtesting
+    from crypto_trading_engine import market_data, technical, backtesting, sentiment
     _rust_available = True
     logger.info("Rust components successfully loaded")
 except ImportError:
@@ -528,6 +528,61 @@ def create_order_book_processor(symbol: str, exchange: str, max_depth: int = 100
         return PyOrderBookProcessor(symbol, exchange, max_depth)
 
 # Add OrderBookProcessor class
+# Sentiment analysis continuous improvement functions
+def analyze_experiment_results(
+    experiment_data: Dict[str, Any], 
+    significance_threshold: float = 0.9, 
+    improvement_threshold: float = 0.05
+) -> Dict[str, Any]:
+    """
+    Analyze experiment results using the Rust-optimized implementation
+    
+    Args:
+        experiment_data: Dictionary containing experiment data including variants and metrics
+        significance_threshold: Statistical significance threshold (0.0-1.0)
+        improvement_threshold: Minimum improvement to consider significant
+        
+    Returns:
+        Dictionary containing analysis results
+    """
+    if _rust_available:
+        try:
+            return sentiment.continuous_improvement.analyze_experiment_results(
+                experiment_data, significance_threshold, improvement_threshold
+            )
+        except Exception as e:
+            logger.warning(f"Error using Rust analyze_experiment_results: {e}. Falling back to Python implementation.")
+            from .sentiment_py import ContinuousImprovementRust
+            return ContinuousImprovementRust.analyze_experiment_results(
+                experiment_data, significance_threshold, improvement_threshold
+            )
+    else:
+        from .sentiment_py import ContinuousImprovementRust
+        return ContinuousImprovementRust.analyze_experiment_results(
+            experiment_data, significance_threshold, improvement_threshold
+        )
+
+def identify_improvement_opportunities(metrics_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Identify improvement opportunities using the Rust-optimized implementation
+    
+    Args:
+        metrics_data: Dictionary containing performance metrics
+        
+    Returns:
+        List of dictionaries containing identified opportunities
+    """
+    if _rust_available:
+        try:
+            return sentiment.continuous_improvement.identify_improvement_opportunities(metrics_data)
+        except Exception as e:
+            logger.warning(f"Error using Rust identify_improvement_opportunities: {e}. Falling back to Python implementation.")
+            from .sentiment_py import ContinuousImprovementRust
+            return ContinuousImprovementRust.identify_improvement_opportunities(metrics_data)
+    else:
+        from .sentiment_py import ContinuousImprovementRust
+        return ContinuousImprovementRust.identify_improvement_opportunities(metrics_data)
+
 class OrderBookProcessor:
     """
     High-performance order book processor powered by Rust.

@@ -172,7 +172,7 @@ class WalkForwardAnalysis:
             train_returns = [m['total_return'] for m in self.results['train_metrics']]
             test_returns = [m['total_return'] for m in self.results['test_metrics']]
             
-            self.results['summary'] = {
+            self.results["summary"] = {
                 'windows': window_count,
                 'avg_train_return': np.mean(train_returns),
                 'avg_test_return': np.mean(test_returns),

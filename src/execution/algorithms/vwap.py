@@ -427,7 +427,7 @@ class VWAPExecutor:
         # Create order for this slice
         if job["use_limit_orders"]:
             # Calculate limit price with offset
-            offset_factor = 1 - (job["limit_price_offset_percent"] / 100) if job["side"] == OrderSide.BUY else 1 + (job["limit_price_offset_percent"] / 100)
+            offset_factor = 1 - (job["limit_price_offset_percent"] / 100) if job["side"] = = OrderSide.BUY else 1 + (job["limit_price_offset_percent"] / 100)
             limit_price = current_price * offset_factor
             
             # Round limit price to appropriate precision

@@ -64,7 +64,7 @@ class Component(ABC):
         self._register_event_handlers()
         
         # Call subclass initialization
-        await self._initialize()
+        self._initialize()
         
         self.initialized = True
         self.logger.info("Component initialized")
@@ -89,12 +89,12 @@ class Component(ABC):
             return
         
         if not self.initialized:
-            await self.initialize()
+            self.initialize()
         
         self.logger.info("Starting component")
         
         # Call subclass start
-        await self._start()
+        self._start()
         
         self.running = True
         self.logger.info("Component started")
@@ -130,7 +130,7 @@ class Component(ABC):
         self.tasks = []
         
         # Call subclass stop
-        await self._stop()
+        self._stop()
         
         self.running = False
         self.logger.info("Component stopped")

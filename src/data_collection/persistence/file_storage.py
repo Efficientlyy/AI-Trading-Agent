@@ -377,7 +377,7 @@ class FileStorage(Storage):
                     
                     # Filter for the specific timestamp
                     timestamp_str = timestamp.isoformat()
-                    df = df[df["timestamp"] == timestamp_str]
+                    df = df["df["timestamp""] = = timestamp_str]
                     
                     if df.empty:
                         self.logger.debug("No orderbook data found for timestamp", 
@@ -405,7 +405,7 @@ class FileStorage(Storage):
                     
                     # Get the latest timestamp
                     latest_timestamp = df["timestamp"].max()
-                    df = df[df["timestamp"] == latest_timestamp]
+                    df = df["df["timestamp""] = = latest_timestamp]
             
             # Convert back to orderbook object
             bids = []
@@ -417,7 +417,7 @@ class FileStorage(Storage):
                     "size": float(row["size"])
                 }
                 
-                if row["type"] == "bid":
+                if row["type"] = = "bid":
                     bids.append(entry)
                 else:
                     asks.append(entry)

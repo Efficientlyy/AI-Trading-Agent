@@ -57,7 +57,7 @@ class BinanceConnector(ExchangeConnector):
     async def _init_websocket_client(self) -> None:
         """Initialize the WebSocket client."""
         if self.ws:
-            await self._close_websocket_client()
+            self._close_websocket_client()
         
         self.ws = await self.session.ws_connect(self.WS_API_URL)
         self.logger.debug("WebSocket connection established")
@@ -66,7 +66,7 @@ class BinanceConnector(ExchangeConnector):
         self.ws_task = self.create_task(self._process_ws_messages())
         
         # Subscribe to all requested data
-        await self._update_subscriptions()
+        self._update_subscriptions()
     
     async def _close_websocket_client(self) -> None:
         """Close the WebSocket client."""
@@ -121,7 +121,7 @@ class BinanceConnector(ExchangeConnector):
                     self.logger.error("Failed to fetch exchange info", status=response.status)
                     return set()
                 
-                data = await response.json()
+                data = response.json()
                 
                 # Extract symbols and convert to standardized format
                 symbols = set()
@@ -186,7 +186,7 @@ class BinanceConnector(ExchangeConnector):
                                     timeframe=timeframe.value)
                     return []
                 
-                data = await response.json()
+                data = response.json()
                 
                 # Convert Binance candles to our format
                 candles = []
@@ -258,7 +258,7 @@ class BinanceConnector(ExchangeConnector):
                                     symbol=symbol)
                     return None
                 
-                data = await response.json()
+                data = response.json()
                 
                 # Convert to our format
                 timestamp = datetime.utcnow()
@@ -328,7 +328,7 @@ class BinanceConnector(ExchangeConnector):
                                     symbol=symbol)
                     return []
                 
-                data = await response.json()
+                data = response.json()
                 
                 # Convert to our format
                 trades = []

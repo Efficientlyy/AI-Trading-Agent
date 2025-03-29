@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>System Logs & Configuration - AI Trading Agent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern_dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/api_keys_panel.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar Navigation -->
+            <nav class="col-md-2 d-none d-md-block sidebar">
+                <div class="sidebar-sticky">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">
+                                <span data-feather="home"></span>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('market_regime_tab') }}">
+                                <span data-feather="trending-up"></span>
+                                Market Regime
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('sentiment_tab') }}">
+                                <span data-feather="message-circle"></span>
+                                Sentiment Analysis
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('risk_tab') }}">
+                                <span data-feather="shield"></span>
+                                Risk Management
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('performance_tab') }}">
+                                <span data-feather="bar-chart-2"></span>
+                                Performance
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="{{ url_for('logs_tab') }}">
+                                <span data-feather="file-text"></span>
+                                System Logs
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main role="main" class="col-md-10 ml-sm-auto px-4">
+                <div
+                    class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">System Logs & Configuration</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group mr-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="share-btn">Share</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                id="export-btn">Export</button>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                id="timeRangeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span data-feather="calendar"></span>
+                                This week
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="timeRangeDropdown">
+                                <li><a class="dropdown-item" href="#">Today</a></li>
+                                <li><a class="dropdown-item" href="#">This week</a></li>
+                                <li><a class="dropdown-item" href="#">This month</a></li>
+                                <li><a class="dropdown-item" href="#">This quarter</a></li>
+                                <li><a class="dropdown-item" href="#">This year</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item" href="#">Custom range...</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Configuration Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">System Configuration</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="config-section">
+                            <h4>General Settings</h4>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="system-name">System Name</label>
+                                        <input type="text" class="form-control" id="system-name"
+                                            value="AI Trading Agent" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="system-version">Version</label>
+                                        <input type="text" class="form-control" id="system-version" value="1.0.0"
+                                            readonly>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="log-level">Log Level</label>
+                                        <select class="form-select" id="log-level">
+                                            <option>DEBUG</option>
+                                            <option selected>INFO</option>
+                                            <option>WARNING</option>
+                                            <option>ERROR</option>
+                                            <option>CRITICAL</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="log-retention">Log Retention (days)</label>
+                                        <input type="number" class="form-control" id="log-retention" value="30">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API Key Management Section -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title">API Key Management</h3>
+                        <button class="btn btn-primary btn-sm" id="add-api-key-btn">
+                            <i data-feather="plus"></i> Add New Key
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        {% include 'api_keys_panel.html' %}
+                    </div>
+                </div>
+
+                <!-- Available Exchange Keys Section -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Available Exchange Keys</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Exchange</th>
+                                        <th>API Key ID</th>
+                                        <th>Status</th>
+                                        <th>Permissions</th>
+                                        <th>Last Used</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Binance</td>
+                                        <td>binance_main</td>
+                                        <td><span class="badge bg-success">Active</span></td>
+                                        <td>Read, Trade</td>
+                                        <td>2025-03-29 14:22:15</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary">Edit</button>
+                                            <button class="btn btn-sm btn-outline-danger">Revoke</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Coinbase</td>
+                                        <td>coinbase_pro</td>
+                                        <td><span class="badge bg-success">Active</span></td>
+                                        <td>Read, Trade</td>
+                                        <td>2025-03-29 10:15:42</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary">Edit</button>
+                                            <button class="btn btn-sm btn-outline-danger">Revoke</button>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Kraken</td>
+                                        <td>kraken_main</td>
+                                        <td><span class="badge bg-warning">Expired</span></td>
+                                        <td>Read Only</td>
+                                        <td>2025-03-25 09:30:18</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-outline-secondary">Edit</button>
+                                            <button class="btn btn-sm btn-outline-danger">Revoke</button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Logs Section -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h3 class="card-title">System Logs</h3>
+                        <div>
+                            <button class="btn btn-outline-secondary btn-sm" id="refresh-logs-btn">
+                                <i data-feather="refresh-cw"></i> Refresh
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm" id="download-logs-btn">
+                                <i data-feather="download"></i> Download
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="log-filters mb-3">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <select class="form-select" id="log-level-filter">
+                                        <option value="all">All Levels</option>
+                                        <option value="debug">DEBUG</option>
+                                        <option value="info">INFO</option>
+                                        <option value="warning">WARNING</option>
+                                        <option value="error">ERROR</option>
+                                        <option value="critical">CRITICAL</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <select class="form-select" id="log-component-filter">
+                                        <option value="all">All Components</option>
+                                        <option value="system">System</option>
+                                        <option value="data">Data Provider</option>
+                                        <option value="strategy">Strategy Engine</option>
+                                        <option value="execution">Order Execution</option>
+                                        <option value="risk">Risk Management</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="log-search"
+                                            placeholder="Search logs...">
+                                        <button class="btn btn-outline-secondary" type="button">
+                                            <i data-feather="search"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="col-md-2">
+                                    <select class="form-select" id="log-entries">
+                                        <option value="50">50 entries</option>
+                                        <option value="100">100 entries</option>
+                                        <option value="200">200 entries</option>
+                                        <option value="500">500 entries</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="log-container">
+                            <pre class="log-output">
+2025-03-29 14:30:15 [INFO] [system] System startup initiated
+2025-03-29 14:30:16 [INFO] [data] Connecting to data providers
+2025-03-29 14:30:17 [INFO] [data] Connected to Binance data feed
+2025-03-29 14:30:17 [INFO] [data] Connected to Coinbase data feed
+2025-03-29 14:30:18 [WARNING] [data] Kraken connection timeout, retrying...
+2025-03-29 14:30:20 [INFO] [data] Connected to Kraken data feed
+2025-03-29 14:30:21 [INFO] [strategy] Loading strategy configurations
+2025-03-29 14:30:22 [INFO] [strategy] Initializing MA Crossover strategy
+2025-03-29 14:30:22 [INFO] [strategy] Initializing RSI Divergence strategy
+2025-03-29 14:30:23 [INFO] [risk] Risk management module initialized
+2025-03-29 14:30:24 [INFO] [execution] Order execution module initialized
+2025-03-29 14:30:25 [INFO] [system] System startup completed
+2025-03-29 14:35:12 [INFO] [data] Market data update received
+2025-03-29 14:35:13 [INFO] [strategy] Strategy signals calculated
+2025-03-29 14:35:14 [INFO] [risk] Position sizing calculated
+2025-03-29 14:35:15 [INFO] [execution] Order placed: BUY 0.25 BTC-USD @ market
+2025-03-29 14:35:16 [INFO] [execution] Order filled: BUY 0.25 BTC-USD @ 64250.75
+2025-03-29 14:40:22 [INFO] [data] Market data update received
+2025-03-29 14:40:23 [INFO] [strategy] Strategy signals calculated
+2025-03-29 14:40:24 [WARNING] [risk] Approaching maximum drawdown threshold
+2025-03-29 14:40:25 [INFO] [risk] Risk adjustment applied
+2025-03-29 14:45:32 [INFO] [data] Market data update received
+2025-03-29 14:45:33 [INFO] [strategy] Strategy signals calculated
+2025-03-29 14:45:34 [INFO] [execution] Order placed: SELL 0.15 BTC-USD @ market
+2025-03-29 14:45:35 [INFO] [execution] Order filled: SELL 0.15 BTC-USD @ 64350.25
+2025-03-29 14:45:36 [INFO] [system] Profit realized: $24.88
+                            </pre>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize feather icons
+        document.addEventListener('DOMContentLoaded', function () {
+            feather.replace();
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/api_key_management.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/config_manager.js') }}"></script>
+</body>
+
+</html>

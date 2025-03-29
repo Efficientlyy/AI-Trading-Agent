@@ -14,7 +14,7 @@ from enum import Enum, auto
 from typing import Any, Callable, Dict, List, Optional, Set, Type, Union, cast
 
 import structlog
-from pydantic import BaseModel, Field
+from src.common.pydantic_compat import BaseModel, Field
 
 from src.common.config import config
 from src.common.datetime_utils import utc_now

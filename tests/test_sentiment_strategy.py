@@ -351,10 +351,10 @@ async def test_analyze_sentiment(mock_strategy):
     # Check that _generate_sentiment_signals was called with correct arguments
     strategy._generate_sentiment_signals.assert_called_once()
     args = strategy._generate_sentiment_signals.call_args[1]
-    assert args["symbol"] == symbol
+    assert args["symbol"] = = symbol
     assert args["sentiment_value"] > 0.75  # Should be weighted average between 0.75 and 0.8
     assert args["confidence"] >= 0.8
-    assert args["is_extreme"] == False  # Not extreme enough
+    assert args["is_extreme"] = = False  # Not extreme enough
 
 
 @pytest.mark.asyncio
@@ -389,13 +389,13 @@ async def test_generate_sentiment_signals_bullish(mock_strategy):
     # Check that a long signal was generated
     strategy.generate_signal.assert_called_once()
     args = strategy.generate_signal.call_args[1]
-    assert args["symbol"] == symbol
-    assert args["signal_type"] == SignalType.ENTRY
-    assert args["direction"] == "long"
-    assert args["price"] == 10100
-    assert args["confidence"] == 0.85
-    assert args["stop_loss"] == 10100 * 0.97  # 3% below entry
-    assert args["take_profit"] == 10100 * 1.06  # 6% above entry
+    assert args["symbol"] = = symbol
+    assert args["signal_type"] = = SignalType.ENTRY
+    assert args["direction"] = = "long"
+    assert args["price"] = = 10100
+    assert args["confidence"] = = 0.85
+    assert args["stop_loss"] = = 10100 * 0.97  # 3% below entry
+    assert args["take_profit"] = = 10100 * 1.06  # 6% above entry
 
 
 @pytest.mark.asyncio
@@ -430,13 +430,13 @@ async def test_generate_sentiment_signals_bearish(mock_strategy):
     # Check that a short signal was generated
     strategy.generate_signal.assert_called_once()
     args = strategy.generate_signal.call_args[1]
-    assert args["symbol"] == symbol
-    assert args["signal_type"] == SignalType.ENTRY
-    assert args["direction"] == "short"
-    assert args["price"] == 10100
-    assert args["confidence"] == 0.85
-    assert args["stop_loss"] == 10100 * 1.03  # 3% above entry
-    assert args["take_profit"] == 10100 * 0.94  # 6% below entry
+    assert args["symbol"] = = symbol
+    assert args["signal_type"] = = SignalType.ENTRY
+    assert args["direction"] = = "short"
+    assert args["price"] = = 10100
+    assert args["confidence"] = = 0.85
+    assert args["stop_loss"] = = 10100 * 1.03  # 3% above entry
+    assert args["take_profit"] = = 10100 * 0.94  # 6% below entry
 
 
 @pytest.mark.asyncio
@@ -472,11 +472,11 @@ async def test_contrarian_mode(mock_strategy):
     # Check that a short signal was generated (contrarian to bullish)
     strategy.generate_signal.assert_called_once()
     args = strategy.generate_signal.call_args[1]
-    assert args["symbol"] == symbol
-    assert args["signal_type"] == SignalType.ENTRY
-    assert args["direction"] == "short"
-    assert args["price"] == 10100
-    assert args["confidence"] == 0.85
+    assert args["symbol"] = = symbol
+    assert args["signal_type"] = = SignalType.ENTRY
+    assert args["direction"] = = "short"
+    assert args["price"] = = 10100
+    assert args["confidence"] = = 0.85
     
     # Reset and test extreme bearish sentiment
     strategy.generate_signal.reset_mock()
@@ -492,11 +492,11 @@ async def test_contrarian_mode(mock_strategy):
     # Check that a long signal was generated (contrarian to bearish)
     strategy.generate_signal.assert_called_once()
     args = strategy.generate_signal.call_args[1]
-    assert args["symbol"] == symbol
-    assert args["signal_type"] == SignalType.ENTRY
-    assert args["direction"] == "long"
-    assert args["price"] == 10100
-    assert args["confidence"] == 0.85
+    assert args["symbol"] = = symbol
+    assert args["signal_type"] = = SignalType.ENTRY
+    assert args["direction"] = = "long"
+    assert args["price"] = = 10100
+    assert args["confidence"] = = 0.85
 
 
 @pytest.mark.asyncio
@@ -537,12 +537,12 @@ async def test_exit_existing_position(mock_strategy):
     
     # First call should be to exit the existing long position
     exit_args = strategy.generate_signal.call_args_list[0][1]
-    assert exit_args["symbol"] == symbol
-    assert exit_args["signal_type"] == SignalType.EXIT
-    assert exit_args["direction"] == "long"
+    assert exit_args["symbol"] = = symbol
+    assert exit_args["signal_type"] = = SignalType.EXIT
+    assert exit_args["direction"] = = "long"
     
     # Second call should be to enter a short position
     entry_args = strategy.generate_signal.call_args_list[1][1]
-    assert entry_args["symbol"] == symbol
-    assert entry_args["signal_type"] == SignalType.ENTRY
-    assert entry_args["direction"] == "short"
+    assert entry_args["symbol"] = = symbol
+    assert entry_args["signal_type"] = = SignalType.ENTRY
+    assert entry_args["direction"] = = "short"

@@ -67,10 +67,10 @@ async def test_process_indicator():
     # Check that a long signal was published
     strategy.publish_signal.assert_called_once()
     args, kwargs = strategy.publish_signal.call_args
-    assert kwargs["symbol"] == symbol
-    assert kwargs["signal_type"] == SignalType.ENTRY
-    assert kwargs["direction"] == "long"
-    assert kwargs["timeframe"] == timeframe
+    assert kwargs["symbol"] = = symbol
+    assert kwargs["signal_type"] = = SignalType.ENTRY
+    assert kwargs["direction"] = = "long"
+    assert kwargs["timeframe"] = = timeframe
     
     # Reset the mock and test a bearish crossover
     strategy.publish_signal.reset_mock()
@@ -94,10 +94,10 @@ async def test_process_indicator():
     # Check that an exit signal was published
     strategy.publish_signal.assert_called()
     args, kwargs = strategy.publish_signal.call_args_list[0]
-    assert kwargs["symbol"] == symbol
-    assert kwargs["signal_type"] == SignalType.EXIT
-    assert kwargs["direction"] == "long"
-    assert kwargs["timeframe"] == timeframe
+    assert kwargs["symbol"] = = symbol
+    assert kwargs["signal_type"] = = SignalType.EXIT
+    assert kwargs["direction"] = = "long"
+    assert kwargs["timeframe"] = = timeframe
 
 
 @pytest.mark.asyncio
@@ -180,8 +180,8 @@ async def test_stop_loss_take_profit():
     # Check that a signal was published with correct stop loss and take profit
     strategy.publish_signal.assert_called_once()
     args, kwargs = strategy.publish_signal.call_args
-    assert kwargs["symbol"] == symbol
-    assert kwargs["direction"] == "long"
-    assert kwargs["price"] == 10200  # The current fast MA value
-    assert kwargs["stop_loss"] == 10200 * 0.95  # 5% below entry price
-    assert kwargs["take_profit"] == 10200 * 1.10  # 10% above entry price 
+    assert kwargs["symbol"] = = symbol
+    assert kwargs["direction"] = = "long"
+    assert kwargs["price"] = = 10200  # The current fast MA value
+    assert kwargs["stop_loss"] = = 10200 * 0.95  # 5% below entry price
+    assert kwargs["take_profit"] = = 10200 * 1.10  # 10% above entry price 

@@ -384,7 +384,7 @@ class GeneticOptimizer:
         results = []
         for params, fitness in zip(top_n_params, top_n_fitness):
             result = params.copy()
-            result['fitness'] = fitness
+            result["fitness"] = fitness
             results.append(result)
         
         return pd.DataFrame(results)

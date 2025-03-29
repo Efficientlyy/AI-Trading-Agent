@@ -1,0 +1,775 @@
+<!-- 
+    Real-time Market Anomaly Detection Dashboard
+    
+    This component provides visualization and detection of unusual market activity,
+    historical pattern analysis, anomaly classification, and severity scoring.
+-->
+
+<div class="card anomaly-detection-panel">
+    <div class="card-header">
+        <div class="card-title">
+            <h3>Market Anomaly Detection</h3>
+            <div class="card-actions">
+                <button id="refresh-anomaly" class="btn btn-icon" data-tooltip="Refresh data" data-position="top">
+                    <i data-feather="refresh-cw"></i>
+                </button>
+                <button id="export-anomaly-data" class="btn btn-icon" data-tooltip="Export data" data-position="top">
+                    <i data-feather="download"></i>
+                </button>
+                <button id="expand-anomaly-panel" class="btn btn-icon" data-tooltip="Expand panel" data-position="top">
+                    <i data-feather="maximize-2"></i>
+                </button>
+            </div>
+        </div>
+        <div class="anomaly-controls">
+            <div class="symbol-selector">
+                <label for="anomaly-symbol">Symbol:</label>
+                <select id="anomaly-symbol" class="form-select">
+                    <option value="BTC-USD" selected>BTC/USD</option>
+                    <option value="ETH-USD">ETH/USD</option>
+                    <option value="SOL-USD">SOL/USD</option>
+                    <option value="BNB-USD">BNB/USD</option>
+                </select>
+            </div>
+            <div class="metric-selector">
+                <label for="anomaly-metric">Metric:</label>
+                <select id="anomaly-metric" class="form-select">
+                    <option value="price" selected>Price</option>
+                    <option value="volume">Volume</option>
+                    <option value="volatility">Volatility</option>
+                </select>
+            </div>
+            <div class="sensitivity-slider">
+                <label for="anomaly-sensitivity">Sensitivity:</label>
+                <div class="slider-container">
+                    <input type="range" id="anomaly-sensitivity" class="form-range" min="1.5" max="5" step="0.1" value="2.5">
+                    <span id="sensitivity-value">2.5</span>
+                    <span class="slider-label">σ</span>
+                </div>
+            </div>
+            <div class="time-window-selector">
+                <label for="time-window">Time Window:</label>
+                <select id="time-window" class="form-select">
+                    <option value="1h">1 Hour</option>
+                    <option value="4h">4 Hours</option>
+                    <option value="1d" selected>1 Day</option>
+                    <option value="1w">1 Week</option>
+                </select>
+            </div>
+            <div class="alerts-toggle">
+                <label for="alerts-enabled">Alerts:</label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="alerts-enabled" checked>
+                    <span class="toggle-slider"></span>
+                </div>
+            </div>
+            <div class="realtime-toggle">
+                <label for="realtime-toggle">Realtime:</label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="realtime-toggle" checked>
+                    <span class="toggle-slider"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <div class="anomaly-grid">
+            <!-- Realtime Anomaly Chart -->
+            <div class="anomaly-grid-item realtime-container">
+                <h4 class="chart-title">Real-time Anomaly Detection</h4>
+                <div id="realtime-anomaly-chart" class="anomaly-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Anomaly Pattern Library Chart -->
+            <div class="anomaly-grid-item patterns-container">
+                <h4 class="chart-title">Historical Anomaly Patterns</h4>
+                <div id="pattern-library-chart" class="anomaly-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Anomaly Classification Chart -->
+            <div class="anomaly-grid-item classification-container">
+                <h4 class="chart-title">Anomaly Classification</h4>
+                <div id="anomaly-classification-chart" class="anomaly-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Anomaly Severity Chart -->
+            <div class="anomaly-grid-item severity-container">
+                <h4 class="chart-title">Anomaly Severity Scoring</h4>
+                <div id="anomaly-severity-chart" class="anomaly-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="anomaly-insights">
+            <!-- Anomaly Summary Card -->
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Anomaly Summary</h4>
+                    <div class="severity-counts">
+                        <div class="severity-item critical">
+                            <span class="severity-label">Critical</span>
+                            <span class="severity-value" id="critical-count">0</span>
+                        </div>
+                        <div class="severity-item alert">
+                            <span class="severity-label">Alert</span>
+                            <span class="severity-value" id="alert-count">0</span>
+                        </div>
+                        <div class="severity-item warning">
+                            <span class="severity-label">Warning</span>
+                            <span class="severity-value" id="warning-count">0</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="insight-body">
+                    <div class="table-container">
+                        <table class="data-table anomaly-table">
+                            <thead>
+                                <tr>
+                                    <th>Timestamp</th>
+                                    <th>Metric</th>
+                                    <th>Type</th>
+                                    <th>Severity</th>
+                                    <th>Z-Score</th>
+                                    <th>Value</th>
+                                    <th>Expected</th>
+                                    <th>Pattern Match</th>
+                                </tr>
+                            </thead>
+                            <tbody id="anomaly-table-body">
+                                <!-- Anomaly rows will be added here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Pattern Library Card -->
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Pattern Library</h4>
+                </div>
+                <div class="insight-body">
+                    <div class="pattern-library">
+                        <div class="pattern-library-list">
+                            <div class="pattern-library-item" data-pattern-id="1">
+                                <div class="pattern-icon price-spike"></div>
+                                <div class="pattern-name">Price Spike</div>
+                            </div>
+                            <div class="pattern-library-item" data-pattern-id="2">
+                                <div class="pattern-icon price-drop"></div>
+                                <div class="pattern-name">Price Drop</div>
+                            </div>
+                            <div class="pattern-library-item" data-pattern-id="3">
+                                <div class="pattern-icon volatility-surge"></div>
+                                <div class="pattern-name">Volatility Surge</div>
+                            </div>
+                            <div class="pattern-library-item" data-pattern-id="4">
+                                <div class="pattern-icon liquidity-gap"></div>
+                                <div class="pattern-name">Liquidity Gap</div>
+                            </div>
+                            <div class="pattern-library-item" data-pattern-id="5">
+                                <div class="pattern-icon flash-crash"></div>
+                                <div class="pattern-name">Flash Crash</div>
+                            </div>
+                            <div class="pattern-library-item" data-pattern-id="6">
+                                <div class="pattern-icon market-manipulation"></div>
+                                <div class="pattern-name">Market Manipulation</div>
+                            </div>
+                        </div>
+                        <div class="pattern-details">
+                            <h5 id="selected-pattern-name">Select a pattern</h5>
+                            <div class="pattern-description">
+                                <p id="selected-pattern-desc">Click on a pattern from the list to view details.</p>
+                            </div>
+                            <div class="pattern-metadata">
+                                <div class="metadata-item">
+                                    <span class="metadata-label">Frequency:</span>
+                                    <span class="metadata-value" id="selected-pattern-frequency">--</span>
+                                </div>
+                                <div class="metadata-item">
+                                    <span class="metadata-label">Implications:</span>
+                                    <span class="metadata-value" id="selected-pattern-implications">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-footer">
+        <div class="anomaly-metrics-summary">
+            <div class="metric-item">
+                <span class="metric-label">Total Anomalies:</span>
+                <span class="metric-value" id="anomaly-count">--</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Detection Rate:</span>
+                <span class="metric-value" id="detection-rate">--</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Last Anomaly:</span>
+                <span class="metric-value" id="last-anomaly-time">--</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Updated:</span>
+                <span class="metric-value" id="anomaly-last-updated">--</span>
+            </div>
+        </div>
+        <div class="anomaly-actions">
+            <button class="btn btn-sm" id="anomaly-settings">
+                <i data-feather="settings"></i> Settings
+            </button>
+            <button class="btn btn-sm" id="export-anomaly-report">
+                <i data-feather="file-text"></i> Export Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Anomaly Notifications Area (fixed position) -->
+<div class="anomaly-notifications"></div>
+
+<!-- Add CSS for the anomaly detection panel -->
+<style>
+    .anomaly-detection-panel {
+        margin-bottom: 1.5rem;
+    }
+    
+    .anomaly-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .symbol-selector,
+    .metric-selector,
+    .time-window-selector {
+        min-width: 120px;
+    }
+    
+    .sensitivity-slider {
+        min-width: 200px;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        flex: 1;
+    }
+    
+    .form-range {
+        flex: 1;
+    }
+    
+    .slider-label {
+        color: var(--text-light);
+        font-size: 0.9rem;
+    }
+    
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 24px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--border-light);
+        transition: 0.4s;
+        border-radius: 24px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background-color: var(--primary);
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(24px);
+    }
+    
+    .alerts-toggle,
+    .realtime-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .anomaly-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 300px 300px;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .anomaly-grid-item {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chart-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text);
+        margin: 0 0 0.5rem 0;
+        padding: 0 0 0.5rem 0;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .anomaly-chart {
+        flex: 1;
+        position: relative;
+        min-height: 200px;
+        background-color: var(--card-bg);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .chart-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(var(--card-bg-rgb), 0.8);
+        font-size: 1rem;
+        color: var(--text-light);
+        z-index: 5;
+    }
+    
+    .anomaly-insights {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .insight-card {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .insight-header {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .insight-header h4 {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .severity-counts {
+        display: flex;
+        gap: 1rem;
+    }
+    
+    .severity-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .severity-item::before {
+        content: "";
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+    }
+    
+    .severity-item.critical::before {
+        background-color: var(--danger);
+    }
+    
+    .severity-item.alert::before {
+        background-color: var(--warning);
+    }
+    
+    .severity-item.warning::before {
+        background-color: var(--info);
+    }
+    
+    .severity-value {
+        font-weight: 700;
+    }
+    
+    .insight-body {
+        padding: 0.75rem 1rem;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.5rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .data-table th {
+        font-weight: 600;
+        color: var(--text);
+        background-color: var(--bg-light);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+    
+    .data-table tbody tr:hover {
+        background-color: rgba(var(--primary-rgb), 0.05);
+    }
+    
+    .severity-critical {
+        color: var(--danger);
+    }
+    
+    .severity-alert {
+        color: var(--warning);
+    }
+    
+    .severity-warning {
+        color: var(--info);
+    }
+    
+    .confidence {
+        font-size: 0.75rem;
+        color: var(--text-light);
+    }
+    
+    .pattern-library {
+        display: flex;
+        gap: 1rem;
+        height: 232px;
+    }
+    
+    .pattern-library-list {
+        flex: 0 0 40%;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        overflow-y: auto;
+        border-right: 1px solid var(--border-light);
+        padding-right: 0.5rem;
+    }
+    
+    .pattern-library-item {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+    
+    .pattern-library-item:hover {
+        background-color: rgba(var(--primary-rgb), 0.1);
+    }
+    
+    .pattern-icon {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+    }
+    
+    .pattern-icon.price-spike {
+        background-color: rgba(16, 185, 129, 0.7);
+    }
+    
+    .pattern-icon.price-drop {
+        background-color: rgba(239, 68, 68, 0.7);
+    }
+    
+    .pattern-icon.volatility-surge {
+        background-color: rgba(234, 179, 8, 0.7);
+    }
+    
+    .pattern-icon.liquidity-gap {
+        background-color: rgba(124, 58, 237, 0.7);
+    }
+    
+    .pattern-icon.flash-crash {
+        background-color: rgba(239, 68, 68, 0.7);
+    }
+    
+    .pattern-icon.market-manipulation {
+        background-color: rgba(59, 130, 246, 0.7);
+    }
+    
+    .pattern-name {
+        font-size: 0.85rem;
+    }
+    
+    .pattern-details {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding-left: 0.5rem;
+    }
+    
+    .pattern-details h5 {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .pattern-description p {
+        font-size: 0.85rem;
+        margin: 0.5rem 0;
+        color: var(--text-light);
+    }
+    
+    .pattern-metadata {
+        margin-top: auto;
+    }
+    
+    .metadata-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .metadata-label {
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .metadata-value {
+        font-size: 0.75rem;
+        color: var(--text-light);
+    }
+    
+    .anomaly-metrics-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+    
+    .metric-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .metric-label {
+        font-size: 0.85rem;
+        color: var(--text-light);
+    }
+    
+    .metric-value {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .anomaly-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    /* Anomaly notifications */
+    .anomaly-notifications {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        max-width: 350px;
+    }
+    
+    .anomaly-notification {
+        background-color: var(--card-bg);
+        border-radius: 6px;
+        padding: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        animation: slide-in 0.3s ease-out;
+        border-left: 4px solid var(--primary);
+    }
+    
+    .anomaly-notification.severity-warning {
+        border-left-color: var(--info);
+    }
+    
+    .anomaly-notification.severity-alert {
+        border-left-color: var(--warning);
+    }
+    
+    .anomaly-notification.severity-critical {
+        border-left-color: var(--danger);
+    }
+    
+    .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+    
+    .notification-title {
+        font-weight: 500;
+        font-size: 0.9rem;
+    }
+    
+    .notification-close {
+        cursor: pointer;
+        font-size: 1.2rem;
+        line-height: 1;
+    }
+    
+    .notification-body {
+        font-size: 0.85rem;
+    }
+    
+    .notification-metric {
+        margin-bottom: 3px;
+    }
+    
+    .notification-info {
+        color: var(--text-light);
+        font-size: 0.8rem;
+        margin-bottom: 3px;
+    }
+    
+    .notification-time {
+        font-size: 0.75rem;
+        color: var(--text-light);
+    }
+    
+    .fade-out {
+        animation: fade-out 0.5s ease-out forwards;
+    }
+    
+    @keyframes slide-in {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes fade-out {
+        from {
+            opacity: 1;
+        }
+        to {
+            opacity: 0;
+        }
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .anomaly-grid {
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(4, 300px);
+        }
+        
+        .anomaly-insights {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .anomaly-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .symbol-selector,
+        .metric-selector,
+        .sensitivity-slider,
+        .time-window-selector {
+            width: 100%;
+        }
+        
+        .anomaly-metrics-summary {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .pattern-library {
+            flex-direction: column;
+            height: auto;
+        }
+        
+        .pattern-library-list {
+            flex: 0 0 auto;
+            border-right: none;
+            border-bottom: 1px solid var(--border-light);
+            padding-right: 0;
+            padding-bottom: 0.5rem;
+        }
+    }
+</style>

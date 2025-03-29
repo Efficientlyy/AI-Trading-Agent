@@ -117,7 +117,7 @@ class CryptoCompareNewsClient:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params=params, headers=headers) as response:
                     if response.status == 200:
-                        json_data = await response.json()
+                        json_data = response.json()
                         
                         if json_data.get("Type") == 100:  # Success
                             articles = json_data.get("Data", [])
@@ -201,7 +201,7 @@ class CryptoCompareNewsClient:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params=params, headers=headers) as response:
                     if response.status == 200:
-                        json_data = await response.json()
+                        json_data = response.json()
                         
                         if json_data.get("Response") == "Success":
                             categories = json_data.get("Data", {})
@@ -272,7 +272,7 @@ class CryptoCompareNewsClient:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params=params, headers=headers) as response:
                     if response.status == 200:
-                        json_data = await response.json()
+                        json_data = response.json()
                         
                         if json_data.get("Response") == "Success":
                             feeds = json_data.get("Data", [])

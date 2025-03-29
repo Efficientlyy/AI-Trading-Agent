@@ -896,7 +896,7 @@ class EnhancedPricePredictionStrategy(BaseMLStrategy):
             position_size *= (1 + correlation_score) / 2  # Scale between 0.5x and 1.5x
             
             # Calculate take profit and stop loss levels
-            if prediction["direction"] == "long":
+            if prediction["direction"] = = "long":
                 stop_loss = current_price - stop_distance
                 take_profit = current_price + take_profit_distance
             else:

@@ -74,7 +74,7 @@ async def test_fetch_available_symbols(connector):
         mock_session.get = MagicMock(return_value=mock_context_manager)
         
         # Call the method
-        symbols = await connector.fetch_available_symbols()
+        symbols = connector.fetch_available_symbols()
         
         # Check results
         assert len(symbols) == 2
@@ -304,7 +304,7 @@ async def test_update_subscriptions(connector):
     connector.ws_subscriptions = {"btcusdt@depth"}  # Already subscribed to one
     
     # Call the method
-    await connector._update_subscriptions()
+    connector._update_subscriptions()
     
     # Check that ws.send_json was called with correct parameters
     assert connector.ws.send_json.called
@@ -316,7 +316,7 @@ async def test_update_subscriptions(connector):
     subscribed_params = None
     for call in call_args:
         args = call[0][0]
-        if args["method"] == "SUBSCRIBE":
+        if args["method"] = = "SUBSCRIBE":
             subscribed_params = args["params"]
     
     assert subscribed_params is not None

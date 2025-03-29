@@ -584,7 +584,7 @@ def _setup_cloud_logging():
                         }
                         
                         if self.sequence_token:
-                            kwargs['sequenceToken'] = self.sequence_token
+                            kwargs["sequenceToken"] = self.sequence_token
                             
                         response = self.client.put_log_events(**kwargs)
                         self.sequence_token = response['nextSequenceToken']

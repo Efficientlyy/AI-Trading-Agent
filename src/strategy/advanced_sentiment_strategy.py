@@ -109,7 +109,7 @@ class AdvancedSentimentStrategy(EnhancedSentimentStrategy):
         
         # Set initial adaptive parameters if enabled
         if self.use_adaptive_parameters:
-            await self._update_adaptive_parameters()
+            self._update_adaptive_parameters()
     
     async def _handle_event(self, event) -> None:
         """Handle events the strategy is subscribed to.
@@ -187,7 +187,7 @@ class AdvancedSentimentStrategy(EnhancedSentimentStrategy):
         
         # Update adaptive parameters based on new regime
         if self.use_adaptive_parameters:
-            await self._update_adaptive_parameters()
+            self._update_adaptive_parameters()
     
     async def process_candle(self, candle: CandleData) -> None:
         """Process a new candle data event.

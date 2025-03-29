@@ -1,0 +1,614 @@
+<!-- 
+    Interactive Efficient Frontier Panel Component
+    
+    This component provides a dynamic tool for portfolio optimization through efficient frontier
+    visualization, risk contribution analysis, and constraint adjustment.
+-->
+
+<div class="card efficient-frontier-panel">
+    <div class="card-header">
+        <div class="card-title">
+            <h3>Interactive Efficient Frontier</h3>
+            <div class="card-actions">
+                <button id="recalculate-frontier-btn" class="btn btn-icon" data-tooltip="Recalculate frontier" data-position="top">
+                    <i data-feather="refresh-cw"></i>
+                </button>
+                <button id="download-frontier-data-btn" class="btn btn-icon" data-tooltip="Download data" data-position="top">
+                    <i data-feather="download"></i>
+                </button>
+                <button id="expand-frontier-panel-btn" class="btn btn-icon" data-tooltip="Expand panel" data-position="top">
+                    <i data-feather="maximize-2"></i>
+                </button>
+            </div>
+        </div>
+        <div class="frontier-controls">
+            <div class="asset-selection">
+                <label for="frontier-assets">Assets:</label>
+                <div class="asset-checkboxes" id="frontier-assets">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="asset-btc" checked>
+                        <label for="asset-btc">BTC</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="asset-eth" checked>
+                        <label for="asset-eth">ETH</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="asset-sol" checked>
+                        <label for="asset-sol">SOL</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="asset-bnb" checked>
+                        <label for="asset-bnb">BNB</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="asset-ada">
+                        <label for="asset-ada">ADA</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="asset-xrp">
+                        <label for="asset-xrp">XRP</label>
+                    </div>
+                    <button id="select-all-assets" class="btn btn-sm">All</button>
+                    <button id="select-none-assets" class="btn btn-sm">None</button>
+                </div>
+            </div>
+            <div class="time-period-selector">
+                <label for="frontier-period">Period:</label>
+                <select id="frontier-period" class="form-select">
+                    <option value="3m">3 Months</option>
+                    <option value="6m">6 Months</option>
+                    <option value="1y" selected>1 Year</option>
+                    <option value="2y">2 Years</option>
+                    <option value="5y">5 Years</option>
+                </select>
+            </div>
+            <div class="frontier-type-selector">
+                <label for="frontier-type">Frontier:</label>
+                <select id="frontier-type" class="form-select">
+                    <option value="mean-variance" selected>Mean-Variance</option>
+                    <option value="mean-cvar">Mean-CVaR</option>
+                    <option value="max-sharpe">Max Sharpe</option>
+                    <option value="min-volatility">Min Volatility</option>
+                </select>
+            </div>
+            <div class="risk-free-rate">
+                <label for="risk-free-rate">Risk-free Rate (%):</label>
+                <input type="number" id="risk-free-rate" class="form-input" min="0" max="10" step="0.25" value="2.5">
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <div class="frontier-grid">
+            <!-- Efficient Frontier Chart -->
+            <div class="frontier-grid-item frontier-chart-container">
+                <h4 class="chart-title">Efficient Frontier</h4>
+                <div id="efficient-frontier-chart" class="frontier-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+                <div class="optimal-portfolio-indicator">
+                    <span class="indicator-title">Optimal Portfolio:</span>
+                    <span id="optimal-portfolio-risk" class="indicator-value">3.84%</span>
+                    <span class="indicator-label">Volatility</span>
+                    |
+                    <span id="optimal-portfolio-return" class="indicator-value">12.76%</span>
+                    <span class="indicator-label">Return</span>
+                    |
+                    <span id="optimal-portfolio-sharpe" class="indicator-value">2.65</span>
+                    <span class="indicator-label">Sharpe</span>
+                </div>
+            </div>
+            
+            <!-- Risk Contribution Chart -->
+            <div class="frontier-grid-item risk-contribution-container">
+                <h4 class="chart-title">Risk Contribution</h4>
+                <div id="risk-contribution-chart" class="frontier-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Optimal Portfolio Weights -->
+            <div class="frontier-grid-item weights-container">
+                <h4 class="chart-title">Optimal Portfolio Weights</h4>
+                <div id="optimal-weights-chart" class="frontier-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Historical Performance -->
+            <div class="frontier-grid-item performance-container">
+                <h4 class="chart-title">Historical Performance</h4>
+                <div id="frontier-performance-chart" class="frontier-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="frontier-constraint-controls">
+            <h4>Optimization Constraints</h4>
+            <div class="constraint-grid">
+                <div class="constraint-section min-weights">
+                    <h5>Minimum Weights (%)</h5>
+                    <div class="constraint-sliders">
+                        <div class="slider-item">
+                            <label for="min-weight-btc">BTC:</label>
+                            <input type="range" id="min-weight-btc" class="form-range" min="0" max="50" step="5" value="10">
+                            <span class="slider-value">10%</span>
+                        </div>
+                        <div class="slider-item">
+                            <label for="min-weight-eth">ETH:</label>
+                            <input type="range" id="min-weight-eth" class="form-range" min="0" max="50" step="5" value="5">
+                            <span class="slider-value">5%</span>
+                        </div>
+                        <div class="slider-item">
+                            <label for="min-weight-sol">SOL:</label>
+                            <input type="range" id="min-weight-sol" class="form-range" min="0" max="50" step="5" value="0">
+                            <span class="slider-value">0%</span>
+                        </div>
+                        <div class="slider-item">
+                            <label for="min-weight-bnb">BNB:</label>
+                            <input type="range" id="min-weight-bnb" class="form-range" min="0" max="50" step="5" value="0">
+                            <span class="slider-value">0%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="constraint-section max-weights">
+                    <h5>Maximum Weights (%)</h5>
+                    <div class="constraint-sliders">
+                        <div class="slider-item">
+                            <label for="max-weight-btc">BTC:</label>
+                            <input type="range" id="max-weight-btc" class="form-range" min="0" max="100" step="5" value="40">
+                            <span class="slider-value">40%</span>
+                        </div>
+                        <div class="slider-item">
+                            <label for="max-weight-eth">ETH:</label>
+                            <input type="range" id="max-weight-eth" class="form-range" min="0" max="100" step="5" value="40">
+                            <span class="slider-value">40%</span>
+                        </div>
+                        <div class="slider-item">
+                            <label for="max-weight-sol">SOL:</label>
+                            <input type="range" id="max-weight-sol" class="form-range" min="0" max="100" step="5" value="30">
+                            <span class="slider-value">30%</span>
+                        </div>
+                        <div class="slider-item">
+                            <label for="max-weight-bnb">BNB:</label>
+                            <input type="range" id="max-weight-bnb" class="form-range" min="0" max="100" step="5" value="30">
+                            <span class="slider-value">30%</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="constraint-section group-constraints">
+                    <h5>Group Constraints (%)</h5>
+                    <div class="constraint-sliders">
+                        <div class="slider-item">
+                            <label for="max-large-cap">Large Cap Max:</label>
+                            <input type="range" id="max-large-cap" class="form-range" min="0" max="100" step="5" value="80">
+                            <span class="slider-value">80%</span>
+                        </div>
+                        <div class="slider-item">
+                            <label for="max-mid-cap">Mid Cap Max:</label>
+                            <input type="range" id="max-mid-cap" class="form-range" min="0" max="100" step="5" value="60">
+                            <span class="slider-value">60%</span>
+                        </div>
+                        <div class="slider-item">
+                            <label for="max-small-cap">Small Cap Max:</label>
+                            <input type="range" id="max-small-cap" class="form-range" min="0" max="100" step="5" value="40">
+                            <span class="slider-value">40%</span>
+                        </div>
+                        <div class="slider-item">
+                            <label for="max-volatility">Max Volatility:</label>
+                            <input type="range" id="max-volatility" class="form-range" min="5" max="50" step="5" value="25">
+                            <span class="slider-value">25%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="constraint-actions">
+                <button id="reset-constraints-btn" class="btn btn-secondary">Reset Constraints</button>
+                <button id="apply-constraints-btn" class="btn btn-primary">Apply Constraints</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-footer">
+        <div class="frontier-metrics-summary">
+            <div class="metric-item">
+                <span class="metric-label">Optimal Return:</span>
+                <span class="metric-value" id="optimal-return">12.76%</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Optimal Risk:</span>
+                <span class="metric-value" id="optimal-risk">3.84%</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Sharpe Ratio:</span>
+                <span class="metric-value" id="optimal-sharpe">2.65</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Diversification:</span>
+                <span class="metric-value" id="diversification-score">7.2</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Last Updated:</span>
+                <span class="metric-value" id="frontier-last-updated">Just now</span>
+            </div>
+        </div>
+        <div class="frontier-actions">
+            <button class="btn btn-sm" id="save-portfolio-btn">
+                <i data-feather="save"></i> Save Portfolio
+            </button>
+            <button class="btn btn-sm" id="export-frontier-report">
+                <i data-feather="file-text"></i> Export Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Efficient Frontier Settings Modal -->
+<div id="frontier-settings-modal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Efficient Frontier Settings</h3>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="optimize-for">Optimization Objective:</label>
+                    <select id="optimize-for" class="form-select">
+                        <option value="sharpe" selected>Maximum Sharpe Ratio</option>
+                        <option value="min-risk">Minimum Risk</option>
+                        <option value="max-return">Maximum Return</option>
+                        <option value="custom">Custom Risk-Return</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="optimization-method">Optimization Method:</label>
+                    <select id="optimization-method" class="form-select">
+                        <option value="monte-carlo" selected>Monte Carlo Simulation</option>
+                        <option value="quadratic">Quadratic Programming</option>
+                        <option value="genetic">Genetic Algorithm</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="monte-carlo-settings">Monte Carlo Settings:</label>
+                    <div class="slider-container">
+                        <span class="slider-label">Portfolios:</span>
+                        <input type="range" id="mc-portfolios" class="form-range" min="1000" max="10000" step="1000" value="5000">
+                        <span class="slider-value">5,000</span>
+                    </div>
+                    <div class="slider-container">
+                        <span class="slider-label">Random Seed:</span>
+                        <input type="range" id="mc-seed" class="form-range" min="0" max="999" step="1" value="42">
+                        <span class="slider-value">42</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="covariance-method">Covariance Calculation:</label>
+                    <select id="covariance-method" class="form-select">
+                        <option value="sample" selected>Sample Covariance</option>
+                        <option value="shrinkage">Shrinkage Covariance</option>
+                        <option value="ledoit-wolf">Ledoit-Wolf Shrinkage</option>
+                        <option value="exponential">Exponentially Weighted</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="return-estimation">Return Estimation:</label>
+                    <select id="return-estimation" class="form-select">
+                        <option value="historical" selected>Historical Returns</option>
+                        <option value="black-litterman">Black-Litterman</option>
+                        <option value="adjusted">Adjusted Historical</option>
+                        <option value="capm">CAPM-based</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Advanced Options:</label>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="rebalance-simulation" checked>
+                        <label for="rebalance-simulation">Simulate Rebalancing</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="include-transaction-costs">
+                        <label for="include-transaction-costs">Include Transaction Costs</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="include-taxes">
+                        <label for="include-taxes">Include Tax Effects</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="show-monte-carlo-points" checked>
+                        <label for="show-monte-carlo-points">Show All Simulated Portfolios</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="historical-frontier" checked>
+                        <label for="historical-frontier">Show Historical Frontiers</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-frontier-settings">Apply Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add CSS for the efficient frontier panel -->
+<style>
+    .efficient-frontier-panel {
+        margin-bottom: 1.5rem;
+    }
+    
+    .frontier-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .asset-selection {
+        min-width: 250px;
+    }
+    
+    .asset-checkboxes {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.25rem;
+    }
+    
+    .time-period-selector,
+    .frontier-type-selector,
+    .risk-free-rate {
+        min-width: 150px;
+    }
+    
+    .form-input {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.9rem;
+        border: 1px solid var(--border-light);
+        border-radius: 4px;
+        background-color: var(--bg-light);
+        color: var(--text);
+        width: 100%;
+    }
+    
+    .frontier-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 300px 300px;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .frontier-grid-item {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chart-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text);
+        margin: 0 0 0.5rem 0;
+        padding: 0 0 0.5rem 0;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .frontier-chart {
+        flex: 1;
+        position: relative;
+        min-height: 200px;
+        background-color: var(--card-bg);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .chart-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(var(--card-bg-rgb), 0.8);
+        font-size: 1rem;
+        color: var(--text-light);
+        z-index: 5;
+    }
+    
+    .optimal-portfolio-indicator {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        background-color: var(--bg-light);
+        border-radius: 4px;
+        margin-top: 0.5rem;
+        flex-wrap: wrap;
+    }
+    
+    .indicator-title {
+        font-weight: 500;
+        color: var(--text);
+        margin-right: 0.25rem;
+    }
+    
+    .indicator-value {
+        font-weight: 600;
+        color: var(--primary);
+    }
+    
+    .indicator-label {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+    
+    .frontier-constraint-controls {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .frontier-constraint-controls h4 {
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0 0 1rem 0;
+        color: var(--text);
+    }
+    
+    .constraint-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1.5rem;
+    }
+    
+    .constraint-section h5 {
+        font-size: 0.9rem;
+        font-weight: 500;
+        margin: 0 0 0.75rem 0;
+        color: var(--text);
+    }
+    
+    .constraint-sliders {
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .slider-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .slider-item label {
+        min-width: 100px;
+        font-size: 0.85rem;
+        color: var(--text-light);
+    }
+    
+    .form-range {
+        flex: 1;
+    }
+    
+    .slider-value {
+        min-width: 40px;
+        text-align: right;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .constraint-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+    
+    .frontier-metrics-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+    
+    .metric-item {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .metric-label {
+        font-size: 0.85rem;
+        color: var(--text-light);
+    }
+    
+    .metric-value {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text);
+    }
+    
+    .frontier-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    /* Modal specific styles */
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--text);
+        font-size: 0.9rem;
+    }
+    
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .slider-label {
+        min-width: 80px;
+        font-size: 0.85rem;
+    }
+    
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .checkbox-item label {
+        margin: 0;
+        font-weight: 400;
+        font-size: 0.85rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .frontier-grid {
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(4, 300px);
+        }
+        
+        .constraint-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .frontier-controls {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+        }
+        
+        .frontier-metrics-summary {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+    }
+</style>
+
+<!-- JavaScript for efficient frontier panel functionality will be loaded separately -->

@@ -110,7 +110,7 @@ class ExchangeInterface:
             return None
         
         try:
-            balances = await connector.get_account_balance()
+            balances = connector.get_account_balance()
             
             # Convert Decimal to float for easier handling
             float_balances = {k: float(v) for k, v in balances.items()}

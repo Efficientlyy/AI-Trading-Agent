@@ -776,7 +776,7 @@ class OrderBookBacktester:
             await self.strategy.initialize()
             
             # Register signal handler
-            await self._register_signal_handler()
+            self._register_signal_handler()
             
             # Start the strategy
             self.logger.info(f"Starting strategy '{self.strategy.strategy_id}'")

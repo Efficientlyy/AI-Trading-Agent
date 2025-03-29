@@ -7,7 +7,7 @@ It ensures that configuration values match expected types and constraints.
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type, Union
 
-from pydantic import BaseModel, Field, ValidationInfo, field_validator
+from src.common.pydantic_compat import BaseModel, Field, ValidationInfo, field_validator
 
 
 class ConfigValueType(str, Enum):

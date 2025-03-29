@@ -338,7 +338,7 @@ class SmartOrderRouter:
                 connector = self.exchange_interface.get_connector(exchange_id)
                 if connector:
                     try:
-                        info = await connector.get_exchange_info()
+                        info = connector.get_exchange_info()
                         fees = info.get("fees", {})
                         fee_data[exchange_id] = {
                             "maker": float(fees.get("maker", 0)),

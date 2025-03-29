@@ -1,0 +1,777 @@
+<!-- 
+    Market Breadth Indicators Component
+    
+    This component displays market breadth indicators including advance-decline metrics,
+    sector heatmaps, market concentration, and breadth oscillators to show the underlying
+    strength or weakness of the market.
+-->
+
+<div class="card market-breadth-panel">
+    <div class="card-header">
+        <div class="card-title">
+            <h3>Market Breadth Indicators</h3>
+            <div class="card-actions">
+                <button id="breadth-settings-btn" class="btn btn-icon" data-tooltip="Breadth settings" data-position="top">
+                    <i data-feather="settings"></i>
+                </button>
+                <button id="download-breadth-data-btn" class="btn btn-icon" data-tooltip="Download data" data-position="top">
+                    <i data-feather="download"></i>
+                </button>
+                <button id="expand-breadth-panel-btn" class="btn btn-icon" data-tooltip="Expand panel" data-position="top">
+                    <i data-feather="maximize-2"></i>
+                </button>
+            </div>
+        </div>
+        <div class="breadth-controls">
+            <div class="market-selector">
+                <label for="breadth-market">Market:</label>
+                <select id="breadth-market" class="form-select">
+                    <option value="crypto" selected>Crypto</option>
+                    <option value="US">US Equities</option>
+                    <option value="global">Global Markets</option>
+                    <option value="sectors">Sector Analysis</option>
+                </select>
+            </div>
+            <div class="timeframe-selector">
+                <label for="breadth-timeframe">Timeframe:</label>
+                <select id="breadth-timeframe" class="form-select">
+                    <option value="1h">1h</option>
+                    <option value="4h">4h</option>
+                    <option value="1d" selected>1d</option>
+                    <option value="1w">1w</option>
+                    <option value="1M">1M</option>
+                </select>
+            </div>
+            <div class="period-selector">
+                <label for="breadth-period">Period:</label>
+                <select id="breadth-period" class="form-select">
+                    <option value="30">1 Month</option>
+                    <option value="90" selected>3 Months</option>
+                    <option value="180">6 Months</option>
+                    <option value="365">1 Year</option>
+                </select>
+            </div>
+            <div class="indicator-selector">
+                <label for="breadth-indicator">Primary Indicator:</label>
+                <select id="breadth-indicator" class="form-select">
+                    <option value="advance-decline" selected>Advance-Decline</option>
+                    <option value="new-highs-lows">New Highs/Lows</option>
+                    <option value="mcclellan">McClellan Oscillator</option>
+                    <option value="concentration">Market Concentration</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <div class="breadth-grid">
+            <!-- Primary Indicator Chart -->
+            <div class="breadth-grid-item primary-indicator-container">
+                <h4 class="chart-title">Primary Breadth Indicator</h4>
+                <div class="visualization-controls">
+                    <div class="ma-selector">
+                        <label for="ma-type">Moving Average:</label>
+                        <select id="ma-type" class="form-select">
+                            <option value="none">None</option>
+                            <option value="sma" selected>Simple (SMA)</option>
+                            <option value="ema">Exponential (EMA)</option>
+                            <option value="wma">Weighted (WMA)</option>
+                        </select>
+                    </div>
+                    <div class="ma-period">
+                        <label for="ma-period">Period:</label>
+                        <select id="ma-period" class="form-select">
+                            <option value="5">5</option>
+                            <option value="10">10</option>
+                            <option value="20" selected>20</option>
+                            <option value="50">50</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="primary-breadth-chart" class="breadth-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Sector Heatmap -->
+            <div class="breadth-grid-item sector-heatmap-container">
+                <h4 class="chart-title">Sector/Category Performance</h4>
+                <div class="visualization-controls">
+                    <div class="view-selector">
+                        <label for="heatmap-view">View:</label>
+                        <select id="heatmap-view" class="form-select">
+                            <option value="treemap" selected>Treemap</option>
+                            <option value="heatmap">Heatmap</option>
+                            <option value="bubble">Bubble Chart</option>
+                        </select>
+                    </div>
+                    <div class="time-selector">
+                        <label for="heatmap-time">Time Period:</label>
+                        <select id="heatmap-time" class="form-select">
+                            <option value="daily">Daily</option>
+                            <option value="weekly" selected>Weekly</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="sector-heatmap" class="breadth-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Breadth Oscillators -->
+            <div class="breadth-grid-item breadth-oscillators-container">
+                <h4 class="chart-title">Breadth Oscillators</h4>
+                <div class="visualization-controls">
+                    <div class="oscillator-tabs">
+                        <button class="oscillator-tab active" data-oscillator="mcclellan">McClellan</button>
+                        <button class="oscillator-tab" data-oscillator="high-low">High-Low</button>
+                        <button class="oscillator-tab" data-oscillator="percentage">% Above MA</button>
+                        <button class="oscillator-tab" data-oscillator="custom">Custom</button>
+                    </div>
+                </div>
+                <div id="breadth-oscillators" class="breadth-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Market Concentration -->
+            <div class="breadth-grid-item market-concentration-container">
+                <h4 class="chart-title">Market Concentration Analysis</h4>
+                <div class="visualization-controls">
+                    <div class="concentration-selector">
+                        <label for="concentration-metric">Metric:</label>
+                        <select id="concentration-metric" class="form-select">
+                            <option value="cap-weighted" selected>Cap Weighted</option>
+                            <option value="equal-weighted">Equal Weighted</option>
+                            <option value="top-10">Top 10 Dominance</option>
+                            <option value="gini">Gini Coefficient</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="market-concentration" class="breadth-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="breadth-insights">
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Market Breadth Summary</h4>
+                </div>
+                <div class="insight-body">
+                    <div class="breadth-summary" id="breadth-summary">
+                        <div class="breadth-gauge-container">
+                            <div class="breadth-gauge">
+                                <div class="gauge-track"></div>
+                                <div class="gauge-fill" id="breadth-gauge-fill" style="width: 65%;"></div>
+                                <div class="gauge-marker" id="breadth-gauge-marker" style="left: 65%;"></div>
+                            </div>
+                            <div class="gauge-labels">
+                                <span>Weak</span>
+                                <span>Neutral</span>
+                                <span>Strong</span>
+                            </div>
+                        </div>
+                        <div class="breadth-status">
+                            <div class="status-label">Current Market Breadth:</div>
+                            <div class="status-value" id="breadth-status">Moderately Bullish</div>
+                        </div>
+                        <div class="breadth-metrics">
+                            <div class="metric-group">
+                                <div class="metric-item">
+                                    <span class="metric-label">Advancing:</span>
+                                    <span class="metric-value positive" id="advancing-value">125</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">Declining:</span>
+                                    <span class="metric-value negative" id="declining-value">75</span>
+                                </div>
+                            </div>
+                            <div class="metric-group">
+                                <div class="metric-item">
+                                    <span class="metric-label">New Highs:</span>
+                                    <span class="metric-value positive" id="new-highs-value">28</span>
+                                </div>
+                                <div class="metric-item">
+                                    <span class="metric-label">New Lows:</span>
+                                    <span class="metric-value negative" id="new-lows-value">12</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Market Interpretation</h4>
+                </div>
+                <div class="insight-body">
+                    <p id="breadth-interpretation">
+                        Current breadth indicators suggest a moderately bullish market with positive advances across multiple sectors. The advance-decline line continues to confirm price movements, which is a healthy sign of internal market strength. However, market concentration has increased slightly, indicating some narrowing of leadership. Sectors showing the strongest internal breadth include DeFi, Layer-1, and Infrastructure, while Gaming and NFT sectors are showing deteriorating breadth metrics.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-footer">
+        <div class="breadth-metrics-summary">
+            <div class="metric-item">
+                <span class="metric-label">AD Line Trend:</span>
+                <span class="metric-value positive" id="adline-trend">Uptrend</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Breadth Thrust:</span>
+                <span class="metric-value neutral" id="breadth-thrust">Neutral</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Sector Dispersion:</span>
+                <span class="metric-value negative" id="sector-dispersion">High</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Updated:</span>
+                <span class="metric-value" id="breadth-last-updated">15 minutes ago</span>
+            </div>
+        </div>
+        <div class="breadth-actions">
+            <button class="btn btn-sm" id="breadth-learn-more">
+                <i data-feather="info"></i> Learn More
+            </button>
+            <button class="btn btn-sm" id="export-breadth-report">
+                <i data-feather="file-text"></i> Export Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Breadth Settings Modal -->
+<div id="breadth-settings-modal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Market Breadth Settings</h3>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="breadth-universe">Market Universe:</label>
+                    <select id="breadth-universe" class="form-select">
+                        <option value="top-100" selected>Top 100 Assets</option>
+                        <option value="top-200">Top 200 Assets</option>
+                        <option value="top-500">Top 500 Assets</option>
+                        <option value="custom">Custom List</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="breadth-calculation">Breadth Calculation Method:</label>
+                    <select id="breadth-calculation" class="form-select">
+                        <option value="standard" selected>Standard (Daily)</option>
+                        <option value="normalized">Normalized</option>
+                        <option value="volume-weighted">Volume Weighted</option>
+                        <option value="market-cap">Market Cap Weighted</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Advanced Indicators to Include:</label>
+                    <div class="indicator-checklist">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="indicator-advdec" checked>
+                            <label for="indicator-advdec">Advance-Decline Line</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="indicator-mcclellan" checked>
+                            <label for="indicator-mcclellan">McClellan Oscillator</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="indicator-highlow" checked>
+                            <label for="indicator-highlow">High-Low Index</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="indicator-percent-ma" checked>
+                            <label for="indicator-percent-ma">% Above Moving Avg</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="indicator-breadth-thrust" checked>
+                            <label for="indicator-breadth-thrust">Breadth Thrust</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="indicator-concentration">
+                            <label for="indicator-concentration">Concentration Index</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="indicator-dispersion">
+                            <label for="indicator-dispersion">Sector Dispersion</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="indicator-summation">
+                            <label for="indicator-summation">McClellan Summation</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="threshold-settings">Signal Thresholds:</label>
+                    <div class="threshold-settings">
+                        <div class="threshold-item">
+                            <span class="threshold-label">Overbought:</span>
+                            <input type="number" id="overbought-threshold" class="form-input threshold-input" value="70" min="0" max="100">
+                        </div>
+                        <div class="threshold-item">
+                            <span class="threshold-label">Oversold:</span>
+                            <input type="number" id="oversold-threshold" class="form-input threshold-input" value="30" min="0" max="100">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="breadth-smoothing">Smoothing (Days):</label>
+                    <div class="slider-container">
+                        <input type="range" id="breadth-smoothing" class="form-range" min="1" max="20" value="5">
+                        <span class="slider-value">5</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Custom Sectors/Categories:</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-inline">
+                            <input type="checkbox" id="use-custom-sectors"> Enable Custom Sectors
+                        </label>
+                    </div>
+                    <textarea id="custom-sectors" class="form-textarea" rows="4" disabled placeholder="Enter custom sector definitions, one per line: SectorName: ASSET1, ASSET2, ASSET3"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-breadth-settings">Apply Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add CSS for the market breadth panel -->
+<style>
+    .market-breadth-panel {
+        margin-bottom: 1.5rem;
+    }
+    
+    .breadth-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .market-selector,
+    .timeframe-selector,
+    .period-selector,
+    .indicator-selector {
+        min-width: 150px;
+    }
+    
+    .breadth-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 300px 300px;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .breadth-grid-item {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chart-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text);
+        margin: 0 0 0.5rem 0;
+        padding: 0 0 0.5rem 0;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .breadth-chart {
+        flex: 1;
+        position: relative;
+        min-height: 200px;
+        background-color: var(--card-bg);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .chart-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(var(--card-bg-rgb), 0.8);
+        font-size: 1rem;
+        color: var(--text-light);
+    }
+    
+    .visualization-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .ma-selector,
+    .ma-period,
+    .view-selector,
+    .time-selector,
+    .concentration-selector {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .ma-selector label,
+    .ma-period label,
+    .view-selector label,
+    .time-selector label,
+    .concentration-selector label {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+    
+    .ma-selector select,
+    .ma-period select,
+    .view-selector select,
+    .time-selector select,
+    .concentration-selector select {
+        max-width: 120px;
+        font-size: 0.8rem;
+    }
+    
+    .oscillator-tabs {
+        display: flex;
+        gap: 0.25rem;
+        width: 100%;
+    }
+    
+    .oscillator-tab {
+        background-color: var(--bg);
+        border: 1px solid var(--border-light);
+        color: var(--text);
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        cursor: pointer;
+        flex: 1;
+        text-align: center;
+    }
+    
+    .oscillator-tab.active {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    .breadth-insights {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .insight-card {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .insight-header {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .insight-header h4 {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .insight-body {
+        padding: 0.75rem 1rem;
+    }
+    
+    .breadth-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .breadth-gauge-container {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .breadth-gauge {
+        height: 8px;
+        background-color: var(--bg);
+        border-radius: 4px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .gauge-track {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        width: 100%;
+        background: linear-gradient(
+            to right,
+            var(--danger) 0%,
+            var(--danger) 30%,
+            var(--warning) 30%,
+            var(--warning) 70%,
+            var(--success) 70%,
+            var(--success) 100%
+        );
+        opacity: 0.3;
+    }
+    
+    .gauge-fill {
+        position: absolute;
+        top: 0;
+        left: 0;
+        height: 100%;
+        background-color: var(--primary);
+        border-radius: 4px;
+    }
+    
+    .gauge-marker {
+        position: absolute;
+        top: -4px;
+        width: 4px;
+        height: 16px;
+        background-color: var(--text);
+        border-radius: 2px;
+        transform: translateX(-50%);
+    }
+    
+    .gauge-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.7rem;
+        color: var(--text-light);
+    }
+    
+    .breadth-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        justify-content: space-between;
+    }
+    
+    .status-label {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+    
+    .status-value {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--primary);
+    }
+    
+    .breadth-metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .metric-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        flex: 1;
+        min-width: 120px;
+    }
+    
+    .metric-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+    }
+    
+    .metric-label {
+        color: var(--text-light);
+    }
+    
+    .metric-value {
+        font-weight: 500;
+    }
+    
+    .metric-value.positive {
+        color: var(--success);
+    }
+    
+    .metric-value.negative {
+        color: var(--danger);
+    }
+    
+    .metric-value.neutral {
+        color: var(--warning);
+    }
+    
+    .breadth-interpretation p {
+        margin: 0;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        color: var(--text);
+    }
+    
+    .breadth-metrics-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+    
+    .breadth-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    /* Modal specific styles */
+    .indicator-checklist {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 0.5rem;
+        border: 1px solid var(--border-light);
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
+    
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .checkbox-item label {
+        font-size: 0.85rem;
+        margin: 0;
+    }
+    
+    .threshold-settings {
+        display: flex;
+        gap: 1rem;
+        margin-top: 0.5rem;
+    }
+    
+    .threshold-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .threshold-label {
+        min-width: 80px;
+        font-size: 0.85rem;
+    }
+    
+    .threshold-input {
+        width: 60px;
+        padding: 0.25rem;
+        border: 1px solid var(--border-light);
+        border-radius: 4px;
+        font-size: 0.85rem;
+    }
+    
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    
+    .form-range {
+        flex: 1;
+    }
+    
+    .slider-value {
+        min-width: 1.5rem;
+        text-align: right;
+    }
+    
+    .form-textarea {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--border-light);
+        border-radius: 4px;
+        background-color: var(--input-bg);
+        color: var(--text);
+        font-family: 'Inter', sans-serif;
+        font-size: 0.85rem;
+        resize: vertical;
+        margin-top: 0.5rem;
+    }
+    
+    .form-textarea:disabled {
+        background-color: var(--bg-light);
+        color: var(--text-light);
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .breadth-grid {
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(4, 300px);
+        }
+        
+        .breadth-insights {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .breadth-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .market-selector,
+        .timeframe-selector,
+        .period-selector,
+        .indicator-selector {
+            width: 100%;
+        }
+        
+        .breadth-metrics-summary {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .oscillator-tabs {
+            flex-wrap: wrap;
+        }
+        
+        .oscillator-tab {
+            flex: 1 0 40%;
+        }
+    }
+</style>
+
+<!-- JavaScript for market breadth panel functionality will be loaded separately -->

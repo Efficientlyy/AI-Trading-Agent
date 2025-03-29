@@ -77,7 +77,7 @@ class ConfidenceCalculator:
                 # Add performance data to cached result
                 calculation_time = time.perf_counter() - start_time
                 
-                cached_result['performance'] = {
+                cached_result["performance"] = {
                     'calculation_time_ms': calculation_time * 1000,
                     'cache_hit': True
                 }
@@ -99,11 +99,11 @@ class ConfidenceCalculator:
         result = self._aggregate_confidence(factor_scores, volatility_modifier)
             
         # Add calculation timestamp
-        result['calculation_timestamp'] = datetime.now()
+        result["calculation_timestamp"] = datetime.now()
         
         # Add performance metrics
         calculation_time = time.perf_counter() - start_time
-        result['performance'] = {
+        result["performance"] = {
             'calculation_time_ms': calculation_time * 1000,
             'cache_hit': False,
             'factor_calculation_times': {
@@ -213,7 +213,7 @@ class ConfidenceCalculator:
                 # Add calculation time to metadata
                 calculation_time = time.perf_counter() - start_time
                 if 'calculation_time_ms' not in metadata:
-                    metadata['calculation_time_ms'] = calculation_time * 1000
+                    metadata["calculation_time_ms"] = calculation_time * 1000
                 
                 # Get weight for this factor
                 weight = self.config.get('factor_weights', {}).get(name, 1.0)
@@ -330,7 +330,7 @@ class ConfidenceCalculator:
             # Add calculation time to metadata
             calculation_time = time.perf_counter() - start_time
             if 'calculation_time_ms' not in metadata:
-                metadata['calculation_time_ms'] = calculation_time * 1000
+                metadata["calculation_time_ms"] = calculation_time * 1000
             
             # Get weight for this factor
             weight = self.config.get('factor_weights', {}).get(factor_name, 1.0)

@@ -1,0 +1,64 @@
+# Sentiment Analysis System Deployment Configuration
+# Environment: Production
+
+# LLM Configuration
+llm:
+  primary_model: "gpt-4o"
+  financial_model: "gpt-4o"
+  batch_size: 10
+  use_cached_responses: true
+  cache_ttl: 1800  # 30 minutes
+  max_concurrent_requests: 20
+  request_timeout: 45
+
+# Sentiment Analysis Configuration
+sentiment_analysis:
+  enabled: true
+  consensus_system:
+    enabled: true
+    weights:
+      llm: 0.35
+      news: 0.25
+      social_media: 0.20
+      market: 0.10
+      onchain: 0.10
+    adaptive_weights: true
+    performance_tracking: true
+    tracking_window: 1440  # 24 hours
+    confidence_threshold: 0.75
+    update_interval: 180  # 3 minutes
+
+# Early Detection Configuration
+early_detection:
+  enabled: true
+  realtime_detector:
+    enabled: true
+    refresh_interval: 180  # 3 minutes
+    source_weights:
+      twitter: 0.25
+      news: 0.45
+      reddit: 0.20
+      alerts: 0.10
+    minimum_score_threshold: 0.75
+    max_events_per_hour: 20
+    batch_size: 30
+    deduplication_window: 1200  # 20 minutes
+  sentiment_integration:
+    enabled: true
+    bidirectional: true
+    event_impact_threshold: 0.75
+
+# Dashboard Configuration
+dashboard:
+  llm_event_dashboard:
+    enabled: true
+    port: 8051
+    max_display_items: 100
+    update_interval: 15
+    theme: "dark"
+    charts:
+      sentiment_trend: true
+      confidence_distribution: true
+      event_timeline: true
+      model_performance: true
+    debug_mode: false

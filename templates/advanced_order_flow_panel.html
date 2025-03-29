@@ -1,0 +1,575 @@
+<!-- 
+    Advanced Order Flow Visualization Component
+    
+    This component provides detailed visualization of order book dynamics, 
+    trade flow imbalance, and large order detection to help traders understand
+    market microstructure and order flow patterns.
+-->
+
+<div class="card advanced-order-flow-panel">
+    <div class="card-header">
+        <div class="card-title">
+            <h3>Advanced Order Flow Visualization</h3>
+            <div class="card-actions">
+                <button id="refresh-order-flow" class="btn btn-icon" data-tooltip="Refresh data" data-position="top">
+                    <i data-feather="refresh-cw"></i>
+                </button>
+                <button id="export-order-flow-data" class="btn btn-icon" data-tooltip="Export data" data-position="top">
+                    <i data-feather="download"></i>
+                </button>
+                <button id="expand-order-flow-panel" class="btn btn-icon" data-tooltip="Expand panel" data-position="top">
+                    <i data-feather="maximize-2"></i>
+                </button>
+            </div>
+        </div>
+        <div class="order-flow-controls">
+            <div class="symbol-selector">
+                <label for="order-flow-symbol">Symbol:</label>
+                <select id="order-flow-symbol" class="form-select">
+                    <option value="BTC-USD" selected>BTC/USD</option>
+                    <option value="ETH-USD">ETH/USD</option>
+                    <option value="SOL-USD">SOL/USD</option>
+                    <option value="BNB-USD">BNB/USD</option>
+                </select>
+            </div>
+            <div class="timeframe-selector">
+                <label for="order-flow-timeframe">Timeframe:</label>
+                <select id="order-flow-timeframe" class="form-select">
+                    <option value="1m" selected>1 Minute</option>
+                    <option value="5m">5 Minutes</option>
+                    <option value="15m">15 Minutes</option>
+                    <option value="1h">1 Hour</option>
+                </select>
+            </div>
+            <div class="aggregation-selector">
+                <label for="aggregation-level">Aggregation:</label>
+                <select id="aggregation-level" class="form-select">
+                    <option value="default" selected>Default</option>
+                    <option value="fine">Fine (0.1%)</option>
+                    <option value="medium">Medium (0.5%)</option>
+                    <option value="coarse">Coarse (1%)</option>
+                </select>
+            </div>
+            <div class="realtime-toggle-container">
+                <label for="realtime-toggle">Realtime:</label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="realtime-toggle" checked>
+                    <span class="toggle-slider"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <div class="order-flow-grid">
+            <!-- Market Depth Chart -->
+            <div class="order-flow-grid-item depth-container">
+                <h4 class="chart-title">Market Depth</h4>
+                <div class="visualization-controls">
+                    <div class="depth-visualization-selector">
+                        <label for="depth-visualization-type">View:</label>
+                        <select id="depth-visualization-type" class="form-select">
+                            <option value="heatmap" selected>Heatmap</option>
+                            <option value="depth">Depth Chart</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="market-depth-chart" class="order-flow-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Order Book Heatmap -->
+            <div class="order-flow-grid-item orderbook-container">
+                <h4 class="chart-title">Order Book Heatmap</h4>
+                <div id="orderbook-heatmap" class="order-flow-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Trade Flow Chart -->
+            <div class="order-flow-grid-item trade-flow-container">
+                <h4 class="chart-title">Trade Flow Analysis</h4>
+                <div class="visualization-controls">
+                    <div class="trade-flow-metric-selector">
+                        <label for="trade-flow-metric">Metric:</label>
+                        <select id="trade-flow-metric" class="form-select">
+                            <option value="volume" selected>Buy/Sell Volume</option>
+                            <option value="imbalance">Imbalance Ratio</option>
+                            <option value="trades">Trade Count</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="trade-flow-chart" class="order-flow-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Large Orders Chart -->
+            <div class="order-flow-grid-item large-orders-container">
+                <h4 class="chart-title">Large Order Detection</h4>
+                <div id="large-orders-chart" class="order-flow-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="order-flow-insights">
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Order Flow Insights</h4>
+                </div>
+                <div class="insight-body">
+                    <div class="insights-list">
+                        <div class="insight-item bid-dominance">
+                            <div class="insight-title">
+                                <span>Bid/Ask Dominance</span>
+                                <span class="insight-indicator positive" id="bid-ask-dominance">Bids +3.2%</span>
+                            </div>
+                            <div class="insight-meter">
+                                <div class="meter-container">
+                                    <div class="meter-bar bid-bar" style="width: 55%"></div>
+                                    <div class="meter-bar ask-bar" style="width: 45%"></div>
+                                </div>
+                                <div class="meter-labels">
+                                    <span class="bid-label">Bid</span>
+                                    <span class="mid-label">50%</span>
+                                    <span class="ask-label">Ask</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="insight-item order-flow-pressure">
+                            <div class="insight-title">
+                                <span>Order Flow Pressure</span>
+                                <span class="insight-indicator positive" id="order-flow-pressure">Buying +2.8%</span>
+                            </div>
+                            <div class="insight-description">
+                                Recent 5min imbalance shows net buying pressure with 58.2% buy volume vs 41.8% sell volume
+                            </div>
+                        </div>
+                        <div class="insight-item market-depth-ratio">
+                            <div class="insight-title">
+                                <span>Market Depth Ratio</span>
+                                <span class="insight-indicator neutral" id="market-depth-ratio">1.2:1 (Bid:Ask)</span>
+                            </div>
+                            <div class="insight-description">
+                                Bid depth exceeds ask depth by 20% within 1% of market price
+                            </div>
+                        </div>
+                        <div class="insight-item large-orders-summary">
+                            <div class="insight-title">
+                                <span>Large Orders</span>
+                                <span class="insight-indicator" id="large-orders-count">12 detected</span>
+                            </div>
+                            <div class="insight-description">
+                                8 buy orders, 4 sell orders with total volume of 76.5 BTC in last hour
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Market Microstructure Analysis</h4>
+                </div>
+                <div class="insight-body">
+                    <div class="microstructure-metrics">
+                        <div class="metric-item">
+                            <span class="metric-label">Spread:</span>
+                            <span class="metric-value" id="current-spread">$1.20 (0.004%)</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Liquidity 0.1%:</span>
+                            <span class="metric-value" id="liquidity-near">$2.5M (83.2 BTC)</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Liquidity 0.5%:</span>
+                            <span class="metric-value" id="liquidity-mid">$12.8M (427.4 BTC)</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Liquidity 1.0%:</span>
+                            <span class="metric-value" id="liquidity-far">$28.2M (941.5 BTC)</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Order Imbalance:</span>
+                            <span class="metric-value positive" id="order-imbalance">+3.2%</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Price Impact 100 BTC:</span>
+                            <span class="metric-value" id="price-impact">0.15%</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Bid Wall:</span>
+                            <span class="metric-value" id="bid-wall">$28,950 (42.7 BTC)</span>
+                        </div>
+                        <div class="metric-item">
+                            <span class="metric-label">Ask Wall:</span>
+                            <span class="metric-value" id="ask-wall">$30,120 (38.2 BTC)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-footer">
+        <div class="order-flow-metrics-summary">
+            <div class="metric-item">
+                <span class="metric-label">Latest Price:</span>
+                <span class="metric-value" id="latest-price">$29,876.50</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">24h Volume:</span>
+                <span class="metric-value" id="daily-volume">$1.2B</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">L2 Data Source:</span>
+                <span class="metric-value" id="data-source">Binance</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Updated:</span>
+                <span class="metric-value" id="orderflow-last-updated">2 seconds ago</span>
+            </div>
+        </div>
+        <div class="order-flow-actions">
+            <button class="btn btn-sm" id="order-flow-learn-more">
+                <i data-feather="info"></i> Learn More
+            </button>
+            <button class="btn btn-sm" id="export-order-flow-report">
+                <i data-feather="file-text"></i> Export Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add CSS for the order flow panel -->
+<style>
+    .advanced-order-flow-panel {
+        margin-bottom: 1.5rem;
+    }
+    
+    .order-flow-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .symbol-selector,
+    .timeframe-selector,
+    .aggregation-selector {
+        min-width: 150px;
+    }
+    
+    .realtime-toggle-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 24px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--border-light);
+        transition: 0.4s;
+        border-radius: 24px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 18px;
+        width: 18px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background-color: var(--primary);
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(24px);
+    }
+    
+    .order-flow-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 300px 300px;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .order-flow-grid-item {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chart-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text);
+        margin: 0 0 0.5rem 0;
+        padding: 0 0 0.5rem 0;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .order-flow-chart {
+        flex: 1;
+        position: relative;
+        min-height: 200px;
+        background-color: var(--card-bg);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .chart-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(var(--card-bg-rgb), 0.8);
+        font-size: 1rem;
+        color: var(--text-light);
+        z-index: 5;
+    }
+    
+    .visualization-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .depth-visualization-selector,
+    .trade-flow-metric-selector {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .visualization-controls label {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+    
+    .visualization-controls select {
+        max-width: 120px;
+        font-size: 0.8rem;
+    }
+    
+    .order-flow-insights {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .insight-card {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .insight-header {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .insight-header h4 {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .insight-body {
+        padding: 0.75rem 1rem;
+    }
+    
+    .insights-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .insight-item {
+        background-color: var(--card-bg);
+        border-radius: 4px;
+        padding: 0.75rem;
+    }
+    
+    .insight-title {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        font-size: 0.85rem;
+    }
+    
+    .insight-indicator {
+        font-size: 0.8rem;
+    }
+    
+    .insight-indicator.positive {
+        color: var(--success);
+    }
+    
+    .insight-indicator.negative {
+        color: var(--danger);
+    }
+    
+    .insight-indicator.neutral {
+        color: var(--warning);
+    }
+    
+    .insight-description {
+        font-size: 0.8rem;
+        color: var(--text-light);
+        line-height: 1.4;
+    }
+    
+    .insight-meter {
+        margin-top: 0.5rem;
+    }
+    
+    .meter-container {
+        height: 8px;
+        background-color: var(--bg-light);
+        border-radius: 4px;
+        overflow: hidden;
+        display: flex;
+    }
+    
+    .meter-bar {
+        height: 100%;
+    }
+    
+    .meter-bar.bid-bar {
+        background-color: rgba(16, 185, 129, 0.7);
+        border-radius: 4px 0 0 4px;
+    }
+    
+    .meter-bar.ask-bar {
+        background-color: rgba(239, 68, 68, 0.7);
+        border-radius: 0 4px 4px 0;
+    }
+    
+    .meter-labels {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.7rem;
+        color: var(--text-light);
+        margin-top: 0.25rem;
+    }
+    
+    .microstructure-metrics {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+    
+    .metric-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+    }
+    
+    .metric-label {
+        color: var(--text-light);
+    }
+    
+    .metric-value {
+        font-weight: 500;
+    }
+    
+    .metric-value.positive {
+        color: var(--success);
+    }
+    
+    .metric-value.negative {
+        color: var(--danger);
+    }
+    
+    .metric-value.neutral {
+        color: var(--warning);
+    }
+    
+    .order-flow-metrics-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+    
+    .order-flow-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .order-flow-grid {
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(4, 300px);
+        }
+        
+        .order-flow-insights {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .order-flow-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .symbol-selector,
+        .timeframe-selector,
+        .aggregation-selector {
+            width: 100%;
+        }
+        
+        .microstructure-metrics {
+            grid-template-columns: 1fr;
+        }
+        
+        .order-flow-metrics-summary {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+    }
+</style>

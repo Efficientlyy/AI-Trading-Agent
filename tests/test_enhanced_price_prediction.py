@@ -165,7 +165,7 @@ class TestFeatureExtractor(unittest.TestCase):
             self.market_data
         )
         self.assertEqual(len(features["technical"]), 3)  # Should return zeros
-        self.assertTrue(np.all(features["technical"] == 0))
+        self.assertTrue(np.all(features["technical"] = = 0))
     
     def test_feature_extraction_nan_prices(self):
         """Test feature extraction with NaN prices."""

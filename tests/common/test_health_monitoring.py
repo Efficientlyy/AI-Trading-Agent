@@ -126,10 +126,10 @@ def test_histogram_metric():
     metric.update(3)
     
     stats = metric.get_value()
-    assert stats["count"] == 3
-    assert stats["min"] == 1
-    assert stats["max"] == 3
-    assert stats["avg"] == 2
+    assert stats["count"] = = 3
+    assert stats["min"] = = 1
+    assert stats["max"] = = 3
+    assert stats["avg"] = = 2
 
 
 def test_rate_metric():
@@ -207,7 +207,7 @@ def test_health_monitor_status(health_monitor):
     
     # Get full status
     status = health_monitor.get_status()
-    assert status["status"] == "unhealthy"
+    assert status["status"] = = "unhealthy"
     assert len(status["checks"]) == 2
     assert status["checks"]["check1"]["status"] == "healthy"
     assert status["checks"]["check2"]["status"] == "unhealthy"

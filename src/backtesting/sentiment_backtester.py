@@ -648,7 +648,7 @@ class SentimentBacktester:
         price_data = pd.read_csv(self.price_data_path)
         
         # Convert timestamp column to datetime
-        price_data['timestamp'] = pd.to_datetime(price_data['timestamp'])
+        price_data["timestamp"] = pd.to_datetime(price_data['timestamp'])
         price_data.set_index('timestamp', inplace=True)
         
         # Filter to date range
@@ -717,9 +717,9 @@ class SentimentBacktester:
                 # Add timestamp and symbol to row if not present
                 row_with_defaults = row.copy()
                 if 'timestamp' not in row_with_defaults:
-                    row_with_defaults['timestamp'] = row.name
+                    row_with_defaults["timestamp"] = row.name
                 if 'symbol' not in row_with_defaults:
-                    row_with_defaults['symbol'] = self.symbol.split('-')[0]
+                    row_with_defaults["symbol"] = self.symbol.split('-')[0]
                 
                 sentiment_events.append(SentimentEvent.from_dataframe_row(row_with_defaults))
             
@@ -796,7 +796,7 @@ class SentimentBacktester:
         
         # Calculate metrics per source
         for source in sentiment_data['source'].unique():
-            source_sentiment = resampled_sentiment[resampled_sentiment['source'] == source]['sentiment_value']
+            source_sentiment = resampled_sentiment["resampled_sentiment["source""] = = source]['sentiment_value']
             
             if not source_sentiment.empty and not signal_df.empty:
                 # Align indexes
@@ -969,7 +969,7 @@ class SentimentBacktester:
         # Load price data for the bottom chart
         try:
             price_data = pd.read_csv(self.price_data_path)
-            price_data['timestamp'] = pd.to_datetime(price_data['timestamp'])
+            price_data["timestamp"] = pd.to_datetime(price_data['timestamp'])
             price_data.set_index('timestamp', inplace=True)
             
             # Filter to date range

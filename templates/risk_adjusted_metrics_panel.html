@@ -1,0 +1,381 @@
+<!-- 
+    Risk-Adjusted Performance Metrics Component
+    
+    This component provides visualizations of various risk-adjusted performance metrics
+    for portfolio and trading strategy evaluation, including Sharpe, Sortino, and Calmar ratios.
+-->
+
+<div class="card risk-adjusted-metrics-panel">
+    <div class="card-header">
+        <div class="card-title">
+            <h3>Risk-Adjusted Performance Metrics</h3>
+            <div class="card-actions">
+                <button id="refresh-risk-metrics" class="btn btn-icon" data-tooltip="Refresh data" data-position="top">
+                    <i data-feather="refresh-cw"></i>
+                </button>
+                <button id="export-risk-data" class="btn btn-icon" data-tooltip="Export data" data-position="top">
+                    <i data-feather="download"></i>
+                </button>
+                <button id="expand-risk-panel" class="btn btn-icon" data-tooltip="Expand panel" data-position="top">
+                    <i data-feather="maximize-2"></i>
+                </button>
+            </div>
+        </div>
+        <div class="risk-controls">
+            <div class="timeframe-selector">
+                <label for="risk-timeframe">Timeframe:</label>
+                <select id="risk-timeframe" class="form-select">
+                    <option value="1w">1 Week</option>
+                    <option value="1m" selected>1 Month</option>
+                    <option value="3m">3 Months</option>
+                    <option value="6m">6 Months</option>
+                    <option value="1y">1 Year</option>
+                </select>
+            </div>
+            <div class="ratio-selector">
+                <label for="ratio-type">Ratio:</label>
+                <select id="ratio-type" class="form-select">
+                    <option value="sharpe" selected>Sharpe Ratio</option>
+                    <option value="sortino">Sortino Ratio</option>
+                    <option value="calmar">Calmar Ratio</option>
+                    <option value="mar">MAR Ratio</option>
+                    <option value="treynor">Treynor Ratio</option>
+                </select>
+            </div>
+            <div class="surface-selector">
+                <label for="surface-metric">Surface Metric:</label>
+                <select id="surface-metric" class="form-select">
+                    <option value="sharpe" selected>Sharpe Ratio</option>
+                    <option value="sortino">Sortino Ratio</option>
+                    <option value="calmar">Calmar Ratio</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <div class="risk-grid">
+            <!-- Ratio Comparison Chart -->
+            <div class="risk-grid-item ratio-comparison-container">
+                <h4 class="chart-title">Strategy Ratio Comparison</h4>
+                <div id="ratio-chart" class="risk-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Ratio Evolution Chart -->
+            <div class="risk-grid-item ratio-evolution-container">
+                <h4 class="chart-title">Ratio Evolution Over Time</h4>
+                <div id="evolution-chart" class="risk-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Risk/Reward Optimization Surface Chart -->
+            <div class="risk-grid-item surface-container">
+                <h4 class="chart-title">Risk/Reward Optimization Surface</h4>
+                <div id="surface-chart" class="risk-chart surface-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Drawdown Evolution Chart -->
+            <div class="risk-grid-item drawdown-container">
+                <h4 class="chart-title">Drawdown Evolution</h4>
+                <div id="drawdown-evolution-chart" class="risk-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="risk-insights">
+            <!-- Metrics Table Card -->
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Risk-Adjusted Metrics</h4>
+                </div>
+                <div class="insight-body">
+                    <div class="table-container">
+                        <table class="data-table metrics-table">
+                            <thead>
+                                <tr>
+                                    <th>Metric</th>
+                                    <th>Target</th>
+                                    <th>Current</th>
+                                    <th>Best</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody id="metrics-table-body">
+                                <!-- Metrics rows will be added here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Strategy Performance Card -->
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Strategy Performance</h4>
+                </div>
+                <div class="insight-body">
+                    <div class="table-container">
+                        <table class="data-table strategy-table">
+                            <thead>
+                                <tr>
+                                    <th>Strategy</th>
+                                    <th>Sharpe</th>
+                                    <th>Sortino</th>
+                                    <th>Calmar</th>
+                                    <th>Current/Max DD</th>
+                                </tr>
+                            </thead>
+                            <tbody id="strategy-table-body">
+                                <!-- Strategy rows will be added here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-footer">
+        <div class="risk-metrics-summary">
+            <div class="metric-item">
+                <span class="metric-label">Best Strategy:</span>
+                <span class="metric-value" id="best-strategy">Statistical Arbitrage</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Portfolio Sharpe:</span>
+                <span class="metric-value positive" id="portfolio-sharpe">1.23</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Optimal Risk/Return:</span>
+                <span class="metric-value" id="optimal-risk-return">3.5% / 12.8%</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Updated:</span>
+                <span class="metric-value" id="risk-metrics-updated">Just now</span>
+            </div>
+        </div>
+        <div class="risk-actions">
+            <button class="btn btn-sm" id="risk-metrics-learn-more">
+                <i data-feather="info"></i> Learn More
+            </button>
+            <button class="btn btn-sm" id="export-risk-report">
+                <i data-feather="file-text"></i> Export Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Add CSS for the risk-adjusted metrics panel -->
+<style>
+    .risk-adjusted-metrics-panel {
+        margin-bottom: 1.5rem;
+    }
+    
+    .risk-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .timeframe-selector,
+    .ratio-selector,
+    .surface-selector {
+        min-width: 150px;
+    }
+    
+    .risk-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 300px 300px;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .risk-grid-item {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chart-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text);
+        margin: 0 0 0.5rem 0;
+        padding: 0 0 0.5rem 0;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .risk-chart {
+        flex: 1;
+        position: relative;
+        min-height: 200px;
+        background-color: var(--card-bg);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .surface-chart {
+        height: 250px;
+    }
+    
+    .chart-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(var(--card-bg-rgb), 0.8);
+        font-size: 1rem;
+        color: var(--text-light);
+        z-index: 5;
+    }
+    
+    .risk-insights {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .insight-card {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .insight-header {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-light);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .insight-header h4 {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .insight-body {
+        padding: 0.75rem 1rem;
+        max-height: 250px;
+        overflow-y: auto;
+    }
+    
+    .table-container {
+        overflow-x: auto;
+    }
+    
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+    
+    .data-table th,
+    .data-table td {
+        padding: 0.5rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .data-table th {
+        font-weight: 600;
+        color: var(--text);
+        background-color: var(--bg-light);
+        position: sticky;
+        top: 0;
+        z-index: 1;
+    }
+    
+    .data-table tbody tr:hover {
+        background-color: rgba(var(--primary-rgb), 0.05);
+    }
+    
+    .positive {
+        color: var(--success);
+    }
+    
+    .negative {
+        color: var(--danger);
+    }
+    
+    .neutral {
+        color: var(--warning);
+    }
+    
+    .risk-metrics-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+    
+    .metric-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .metric-label {
+        font-size: 0.85rem;
+        color: var(--text-light);
+    }
+    
+    .metric-value {
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    .risk-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .risk-grid {
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(4, 300px);
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .risk-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .timeframe-selector,
+        .ratio-selector,
+        .surface-selector {
+            width: 100%;
+        }
+        
+        .risk-metrics-summary {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+    }
+</style>
+
+<!-- JavaScript for the risk-adjusted metrics panel -->
+<script src="{{ url_for('static', filename='js/risk_adjusted_metrics.js') }}"></script>

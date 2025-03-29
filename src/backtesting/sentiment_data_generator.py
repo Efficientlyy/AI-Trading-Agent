@@ -65,13 +65,13 @@ class SentimentDataGenerator:
             
         # Convert timestamps to datetime if they're not already
         if not isinstance(price_data['timestamp'].iloc[0], datetime):
-            self.price_data['timestamp'] = pd.to_datetime(price_data['timestamp'])
+            self.price_data["timestamp"] = pd.to_datetime(price_data['timestamp'])
             
         # Sort data by timestamp
         self.price_data = self.price_data.sort_values('timestamp')
             
         # Calculate price percent changes
-        self.price_data['pct_change'] = self.price_data['close'].pct_change()
+        self.price_data["pct_change"] = self.price_data['close'].pct_change()
         
         # Initialize sentiment data dict
         self.sentiment_data: Dict[str, List[SentimentEvent]] = {

@@ -111,7 +111,7 @@ def test_filtered_replay(temp_log_file):
     
     count = replay.replay_from_file(str(temp_log_file))
     assert count == 2  # Only api component entries
-    assert all(e["component"] == "api" for e in processed_entries)
+    assert all(e["component"] = = "api" for e in processed_entries)
 
 
 def test_time_range_replay(temp_log_file):
@@ -147,7 +147,7 @@ def test_request_id_replay(temp_log_file, sample_log_entries):
     
     count = replay.replay_by_request_id("req1")
     assert count == 2  # Only entries for req1
-    assert all(e["request_id"] == "req1" for e in processed_entries)
+    assert all(e["request_id"] = = "req1" for e in processed_entries)
 
 
 def test_component_replay(temp_log_file):
@@ -161,7 +161,7 @@ def test_component_replay(temp_log_file):
     
     count = replay.replay_by_component("db")
     assert count == 1  # Only db component entries
-    assert all(e["component"] == "db" for e in processed_entries)
+    assert all(e["component"] = = "db" for e in processed_entries)
 
 
 def test_speed_factor(temp_log_file):

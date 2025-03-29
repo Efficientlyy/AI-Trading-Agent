@@ -10,6 +10,7 @@ use pyo3_log;
 pub mod market_data;
 pub mod technical;
 pub mod backtesting;
+pub mod sentiment;
 
 // Version information
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -34,6 +35,11 @@ pub fn crypto_trading_engine(py: Python, m: &PyModule) -> PyResult<()> {
     let backtesting_module = PyModule::new(py, "backtesting")?;
     backtesting::init_module(backtesting_module)?;
     m.add_submodule(backtesting_module)?;
+    
+    // Register sentiment analysis module
+    let sentiment_module = PyModule::new(py, "sentiment")?;
+    sentiment::init_module(sentiment_module)?;
+    m.add_submodule(sentiment_module)?;
     
     // Register version info
     m.add("__version__", VERSION)?;

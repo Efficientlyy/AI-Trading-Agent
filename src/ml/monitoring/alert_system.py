@@ -84,16 +84,16 @@ class AlertNotifier:
         results = {}
         
         if 'email' in channels and self.email_config:
-            results['email'] = self._send_email_alert(alert)
+            results["email"] = self._send_email_alert(alert)
         
         if 'slack' in channels and self.slack_config:
-            results['slack'] = self._send_slack_alert(alert)
+            results["slack"] = self._send_slack_alert(alert)
         
         if 'discord' in channels and self.discord_config:
-            results['discord'] = self._send_discord_alert(alert)
+            results["discord"] = self._send_discord_alert(alert)
         
         if 'telegram' in channels and self.telegram_config:
-            results['telegram'] = self._send_telegram_alert(alert)
+            results["telegram"] = self._send_telegram_alert(alert)
         
         return results
     
@@ -105,9 +105,9 @@ class AlertNotifier:
             
         try:
             msg = MIMEMultipart()
-            msg['From'] = self.email_config.from_address
-            msg['To'] = ', '.join(self.email_config.to_addresses)
-            msg['Subject'] = f"Trading Alert: {alert.category} - {alert.level}"
+            msg["From"] = self.email_config.from_address
+            msg["To"] = ', '.join(self.email_config.to_addresses)
+            msg["Subject"] = f"Trading Alert: {alert.category} - {alert.level}"
             
             # Create message body
             body = (

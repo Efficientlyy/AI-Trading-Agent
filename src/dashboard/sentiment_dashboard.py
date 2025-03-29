@@ -200,7 +200,7 @@ class SentimentDashboard:
             client = FearGreedClient()
             
             # Get current index
-            current_data = await client.get_data()
+            current_data = client.get_data()
             value = current_data.get("value", 50)
             classification = current_data.get("classification", "Neutral")
             

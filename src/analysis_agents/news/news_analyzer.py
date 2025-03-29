@@ -184,10 +184,10 @@ class NewsAnalyzer:
         await self.nlp_service.initialize()
         
         # Load NLP models
-        await self._load_nlp_models()
+        self._load_nlp_models()
         
         # Initialize news API clients
-        await self._initialize_news_clients()
+        self._initialize_news_clients()
         
         # Initialize crypto categorization if enabled
         if self.use_crypto_categorization:
@@ -1208,7 +1208,7 @@ class NewsAnalyzer:
             
             for entity in article.entities:
                 if entity_text_lower in entity["text"].lower():
-                    if entity_type is None or entity["type"] == entity_type:
+                    if entity_type is None or entity["type"] = = entity_type:
                         mentions_entity = True
                         break
             
@@ -1287,8 +1287,8 @@ class NewsAnalyzer:
             
             # Get impact assessment
             impacts = [article.market_impact for article in asset_articles if article.market_impact]
-            positive_impacts = [i for i in impacts if i["direction"] == "positive"]
-            negative_impacts = [i for i in impacts if i["direction"] == "negative"]
+            positive_impacts = ["i for i in impacts if i["direction""] = = "positive"]
+            negative_impacts = ["i for i in impacts if i["direction""] = = "negative"]
             
             market_impact = "neutral"
             if len(positive_impacts) > len(negative_impacts) * 1.5:
@@ -1798,7 +1798,7 @@ async def main():
     """Example usage of the NewsAnalyzer."""
     # Initialize news analyzer
     analyzer = NewsAnalyzer()
-    await analyzer.initialize()
+    analyzer.initialize()
     
     # Collect articles
     articles = await analyzer.collect_articles(timeframe="24h", assets=["BTC", "ETH"])
@@ -1808,7 +1808,7 @@ async def main():
     await analyzer.analyze_articles(articles)
     
     # Get trending topics
-    trending_topics = await analyzer.get_trending_topics()
+    trending_topics = analyzer.get_trending_topics()
     print("\nTrending Topics:")
     for topic in trending_topics:
         print(f"- {topic['topic']}: {topic['count']} articles, sentiment: {topic['sentiment']:.2f}")
@@ -1823,7 +1823,7 @@ async def main():
         print(f"  Top article: {asset_data['top_articles'][0]['title']}")
     
     # Extract events
-    events = await analyzer.extract_events()
+    events = analyzer.extract_events()
     print("\nExtracted Events:")
     for event in events:
         print(f"- {event['title']}")
@@ -1839,7 +1839,7 @@ async def main():
             print(f"- {category['category']}: {category['score']:.2f} ({category['article_count']} articles)")
         
         print("\nCrypto Narratives:")
-        narratives = await analyzer.get_crypto_narratives()
+        narratives = analyzer.get_crypto_narratives()
         for narrative in narratives:
             print(f"- {narrative['title']} - {narrative['size']} articles")
             if narrative['categories']:

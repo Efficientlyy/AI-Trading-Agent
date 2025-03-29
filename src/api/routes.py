@@ -175,7 +175,7 @@ async def run_backtest(request: BacktestRequest):
         
         # Include additional methods if using ensemble
         if request.regime_methods and 'ensemble' in request.regime_methods:
-            strategy_params['detector_method'] = 'ensemble'
+            strategy_params["detector_method"] = 'ensemble'
             strategy_params['detector_params']['methods'] = [m for m in request.regime_methods if m != 'ensemble']
         
         # Create and run strategy

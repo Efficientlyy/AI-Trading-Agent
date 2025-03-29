@@ -49,7 +49,7 @@ class ExecutionService(Component):
         self.order_update_interval = self.get_config("order_update_interval", 1.0)
         
         # Initialize exchange connectors
-        await self._initialize_exchange_connectors()
+        self._initialize_exchange_connectors()
         
         self.logger.info("Execution service configuration loaded",
                        retry_attempts=self.retry_attempts,
@@ -107,7 +107,7 @@ class ExecutionService(Component):
                     continue
                 
                 # Initialize the connector
-                success = await connector.initialize()
+                success = connector.initialize()
                 if success:
                     self.exchange_connectors[exchange_id] = connector
                     self.logger.info(f"Successfully initialized connector for {exchange_id}")
@@ -144,7 +144,7 @@ class ExecutionService(Component):
         for exchange_id, connector in self.exchange_connectors.items():
             try:
                 self.logger.info(f"Shutting down connector for {exchange_id}")
-                await connector.shutdown()
+                connector.shutdown()
             except Exception as e:
                 self.logger.error(f"Error shutting down connector for {exchange_id}: {str(e)}")
         

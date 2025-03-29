@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM & Event Detection Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/apexcharts/dist/apexcharts.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            padding-top: 20px;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            border: none;
+        }
+        .card-header {
+            background-color: #fff;
+            border-bottom: 1px solid #e9ecef;
+            font-weight: 600;
+            padding: 15px 20px;
+            border-radius: 8px 8px 0 0 !important;
+        }
+        .card-body {
+            padding: 20px;
+        }
+        .table {
+            margin-bottom: 0;
+        }
+        .bullish {
+            color: #28a745;
+        }
+        .bearish {
+            color: #dc3545;
+        }
+        .neutral {
+            color: #6c757d;
+        }
+        .sentiment-value {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .sentiment-label {
+            font-size: 16px;
+            margin-top: 5px;
+        }
+        .sentiment-gauge {
+            height: 120px;
+            position: relative;
+        }
+        .badge-sentiment {
+            font-size: 14px;
+            padding: 8px 12px;
+            border-radius: 20px;
+        }
+        .progress-label {
+            margin-bottom: 5px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .confidence-bar {
+            height: 10px;
+            border-radius: 5px;
+        }
+        .event-card {
+            background-color: #f8f9fa;
+            border-left: 5px solid #6c757d;
+            margin-bottom: 10px;
+            padding: 10px 15px;
+            border-radius: 4px;
+        }
+        .event-card.market {
+            border-left-color: #ffc107;
+        }
+        .event-card.regulation {
+            border-left-color: #17a2b8;
+        }
+        .event-card.monetary_policy {
+            border-left-color: #6f42c1;
+        }
+        .event-card.technology {
+            border-left-color: #28a745;
+        }
+        .event-card.geopolitical {
+            border-left-color: #dc3545;
+        }
+        .event-timestamp {
+            color: #6c757d;
+            font-size: 12px;
+        }
+        .event-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .event-metrics {
+            display: flex;
+            gap: 10px;
+            margin-top: 5px;
+        }
+        .metric-label {
+            background-color: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .model-performance {
+            margin-top: 10px;
+        }
+        .analysis-card {
+            background-color: #f8f9fa;
+            border-left: 5px solid #6c757d;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .analysis-card.positive {
+            border-left-color: #28a745;
+        }
+        .analysis-card.negative {
+            border-left-color: #dc3545;
+        }
+        .analysis-card.neutral {
+            border-left-color: #6c757d;
+        }
+        .risk-factors {
+            margin-top: 10px;
+        }
+        .risk-badge {
+            background-color: #f8d7da;
+            color: #721c24;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+        .metrics-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        .metric-card {
+            padding: 10px;
+            border-radius: 4px;
+            background-color: #f1f3f5;
+            min-width: 150px;
+        }
+        .metric-title {
+            font-size: 12px;
+            color: #6c757d;
+        }
+        .metric-value {
+            font-size: 18px;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h2 class="mb-0">LLM & Event Detection Dashboard</h2>
+                <p class="text-muted">Real-time sentiment analysis and event detection for {{ symbol }}</p>
+            </div>
+        </div>
+
+        <!-- Symbol Selector -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-body">
+                        <form class="row g-3" method="get">
+                            <div class="col-auto">
+                                <label for="symbol" class="col-form-label">Select Trading Pair:</label>
+                            </div>
+                            <div class="col-auto">
+                                <select class="form-select" id="symbol" name="symbol" onchange="this.form.submit()">
+                                    <option value="BTC/USDT" {% if symbol == "BTC/USDT" %}selected{% endif %}>BTC/USDT</option>
+                                    <option value="ETH/USDT" {% if symbol == "ETH/USDT" %}selected{% endif %}>ETH/USDT</option>
+                                    <option value="SOL/USDT" {% if symbol == "SOL/USDT" %}selected{% endif %}>SOL/USDT</option>
+                                    <option value="XRP/USDT" {% if symbol == "XRP/USDT" %}selected{% endif %}>XRP/USDT</option>
+                                </select>
+                            </div>
+                            <div class="col-auto">
+                                <span class="text-muted">Last updated: {{ current_time }}</span>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Row: LLM Consensus and LLM Analysis -->
+        <div class="row">
+            <!-- Multi-Model Consensus -->
+            <div class="col-12 col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Multi-Model Consensus</span>
+                        <span class="badge bg-primary">{{ consensus_data.source_count }} sources</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-6 text-center">
+                                <div class="sentiment-gauge" id="consensusGauge"></div>
+                                <div class="sentiment-value {% if consensus_data.direction == 'bullish' %}bullish{% elif consensus_data.direction == 'bearish' %}bearish{% else %}neutral{% endif %}">
+                                    {{ "%.2f"|format(consensus_data.value) }}
+                                </div>
+                                <div class="sentiment-label {% if consensus_data.direction == 'bullish' %}bullish{% elif consensus_data.direction == 'bearish' %}bearish{% else %}neutral{% endif %}">
+                                    {{ consensus_data.direction|capitalize }}
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="mb-3">
+                                    <div class="progress-label">
+                                        <span>Confidence</span>
+                                        <span>{{ "%.0f"|format(consensus_data.confidence * 100) }}%</span>
+                                    </div>
+                                    <div class="progress confidence-bar">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ consensus_data.confidence * 100 }}%" aria-valuenow="{{ consensus_data.confidence * 100 }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="progress-label">
+                                        <span>Disagreement</span>
+                                        <span>{{ "%.0f"|format(consensus_data.disagreement_level * 100) }}%</span>
+                                    </div>
+                                    <div class="progress confidence-bar">
+                                        <div class="progress-bar bg-warning" role="progressbar" style="width: {{ consensus_data.disagreement_level * 100 }}%" aria-valuenow="{{ consensus_data.disagreement_level * 100 }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="mt-3">
+                                    {% for dir, count in consensus_data.direction_counts.items() %}
+                                        {% if count > 0 %}
+                                            <span class="badge {% if dir == 'bullish' %}bg-success{% elif dir == 'bearish' %}bg-danger{% else %}bg-secondary{% endif %} me-1">{{ dir|capitalize }}: {{ count }}</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                
+                                <div class="mt-3">
+                                    <small class="text-muted">Data sources: {{ ", ".join(consensus_data.source_types) }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div id="consensusChart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- LLM Analysis -->
+            <div class="col-12 col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>LLM Market Analysis</span>
+                        <span class="badge bg-info">{{ llm_analysis.model }}</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="analysis-card {{ llm_analysis.primary_direction }}">
+                            <div class="metrics-row">
+                                <div class="metric-card">
+                                    <div class="metric-title">Direction</div>
+                                    <div class="metric-value {% if llm_analysis.primary_direction == 'positive' %}bullish{% elif llm_analysis.primary_direction == 'negative' %}bearish{% else %}neutral{% endif %}">
+                                        {{ llm_analysis.primary_direction|capitalize }}
+                                    </div>
+                                </div>
+                                
+                                <div class="metric-card">
+                                    <div class="metric-title">Confidence</div>
+                                    <div class="metric-value">{{ "%.0f"|format(llm_analysis.confidence * 100) }}%</div>
+                                </div>
+                                
+                                <div class="metric-card">
+                                    <div class="metric-title">Magnitude</div>
+                                    <div class="metric-value">{{ "%.1f"|format(llm_analysis.magnitude * 10) }}/10</div>
+                                </div>
+                                
+                                <div class="metric-card">
+                                    <div class="metric-title">Timeframe</div>
+                                    <div class="metric-value">{{ llm_analysis.duration|replace("_", " ")|capitalize }}</div>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-4">
+                                <h6>Analysis</h6>
+                                <p>{{ llm_analysis.reasoning }}</p>
+                            </div>
+                            
+                            <div class="risk-factors">
+                                <h6>Risk Factors</h6>
+                                <div>
+                                    {% for risk in llm_analysis.risk_factors %}
+                                        <span class="risk-badge">{{ risk }}</span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Middle Row: Model Performance and Detected Events -->
+        <div class="row">
+            <!-- Model Performance -->
+            <div class="col-12 col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header">
+                        Model & Source Performance
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 col-md-6">
+                                <h6>Source Performance</h6>
+                                <div id="sourcePerformanceChart"></div>
+                            </div>
+                            <div class="col-12 col-md-6">
+                                <h6>Model Performance</h6>
+                                <div id="modelPerformanceChart"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Detected Events -->
+            <div class="col-12 col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Recent Detected Events</span>
+                        <span class="badge bg-primary">{{ detected_events|length }}</span>
+                    </div>
+                    <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                        {% if detected_events %}
+                            {% for event in detected_events %}
+                                <div class="event-card {{ event.category }}">
+                                    <div class="event-timestamp">{{ event.detected_at }}</div>
+                                    <div class="event-title">{{ event.title }}</div>
+                                    <div class="event-metrics">
+                                        <span class="metric-label">{{ event.category|replace("_", " ")|capitalize }}</span>
+                                        <span class="metric-label">Confidence: {{ "%.0f"|format(event.confidence * 100) }}%</span>
+                                        {% if event.impact %}
+                                            <span class="metric-label">Impact: {{ event.impact.magnitude }}/5</span>
+                                            <span class="metric-label">Direction: {{ event.impact.direction|capitalize }}</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-4">
+                                <p class="text-muted">No events detected recently</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Bottom Row: Event Signals -->
+        <div class="row">
+            <div class="col-12 mb-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Trading Signals Generated from Events</span>
+                        <span class="badge bg-primary">{{ event_signals|length }}</span>
+                    </div>
+                    <div class="card-body">
+                        {% if event_signals %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Signal</th>
+                                            <th>Created</th>
+                                            <th>Expires</th>
+                                            <th>Confidence</th>
+                                            <th>Priority</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for signal in event_signals %}
+                                            <tr>
+                                                <td>{{ signal.title }}</td>
+                                                <td>{{ signal.created_at }}</td>
+                                                <td>{{ signal.expires_at }}</td>
+                                                <td>
+                                                    <div class="progress confidence-bar" style="width: 100px;">
+                                                        <div class="progress-bar bg-success" role="progressbar" style="width: {{ signal.confidence * 100 }}%" aria-valuenow="{{ signal.confidence * 100 }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    {% for i in range(signal.priority) %}
+                                                        <i class="bi bi-star-fill text-warning"></i>
+                                                    {% endfor %}
+                                                    {% for i in range(5 - signal.priority) %}
+                                                        <i class="bi bi-star text-muted"></i>
+                                                    {% endfor %}
+                                                </td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <p class="text-muted">No active trading signals</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script>
+        // Sentiment Gauge
+        const sentimentValue = {{ consensus_data.value }};
+        const consensusGaugeOptions = {
+            series: [sentimentValue * 100],
+            chart: {
+                height: 150,
+                type: 'radialBar',
+                offsetY: -10
+            },
+            plotOptions: {
+                radialBar: {
+                    startAngle: -135,
+                    endAngle: 135,
+                    hollow: {
+                        margin: 0,
+                        size: '70%',
+                    },
+                    dataLabels: {
+                        show: false
+                    },
+                    track: {
+                        background: '#f2f2f2',
+                        strokeWidth: '97%',
+                        margin: 5
+                    },
+                }
+            },
+            colors: [sentimentValue > 0.6 ? '#28a745' : (sentimentValue < 0.4 ? '#dc3545' : '#6c757d')],
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shade: 'dark',
+                    type: 'horizontal',
+                    shadeIntensity: 0.5,
+                    gradientToColors: [sentimentValue > 0.6 ? '#20c997' : (sentimentValue < 0.4 ? '#ff6b6b' : '#adb5bd')],
+                    inverseColors: true,
+                    opacityFrom: 1,
+                    opacityTo: 1,
+                    stops: [0, 100]
+                }
+            },
+            stroke: {
+                lineCap: 'round'
+            },
+        };
+        const consensusGauge = new ApexCharts(document.querySelector("#consensusGauge"), consensusGaugeOptions);
+        consensusGauge.render();
+        
+        // Consensus History Chart
+        const consensusHistory = {{ consensus_data.history|tojson }};
+        const consensusChartData = consensusHistory.map(h => ({
+            x: new Date(h.timestamp).getTime(),
+            y: parseFloat(h.value).toFixed(2)
+        }));
+        
+        const confidenceHistory = consensusHistory.map(h => ({
+            x: new Date(h.timestamp).getTime(),
+            y: parseFloat(h.confidence).toFixed(2)
+        }));
+        
+        const disagreementHistory = consensusHistory.map(h => ({
+            x: new Date(h.timestamp).getTime(),
+            y: parseFloat(h.disagreement).toFixed(2)
+        }));
+        
+        const consensusChartOptions = {
+            series: [
+                {
+                    name: 'Sentiment Value',
+                    data: consensusChartData
+                },
+                {
+                    name: 'Confidence',
+                    data: confidenceHistory
+                },
+                {
+                    name: 'Disagreement',
+                    data: disagreementHistory
+                }
+            ],
+            chart: {
+                height: 200,
+                type: 'line',
+                toolbar: {
+                    show: false
+                },
+                zoom: {
+                    enabled: false
+                }
+            },
+            dataLabels: {
+                enabled: false
+            },
+            stroke: {
+                curve: 'smooth',
+                width: [3, 2, 2]
+            },
+            colors: ['#4361ee', '#2e8b57', '#ffa500'],
+            xaxis: {
+                type: 'datetime',
+                labels: {
+                    formatter: function(value) {
+                        return new Date(value).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    }
+                }
+            },
+            yaxis: {
+                min: 0,
+                max: 1,
+                tickAmount: 5,
+                labels: {
+                    formatter: function(value) {
+                        return value.toFixed(1);
+                    }
+                }
+            },
+            tooltip: {
+                x: {
+                    format: 'dd MMM yyyy HH:mm'
+                }
+            },
+            legend: {
+                position: 'top',
+                horizontalAlign: 'left'
+            }
+        };
+        
+        const consensusChart = new ApexCharts(document.querySelector("#consensusChart"), consensusChartOptions);
+        consensusChart.render();
+        
+        // Source Performance Chart
+        const sourcePerformance = {{ model_performance.source_performance|tojson }};
+        const sourceLabels = Object.keys(sourcePerformance);
+        const sourceValues = Object.values(sourcePerformance).map(v => parseFloat(v * 100).toFixed(1));
+        
+        const sourcePerformanceOptions = {
+            series: [{
+                data: sourceValues
+            }],
+            chart: {
+                type: 'bar',
+                height: 250
+            },
+            plotOptions: {
+                bar: {
+                    borderRadius: 4,
+                    horizontal: true,
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function(val) {
+                    return val + '%';
+                },
+                offsetX: 5
+            },
+            colors: ['#4361ee'],
+            xaxis: {
+                categories: sourceLabels.map(l => l.replace('_', ' ')),
+                labels: {
+                    formatter: function(val) {
+                        return val + '%';
+                    }
+                },
+                min: 0,
+                max: 100
+            },
+            title: {
+                text: 'Performance Score',
+                align: 'center',
+                style: {
+                    fontSize: '14px'
+                }
+            }
+        };
+        
+        const sourcePerformanceChart = new ApexCharts(document.querySelector("#sourcePerformanceChart"), sourcePerformanceOptions);
+        sourcePerformanceChart.render();
+        
+        // Model Performance Chart
+        const modelPerformance = {{ model_performance.model_performance|tojson }};
+        const modelLabels = Object.keys(modelPerformance);
+        const modelValues = Object.values(modelPerformance).map(v => parseFloat(v * 100).toFixed(1));
+        
+        const modelPerformanceOptions = {
+            series: [{
+                data: modelValues
+            }],
+            chart: {
+                type: 'bar',
+                height: 250
+            },
+            plotOptions: {
+                bar: {
+                    borderRadius: 4,
+                    horizontal: true,
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: function(val) {
+                    return val + '%';
+                },
+                offsetX: 5
+            },
+            colors: ['#20c997'],
+            xaxis: {
+                categories: modelLabels,
+                labels: {
+                    formatter: function(val) {
+                        return val + '%';
+                    }
+                },
+                min: 0,
+                max: 100
+            },
+            title: {
+                text: 'Performance Score',
+                align: 'center',
+                style: {
+                    fontSize: '14px'
+                }
+            }
+        };
+        
+        const modelPerformanceChart = new ApexCharts(document.querySelector("#modelPerformanceChart"), modelPerformanceOptions);
+        modelPerformanceChart.render();
+    </script>
+</body>
+</html>
