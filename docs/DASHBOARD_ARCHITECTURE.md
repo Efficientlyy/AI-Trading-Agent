@@ -105,6 +105,17 @@ The dashboard architecture adheres to the following design principles:
 
 To run the modern dashboard:
 
+**Windows:**
+```powershell
+.\start_dashboard.ps1
+```
+
+**Linux/macOS:**
+```bash
+./start_dashboard.sh
+```
+
+Or directly:
 ```bash
 python run_modern_dashboard.py
 ```
@@ -112,16 +123,48 @@ python run_modern_dashboard.py
 For additional options:
 
 ```bash
-python run_modern_dashboard.py --help
+python run_modern_dashboard.py --host 0.0.0.0 --port 8080 --debug
 ```
+
+The dashboard will start and be available at: `http://127.0.0.1:8000/` (or another available port if 8000 is taken)
+
+### Login Credentials
+
+The dashboard requires authentication. Use one of the following credentials:
+
+- **Admin:** Username: `admin`, Password: `admin123`
+- **Operator:** Username: `operator`, Password: `operator123`
+- **Viewer:** Username: `viewer`, Password: `viewer123`
+
+## Dashboard Features
+
+The dashboard provides several specialized tabs:
+
+1. **Overview**: System status, performance metrics, component health
+2. **Market Regime**: Market regime detection and visualization
+3. **Sentiment Analysis**: Market sentiment from various sources
+4. **Risk Management**: Risk utilization and portfolio metrics
+5. **Performance Analytics**: Trading performance and strategy comparison
+6. **Logs & Monitoring**: System logs and health monitoring
+
+## Real-time Updates
+
+The modern dashboard uses WebSockets for real-time updates:
+
+- Dashboard data refreshes automatically at configurable intervals
+- System status changes are pushed immediately
+- Trading status updates are pushed in real-time
+- Component health changes are pushed as they occur
 
 ## Future Improvements
 
 Planned enhancements to the dashboard architecture:
 
-1. **UI Component Modularization**: Further break down UI components into smaller reusable pieces
-2. **Database Integration**: Proper database storage for user accounts and settings
-3. **API Documentation**: Swagger/OpenAPI documentation for all API endpoints
-4. **Real-time Analytics**: Enhanced real-time metrics and alerts
-5. **Theme Support**: Light/dark mode and customizable theming
-6. **Plugin System**: Extensible plugin architecture for custom dashboard features
+1. **React-based Frontend**: Migration to React with Tailwind CSS
+2. **Enhanced Interactive Components**: More dynamic and responsive UI elements
+3. **Customizable Layouts**: User-configurable dashboard layouts and saved views
+4. **Advanced Analytics**: More sophisticated data visualization and analysis tools
+5. **Mobile Responsiveness**: Improved support for mobile devices
+6. **Expanded Risk Management**: Enhanced risk visualization and control features
+7. **Database Integration**: Proper database storage for user accounts and settings
+8. **API Documentation**: Swagger/OpenAPI documentation for all API endpoints

@@ -1,0 +1,80 @@
+<!-- Connection Editor Modal -->
+<div id="connection-editor-modal" class="modal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Data Source Connections</h5>
+                <button type="button" class="btn-close" id="close-connections"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Connection List Panel -->
+                <div id="connection-list-panel">
+                    <div class="panel-header">
+                        <h6>Available Connections</h6>
+                        <p class="panel-description">
+                            Enable or disable individual data sources and configure their properties.
+                        </p>
+                    </div>
+
+                    <div id="connection-list" class="connection-list">
+                        <!-- Connection items will be inserted here -->
+                    </div>
+                </div>
+
+                <!-- Connection Detail Form -->
+                <div id="connection-detail-form" style="display: none;">
+                    <div class="panel-header">
+                        <button class="btn btn-sm btn-secondary back-to-list">
+                            <i data-feather="arrow-left"></i> Back to List
+                        </button>
+                        <h6 id="connection-detail-title">Edit Connection</h6>
+                    </div>
+
+                    <div class="form-group">
+                        <input type="hidden" id="connection-id">
+
+                        <div class="form-row">
+                            <label for="connection-name">Name</label>
+                            <input type="text" id="connection-name" class="form-control" disabled>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="connection-enabled">Enabled</label>
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="connection-enabled">
+                                <span class="toggle-slider"></span>
+                            </label>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="retry-attempts">Retry Attempts</label>
+                            <input type="number" id="retry-attempts" class="form-control" min="1" max="10">
+                            <span class="form-hint">Number of times to retry failed requests (1-10)</span>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="timeout-seconds">Timeout (seconds)</label>
+                            <input type="number" id="timeout-seconds" class="form-control" min="1" max="60">
+                            <span class="form-hint">Maximum time to wait for a response (1-60 seconds)</span>
+                        </div>
+
+                        <div class="form-row">
+                            <label for="cache-duration">Cache Duration (seconds)</label>
+                            <input type="number" id="cache-duration" class="form-control" min="0" max="3600">
+                            <span class="form-hint">How long to cache data (0-3600 seconds, 0 = no caching)</span>
+                        </div>
+
+                        <div class="form-actions">
+                            <button class="btn btn-secondary" id="cancel-detail">Cancel</button>
+                            <button class="btn btn-primary" id="save-detail">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancel-connections">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-connections">Save All</button>
+            </div>
+        </div>
+    </div>
+</div>

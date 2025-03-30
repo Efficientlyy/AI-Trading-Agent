@@ -1,0 +1,22 @@
+{
+    "general": {
+        "theme": "system",
+        "autoRefresh": true,
+        "refreshInterval": 30
+    },
+    "dataSources": {
+        "realDataEnabled": false,
+        "fallbackStrategy": "cache_then_mock",
+        "cacheDuration": 3600
+    },
+    "display": {
+        "chartStyle": "modern",
+        "defaultTimeRange": "1w",
+        "decimalPlaces": 2
+    },
+    "notifications": {
+        "desktopNotifications": true,
+        "notificationLevel": "warning",
+        "soundAlerts": false
+    }
+}

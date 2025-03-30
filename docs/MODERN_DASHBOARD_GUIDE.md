@@ -38,10 +38,11 @@ python run_modern_dashboard.py
 ### Accessing the Dashboard
 
 Once started, the dashboard is available at:
-- URL: http://127.0.0.1:8001
+- URL: http://127.0.0.1:8000 (or another available port if 8000 is taken)
 - Default credentials:
-  - Username: admin
-  - Password: admin123
+  - Username: admin, Password: admin123
+  - Username: operator, Password: operator123
+  - Username: viewer, Password: viewer123
 
 ## Dashboard Sections
 
@@ -96,16 +97,22 @@ python run_modern_dashboard.py --help
 ```
 
 Common options:
-- `--port`: Specify the port (default: 8001)
+- `--port`: Specify the port (default: 0 for auto-detection)
 - `--host`: Specify the host (default: 127.0.0.1)
 - `--debug`: Enable debug mode
+
+You can also configure the dashboard through environment variables:
+- `FLASK_TEMPLATE_FOLDER`: Path to the templates directory
+- `FLASK_STATIC_FOLDER`: Path to the static files directory
+- `FLASK_DEBUG`: Enable debug mode (1 for enabled, 0 for disabled)
+- `FLASK_ENV`: Set the environment (development, testing, production)
 
 ## Troubleshooting
 
 ### Common Issues
 
 1. **Dashboard Not Starting**
-   - Check if port 8001 is already in use
+   - Check if port 8000 is already in use
    - Verify all dependencies are installed
    - Check logs for specific errors
 
@@ -129,5 +136,26 @@ Common options:
 For developers working on the dashboard, refer to the following documentation:
 
 - [DASHBOARD_ARCHITECTURE.md](DASHBOARD_ARCHITECTURE.md) - Technical architecture
+- [DASHBOARD_IMPLEMENTATION.md](DASHBOARD_IMPLEMENTATION.md) - Implementation details
 - [DASHBOARD_REDESIGN_PLAN.md](DASHBOARD_REDESIGN_PLAN.md) - Future enhancement plans
+- [dashboard_testing_guide.md](dashboard_testing_guide.md) - Testing guidelines
 - [DOCUMENTATION_MAINTENANCE.md](DOCUMENTATION_MAINTENANCE.md) - Documentation guidelines
+
+## Data Sources
+
+The dashboard can use two types of data sources:
+
+1. **Real Data**: Connects to the actual trading system and displays real-time data
+2. **Mock Data**: Uses generated mock data for development and testing
+
+You can switch between data sources using the data source toggle in the dashboard settings. Mock data is automatically used when real data is unavailable.
+
+## User Roles
+
+The dashboard supports three user roles:
+
+1. **Admin**: Full access to all dashboard features and system controls
+2. **Operator**: Can view all data and control trading operations
+3. **Viewer**: Read-only access to dashboard data
+
+Each role has different permissions and access levels to ensure proper security and control.

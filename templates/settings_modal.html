@@ -1,0 +1,238 @@
+<!-- Settings Modal -->
+<div id="settings-modal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Dashboard Settings</h5>
+                <button type="button" class="btn-close" id="close-settings"></button>
+            </div>
+            <div class="modal-body">
+                <div class="settings-tabs">
+                    <button class="settings-tab active" data-tab="general">General</button>
+                    <button class="settings-tab" data-tab="data-source">Data Sources</button>
+                    <button class="settings-tab" data-tab="display">Display</button>
+                    <button class="settings-tab" data-tab="notifications">Notifications</button>
+                </div>
+
+                <div class="settings-content">
+                    <!-- General Settings Tab -->
+                    <div class="settings-pane active" id="general-settings">
+                        <div class="setting-group">
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Theme</span>
+                                    <span class="setting-description">Choose light or dark theme</span>
+                                </div>
+                                <div class="setting-control">
+                                    <div class="theme-selector">
+                                        <button class="theme-option" data-theme="light">
+                                            <i data-feather="sun"></i>
+                                            <span>Light</span>
+                                        </button>
+                                        <button class="theme-option" data-theme="dark">
+                                            <i data-feather="moon"></i>
+                                            <span>Dark</span>
+                                        </button>
+                                        <button class="theme-option" data-theme="system">
+                                            <i data-feather="monitor"></i>
+                                            <span>System</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Auto-refresh</span>
+                                    <span class="setting-description">Automatically refresh dashboard data</span>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="auto-refresh-toggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="setting-item" id="refresh-interval-container">
+                                <div class="setting-label">
+                                    <span>Refresh Interval</span>
+                                    <span class="setting-description">How often to refresh data</span>
+                                </div>
+                                <div class="setting-control">
+                                    <select id="refresh-interval" class="form-select">
+                                        <option value="10">10 seconds</option>
+                                        <option value="30" selected>30 seconds</option>
+                                        <option value="60">1 minute</option>
+                                        <option value="300">5 minutes</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Data Source Settings Tab -->
+                    <div class="settings-pane" id="data-source-settings">
+                        <div class="setting-group">
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Real Data</span>
+                                    <span class="setting-description">Enable real data connections</span>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="real-data-toggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="setting-item" id="real-data-options">
+                                <div class="setting-label">
+                                    <span>Connection Settings</span>
+                                    <span class="setting-description">Configure individual data sources</span>
+                                </div>
+                                <div class="setting-control">
+                                    <button id="edit-connections" class="btn btn-sm btn-secondary">
+                                        Edit Connections
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Fallback Strategy</span>
+                                    <span class="setting-description">What to do when real data is unavailable</span>
+                                </div>
+                                <div class="setting-control">
+                                    <select id="fallback-strategy" class="form-select">
+                                        <option value="cache_then_mock">Use cached data, then mock data</option>
+                                        <option value="cache_only">Use cached data only</option>
+                                        <option value="mock_only">Use mock data only</option>
+                                        <option value="fail">Show error message</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Cache Duration</span>
+                                    <span class="setting-description">How long to keep cached data</span>
+                                </div>
+                                <div class="setting-control">
+                                    <select id="cache-duration" class="form-select">
+                                        <option value="300">5 minutes</option>
+                                        <option value="900">15 minutes</option>
+                                        <option value="1800">30 minutes</option>
+                                        <option value="3600" selected>1 hour</option>
+                                        <option value="86400">1 day</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Display Settings Tab -->
+                    <div class="settings-pane" id="display-settings">
+                        <div class="setting-group">
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Chart Style</span>
+                                    <span class="setting-description">Visual style for charts</span>
+                                </div>
+                                <div class="setting-control">
+                                    <select id="chart-style" class="form-select">
+                                        <option value="modern" selected>Modern</option>
+                                        <option value="classic">Classic</option>
+                                        <option value="minimal">Minimal</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Default Time Range</span>
+                                    <span class="setting-description">Default time range for charts</span>
+                                </div>
+                                <div class="setting-control">
+                                    <select id="default-time-range" class="form-select">
+                                        <option value="1d">1 Day</option>
+                                        <option value="1w" selected>1 Week</option>
+                                        <option value="1m">1 Month</option>
+                                        <option value="3m">3 Months</option>
+                                        <option value="1y">1 Year</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Decimal Places</span>
+                                    <span class="setting-description">Number of decimal places to display</span>
+                                </div>
+                                <div class="setting-control">
+                                    <select id="decimal-places" class="form-select">
+                                        <option value="2" selected>2 places</option>
+                                        <option value="3">3 places</option>
+                                        <option value="4">4 places</option>
+                                        <option value="5">5 places</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notifications Settings Tab -->
+                    <div class="settings-pane" id="notifications-settings">
+                        <div class="setting-group">
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Desktop Notifications</span>
+                                    <span class="setting-description">Show desktop notifications</span>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="desktop-notifications-toggle" checked>
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Notification Level</span>
+                                    <span class="setting-description">Minimum level for notifications</span>
+                                </div>
+                                <div class="setting-control">
+                                    <select id="notification-level" class="form-select">
+                                        <option value="info">Info</option>
+                                        <option value="warning" selected>Warning</option>
+                                        <option value="error">Error</option>
+                                        <option value="critical">Critical</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="setting-item">
+                                <div class="setting-label">
+                                    <span>Sound Alerts</span>
+                                    <span class="setting-description">Play sound for notifications</span>
+                                </div>
+                                <div class="setting-control">
+                                    <label class="toggle-switch">
+                                        <input type="checkbox" id="sound-alerts-toggle">
+                                        <span class="toggle-slider"></span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="reset-settings">Reset</button>
+                <button type="button" class="btn btn-primary" id="save-settings">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>

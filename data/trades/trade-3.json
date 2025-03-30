@@ -1,0 +1,13 @@
+{
+    "id": "T-3",
+    "asset": "BTC/USD",
+    "side": "sell",
+    "quantity": 0.05,
+    "entry_price": 51000,
+    "exit_price": 49000,
+    "entry_time": "2025-03-29T14:00:00.000Z",
+    "exit_time": "2025-03-30T02:00:00.000Z",
+    "profit_loss": 100,
+    "profit_loss_pct": 3.92,
+    "strategy": "trend_following"
+}

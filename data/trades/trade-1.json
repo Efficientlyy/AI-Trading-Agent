@@ -1,0 +1,13 @@
+{
+    "id": "T-1",
+    "asset": "BTC/USD",
+    "side": "buy",
+    "quantity": 0.1,
+    "entry_price": 50000,
+    "exit_price": 52000,
+    "entry_time": "2025-03-29T08:00:00.000Z",
+    "exit_time": "2025-03-30T08:00:00.000Z",
+    "profit_loss": 200,
+    "profit_loss_pct": 4.0,
+    "strategy": "trend_following"
+}

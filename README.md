@@ -99,6 +99,16 @@ Configuration files are stored in the `config/` directory in YAML format.
 
 ## Development
 
+### Developer Documentation
+
+We've created comprehensive documentation to help new developers get up to speed quickly:
+
+- **[Smart Path for New Developers](docs/SMART_PATH_FOR_NEW_DEVELOPERS.md)**: An optimized guide for understanding the project structure and working efficiently with the codebase
+- **[Architecture Overview](ARCHITECTURE.md)**: Detailed system architecture and component relationships
+- **[Dashboard Architecture](docs/DASHBOARD_ARCHITECTURE.md)**: Specific documentation for the dashboard system
+- **[Dashboard Implementation](docs/DASHBOARD_IMPLEMENTATION.md)**: Technical details of the dashboard implementation
+- **[Modern Dashboard Guide](docs/MODERN_DASHBOARD_GUIDE.md)**: User guide for the modern dashboard
+
 ### Requirements
 
 - Python 3.9+
