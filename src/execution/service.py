@@ -102,6 +102,13 @@ class ExecutionService(Component):
                     # Future implementation will add real exchange connectors
                     self.logger.warning(f"Binance connector not yet implemented, using mock for {exchange_id}")
                     connector = MockExchangeConnector(exchange_id=exchange_id, api_key=api_key, api_secret=api_secret)
+                elif connector_type == "bitvavo":
+                    # Import Bitvavo connector
+                    from src.execution.exchange.bitvavo import BitvavoConnector
+                    
+                    # Create Bitvavo connector
+                    self.logger.info(f"Creating Bitvavo connector for {exchange_id}")
+                    connector = BitvavoConnector(api_key=api_key, api_secret=api_secret)
                 else:
                     self.logger.error(f"Unknown connector type: {connector_type}")
                     continue

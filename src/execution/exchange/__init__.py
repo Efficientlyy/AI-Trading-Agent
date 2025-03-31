@@ -9,16 +9,19 @@ Available connectors:
 - Binance Connector: Implementation for the Binance exchange
 - Mock Connector: Simulated exchange connector for testing
 - Coinbase Connector: Connector for Coinbase exchange
+- Bitvavo Connector: Connector for Bitvavo exchange (Netherlands-based)
 """
 
 from src.execution.exchange.base import BaseExchangeConnector
 from src.execution.exchange.mock import MockExchangeConnector
 from src.execution.exchange.binance import BinanceExchangeConnector
 from src.execution.exchange.coinbase import CoinbaseExchangeConnector
+from src.execution.exchange.bitvavo import BitvavoConnector
 
 __all__ = [
     "BaseExchangeConnector",
     "MockExchangeConnector",
     "BinanceExchangeConnector",
     "CoinbaseExchangeConnector",
-] 
+    "BitvavoConnector",
+]

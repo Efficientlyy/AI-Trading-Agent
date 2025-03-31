@@ -6,6 +6,15 @@ Following the Single Responsibility Principle, these enums are separated
 from the main dashboard module.
 """
 
+from enum import Enum
+
+class ExchangeProvider(Enum):
+    """Exchange provider enum"""
+    BINANCE = "binance"
+    KRAKEN = "kraken"
+    COINBASE = "coinbase"
+    BITVAVO = "bitvavo"  # Added Bitvavo exchange
+
 class SystemState:
     """System operational state enum"""
     STOPPED = "stopped"

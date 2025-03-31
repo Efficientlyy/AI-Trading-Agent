@@ -2067,7 +2067,8 @@ class ModernDashboard:
         self.app.route("/api/settings/reset", methods=["POST"])(self.api_reset_settings)
         
         # WebSocket route
-        self.app.websocket("/ws")(self.websocket_endpoint)
+        # WebSocket endpoint disabled due to compatibility issues
+        # self.app.websocket("/ws")(self.websocket_endpoint)
         self.app.route("/api/templates/settings_modal.html", methods=["GET"])(self.api_get_settings_modal_template)
         self.app.route("/api/templates/connection_editor_modal.html", methods=["GET"])(self.api_get_connection_editor_modal_template)
         self.app.route("/api/settings/data-source/connections", methods=["GET"])(self.api_get_data_source_connections)
@@ -2125,6 +2126,17 @@ class ModernDashboard:
         self.app.route("/api/admin/users", methods=["POST"])(self.api_admin_add_user)
         self.app.route("/api/admin/users/<user_id>", methods=["PUT"])(self.api_admin_update_user)
         self.app.route("/api/admin/users/<user_id>/status", methods=["PUT"])(self.api_admin_update_user_status)
+        
+        # Bitvavo API routes
+        self.app.route("/api/settings/bitvavo/status", methods=["GET"])(self.api_bitvavo_status)
+        self.app.route("/api/settings/bitvavo/test", methods=["POST"])(self.api_bitvavo_test_connection)
+        self.app.route("/api/settings/bitvavo/save", methods=["POST"])(self.api_bitvavo_save_credentials)
+        self.app.route("/api/settings/bitvavo/settings", methods=["POST"])(self.api_bitvavo_save_settings)
+        self.app.route("/api/settings/bitvavo/pairs", methods=["GET"])(self.api_bitvavo_get_pairs)
+        self.app.route("/api/settings/bitvavo/pairs", methods=["POST"])(self.api_bitvavo_save_pairs)
+        self.app.route("/api/settings/bitvavo/paper-trading", methods=["GET"])(self.api_bitvavo_get_paper_trading)
+        self.app.route("/api/settings/bitvavo/paper-trading", methods=["POST"])(self.api_bitvavo_save_paper_trading)
+        self.app.route("/api/templates/bitvavo_settings_panel.html", methods=["GET"])(self.api_get_bitvavo_settings_panel)
 
     def login(self):
         """Login route"""

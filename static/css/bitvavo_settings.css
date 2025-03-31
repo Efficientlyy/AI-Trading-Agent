@@ -1,0 +1,183 @@
+/**
+ * Bitvavo Settings Styles
+ * 
+ * CSS styles for the Bitvavo settings panel and related components.
+ */
+
+/* Card styling */
+.bitvavo-card {
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.bitvavo-card:hover {
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Status indicators */
+.status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+}
+
+.status-connected {
+    background-color: #28a745;
+}
+
+.status-error {
+    background-color: #dc3545;
+}
+
+.status-unknown {
+    background-color: #6c757d;
+}
+
+.status-configuring {
+    background-color: #ffc107;
+}
+
+/* Form controls */
+.bitvavo-form-control {
+    border-radius: 4px;
+    border: 1px solid #ced4da;
+    padding: 8px 12px;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.bitvavo-form-control:focus {
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+/* API key input styling */
+.api-key-input {
+    font-family: monospace;
+    letter-spacing: 1px;
+}
+
+/* Trading pairs table */
+#bitvavo-pairs-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+#bitvavo-pairs-table th {
+    background-color: #f8f9fa;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+#bitvavo-pairs-table td {
+    vertical-align: middle;
+}
+
+/* Paper trading section */
+.paper-trading-section {
+    background-color: #f8f9fa;
+    border-left: 4px solid #17a2b8;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+/* Advanced settings section */
+.advanced-settings-section {
+    background-color: #f8f9fa;
+    border-left: 4px solid #6610f2;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+/* Toggle switch styling */
+.form-switch .form-check-input {
+    width: 3em;
+}
+
+.form-switch .form-check-input:checked {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+/* Button styling */
+.bitvavo-btn {
+    border-radius: 4px;
+    font-weight: 500;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+}
+
+.bitvavo-btn-primary {
+    background-color: #0052cc;
+    border-color: #0052cc;
+    color: white;
+}
+
+.bitvavo-btn-primary:hover {
+    background-color: #003d99;
+    border-color: #003d99;
+}
+
+.bitvavo-btn-secondary {
+    background-color: #f4f5f7;
+    border-color: #d2d5db;
+    color: #42526e;
+}
+
+.bitvavo-btn-secondary:hover {
+    background-color: #e6ebf5;
+    border-color: #b3bac5;
+}
+
+/* Loading state */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top: 4px solid #0052cc;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .bitvavo-card {
+        margin-bottom: 20px;
+    }
+
+    #bitvavo-pairs-table {
+        font-size: 0.9rem;
+    }
+
+    .bitvavo-btn {
+        padding: 6px 12px;
+        font-size: 0.9rem;
+    }
+}
