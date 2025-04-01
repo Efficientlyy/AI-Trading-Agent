@@ -400,4 +400,4 @@ class SettingsManager:
             return default_config
         except Exception as e:
             logger.error(f"Error resetting real data config: {e}")
-            return {"enabled": self.is_real_data_enabled()}
+            return {"enabled": False}

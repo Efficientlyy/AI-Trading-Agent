@@ -403,4 +403,3 @@ class WebSocketManager:
             interval: The update interval in seconds
         """
         self.update_intervals[channel] = interval
-        logger.info(f"Set update interval for channel {channel} to {interval} seconds")
