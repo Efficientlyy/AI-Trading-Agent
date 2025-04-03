@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Modular dashboard service with improved architecture
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+      - "8050:8050"
+    environment:
+      - FLASK_ENV=development
+      - PYTHONPATH=/app
+      - NEXT_PUBLIC_USE_MOCK_DATA=true
+      - FLASK_SECRET_KEY=ai-trading-dashboard-secret
+    volumes:
+      - ./src/dashboard:/app/src/dashboard
+      - ./templates:/app/templates
+      - ./static:/app/static
+      - ./logs:/app/logs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # API service for data processing
+  api:
+    build:
+      context: ./src/api
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONPATH=/app
+      - FLASK_ENV=development
+      - REDIS_HOST=redis
+    depends_on:
+      - redis
+    volumes:
+      - ./src:/app/src
+    restart: unless-stopped
+
+  # Redis for caching and messaging
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+volumes:
+  redis_data:

@@ -115,7 +115,7 @@ def test_query_and_replay_integration(setup_test_environment):
     
     # Should replay all entries for request 1
     assert len(replayed_entries) >= 3
-    assert all(entry["request_id"] == "req1" for entry in replayed_entries)
+    assert all(entry["request_id"] = = "req1" for entry in replayed_entries)
     
     # Find the error entry
     error_entries = [e for e in replayed_entries if e.get("level") == "error"]
@@ -163,7 +163,7 @@ def test_health_monitoring_with_logs(setup_test_environment):
     
     # Should be unhealthy due to error logs
     status = monitor.get_status()
-    assert status["status"] == "unhealthy"
+    assert status["status"] = = "unhealthy"
     assert status["checks"]["recent_errors"]["status"] == "unhealthy"
 
 
@@ -213,7 +213,7 @@ def test_query_performance_monitoring():
     query_stats = status["metrics"]["query.duration"]["value"]
     
     # Verify we have performance data
-    assert query_stats["count"] == 10
+    assert query_stats["count"] = = 10
     assert query_stats["min"] > 0
     assert query_stats["max"] > 0
     assert query_stats["avg"] > 0
@@ -280,7 +280,7 @@ def test_end_to_end_workflow(setup_test_environment):
     
     # Should be unhealthy due to workflow error
     status = monitor.get_status()
-    assert status["status"] == "unhealthy"
+    assert status["status"] = = "unhealthy"
     assert status["checks"]["workflow_errors"]["status"] == "unhealthy"
     
     # 4. Replay the workflow
@@ -294,4 +294,4 @@ def test_end_to_end_workflow(setup_test_environment):
     
     # Should replay all workflow entries
     assert len(replayed_entries) >= 6  # 5 info + 1 error
-    assert all(entry["request_id"] == "workflow1" for entry in replayed_entries)
+    assert all(entry["request_id"] = = "workflow1" for entry in replayed_entries)

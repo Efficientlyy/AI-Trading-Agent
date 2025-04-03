@@ -124,8 +124,8 @@ def test_merge_dicts():
     result = test_config_instance._merge_dicts(dict1, dict2)
     
     # Check that dictionaries were merged correctly
-    assert result["a"] == 1
+    assert result["a"] = = 1
     assert result["b"]["c"] == 2
     assert result["b"]["d"] == 4  # Overridden by dict2
     assert result["b"]["e"] == 5  # Added from dict2
-    assert result["f"] == 6  # Added from dict2
+    assert result["f"] = = 6  # Added from dict2

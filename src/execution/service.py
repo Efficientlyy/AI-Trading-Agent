@@ -49,7 +49,7 @@ class ExecutionService(Component):
         self.order_update_interval = self.get_config("order_update_interval", 1.0)
         
         # Initialize exchange connectors
-        await self._initialize_exchange_connectors()
+        self._initialize_exchange_connectors()
         
         self.logger.info("Execution service configuration loaded",
                        retry_attempts=self.retry_attempts,
@@ -102,12 +102,19 @@ class ExecutionService(Component):
                     # Future implementation will add real exchange connectors
                     self.logger.warning(f"Binance connector not yet implemented, using mock for {exchange_id}")
                     connector = MockExchangeConnector(exchange_id=exchange_id, api_key=api_key, api_secret=api_secret)
+                elif connector_type == "bitvavo":
+                    # Import Bitvavo connector
+                    from src.execution.exchange.bitvavo import BitvavoConnector
+                    
+                    # Create Bitvavo connector
+                    self.logger.info(f"Creating Bitvavo connector for {exchange_id}")
+                    connector = BitvavoConnector(api_key=api_key, api_secret=api_secret)
                 else:
                     self.logger.error(f"Unknown connector type: {connector_type}")
                     continue
                 
                 # Initialize the connector
-                success = await connector.initialize()
+                success = connector.initialize()
                 if success:
                     self.exchange_connectors[exchange_id] = connector
                     self.logger.info(f"Successfully initialized connector for {exchange_id}")
@@ -144,7 +151,7 @@ class ExecutionService(Component):
         for exchange_id, connector in self.exchange_connectors.items():
             try:
                 self.logger.info(f"Shutting down connector for {exchange_id}")
-                await connector.shutdown()
+                connector.shutdown()
             except Exception as e:
                 self.logger.error(f"Error shutting down connector for {exchange_id}: {str(e)}")
         

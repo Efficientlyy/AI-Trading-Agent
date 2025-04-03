@@ -63,14 +63,14 @@ class OrderBookStrategy(Strategy):
             self._create_processor_for_symbol(symbol)
         
         # Additional strategy-specific initialization
-        await self._orderbook_strategy_initialize()
+        self._orderbook_strategy_initialize()
     
     async def _strategy_start(self) -> None:
         """Start the strategy."""
         self.logger.info("Starting order book strategy")
         
         # Additional strategy-specific startup
-        await self._orderbook_strategy_start()
+        self._orderbook_strategy_start()
     
     async def _strategy_stop(self) -> None:
         """Stop the strategy."""
@@ -80,7 +80,7 @@ class OrderBookStrategy(Strategy):
         self.orderbook_processors.clear()
         
         # Additional strategy-specific shutdown
-        await self._orderbook_strategy_stop()
+        self._orderbook_strategy_stop()
     
     def _create_processor_for_symbol(self, symbol: str) -> OrderBookProcessor:
         """Create an order book processor for a symbol.

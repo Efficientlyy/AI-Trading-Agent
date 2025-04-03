@@ -1,0 +1,852 @@
+<!-- 
+    Drawdown Analysis Dashboard Component
+    
+    This component provides tools for analyzing portfolio drawdowns, including
+    underwater charts, drawdown distribution analysis, recovery path analysis,
+    and maximum drawdown projection tools.
+-->
+
+<div class="card drawdown-analysis-panel">
+    <div class="card-header">
+        <div class="card-title">
+            <h3>Drawdown Analysis</h3>
+            <div class="card-actions">
+                <button id="drawdown-settings-btn" class="btn btn-icon" data-tooltip="Analysis settings" data-position="top">
+                    <i data-feather="settings"></i>
+                </button>
+                <button id="download-drawdown-data-btn" class="btn btn-icon" data-tooltip="Download data" data-position="top">
+                    <i data-feather="download"></i>
+                </button>
+                <button id="expand-drawdown-panel-btn" class="btn btn-icon" data-tooltip="Expand panel" data-position="top">
+                    <i data-feather="maximize-2"></i>
+                </button>
+            </div>
+        </div>
+        <div class="drawdown-controls">
+            <div class="portfolio-selector">
+                <label for="drawdown-portfolio">Portfolio:</label>
+                <select id="drawdown-portfolio" class="form-select">
+                    <option value="current" selected>Current Portfolio</option>
+                    <option value="optimal">Optimal Portfolio</option>
+                    <option value="custom">Custom Portfolio</option>
+                    <option value="strategy1">MA Crossover Strategy</option>
+                    <option value="strategy2">Sentiment Strategy</option>
+                </select>
+            </div>
+            <div class="time-period-selector">
+                <label for="drawdown-period">Period:</label>
+                <select id="drawdown-period" class="form-select">
+                    <option value="6m">6 Months</option>
+                    <option value="1y" selected>1 Year</option>
+                    <option value="3y">3 Years</option>
+                    <option value="5y">5 Years</option>
+                    <option value="max">Maximum Available</option>
+                </select>
+            </div>
+            <div class="threshold-selector">
+                <label for="drawdown-threshold">Threshold:</label>
+                <select id="drawdown-threshold" class="form-select">
+                    <option value="0">All Drawdowns</option>
+                    <option value="5">≥ 5%</option>
+                    <option value="10" selected>≥ 10%</option>
+                    <option value="15">≥ 15%</option>
+                    <option value="20">≥ 20%</option>
+                </select>
+            </div>
+            <div class="market-regime-toggle">
+                <label class="toggle-label">Show Market Regimes</label>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="show-regimes-toggle" checked>
+                    <span class="toggle-slider"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <div class="drawdown-grid">
+            <!-- Underwater Chart -->
+            <div class="drawdown-grid-item underwater-chart-container">
+                <h4 class="chart-title">Underwater Chart</h4>
+                <div class="chart-subtitle">Current Drawdown: <span id="current-drawdown" class="value-highlight">-4.27%</span></div>
+                <div id="underwater-chart" class="drawdown-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Drawdown Distribution -->
+            <div class="drawdown-grid-item distribution-container">
+                <h4 class="chart-title">Drawdown Distribution</h4>
+                <div class="chart-subtitle">Average Drawdown: <span id="avg-drawdown" class="value-highlight">-8.93%</span></div>
+                <div id="distribution-chart" class="drawdown-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Recovery Analysis -->
+            <div class="drawdown-grid-item recovery-container">
+                <h4 class="chart-title">Recovery Analysis</h4>
+                <div class="chart-subtitle">Avg Recovery Time: <span id="avg-recovery" class="value-highlight">35 days</span></div>
+                <div id="recovery-chart" class="drawdown-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Maximum Drawdown Projection -->
+            <div class="drawdown-grid-item projection-container">
+                <h4 class="chart-title">Drawdown Projection</h4>
+                <div class="chart-subtitle">Projection Model: <span id="projection-model" class="value-highlight">Monte Carlo</span></div>
+                <div id="projection-chart" class="drawdown-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="drawdown-table-container">
+            <h4>Major Drawdown Events</h4>
+            <div class="table-controls">
+                <div class="search-input">
+                    <input type="text" id="drawdown-search" placeholder="Search drawdowns..." class="form-input">
+                    <i data-feather="search" class="search-icon"></i>
+                </div>
+                <div class="sort-control">
+                    <label for="drawdown-sort">Sort by:</label>
+                    <select id="drawdown-sort" class="form-select">
+                        <option value="date-desc" selected>Date (Newest First)</option>
+                        <option value="date-asc">Date (Oldest First)</option>
+                        <option value="magnitude-desc">Magnitude (Largest First)</option>
+                        <option value="duration-desc">Duration (Longest First)</option>
+                        <option value="recovery-desc">Recovery Time (Longest First)</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="drawdown-table">
+                    <thead>
+                        <tr>
+                            <th>Start Date</th>
+                            <th>End Date</th>
+                            <th>Magnitude</th>
+                            <th>Duration</th>
+                            <th>Recovery Time</th>
+                            <th>Market Regime</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="drawdown-table-body">
+                        <tr class="severe-drawdown">
+                            <td>2022-05-05</td>
+                            <td>2022-06-18</td>
+                            <td>-37.45%</td>
+                            <td>45 days</td>
+                            <td>187 days</td>
+                            <td><span class="bear-regime">Bear Market</span></td>
+                            <td><button class="btn btn-sm analyze-btn" data-drawdown-id="d1">Analyze</button></td>
+                        </tr>
+                        <tr class="major-drawdown">
+                            <td>2023-08-17</td>
+                            <td>2023-09-11</td>
+                            <td>-21.32%</td>
+                            <td>26 days</td>
+                            <td>62 days</td>
+                            <td><span class="volatile-regime">Volatile Market</span></td>
+                            <td><button class="btn btn-sm analyze-btn" data-drawdown-id="d2">Analyze</button></td>
+                        </tr>
+                        <tr class="moderate-drawdown">
+                            <td>2024-01-03</td>
+                            <td>2024-01-23</td>
+                            <td>-16.78%</td>
+                            <td>20 days</td>
+                            <td>32 days</td>
+                            <td><span class="correction-regime">Correction</span></td>
+                            <td><button class="btn btn-sm analyze-btn" data-drawdown-id="d3">Analyze</button></td>
+                        </tr>
+                        <tr class="moderate-drawdown">
+                            <td>2024-11-21</td>
+                            <td>2024-12-14</td>
+                            <td>-12.45%</td>
+                            <td>24 days</td>
+                            <td>18 days</td>
+                            <td><span class="volatile-regime">Volatile Market</span></td>
+                            <td><button class="btn btn-sm analyze-btn" data-drawdown-id="d4">Analyze</button></td>
+                        </tr>
+                        <tr class="minor-drawdown">
+                            <td>2025-01-15</td>
+                            <td>2025-01-29</td>
+                            <td>-8.72%</td>
+                            <td>15 days</td>
+                            <td>12 days</td>
+                            <td><span class="consolidation-regime">Consolidation</span></td>
+                            <td><button class="btn btn-sm analyze-btn" data-drawdown-id="d5">Analyze</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="table-pagination">
+                <button class="btn btn-sm page-nav" id="prev-page" disabled>
+                    <i data-feather="chevron-left"></i> Previous
+                </button>
+                <span class="page-indicator">Page <span id="current-page">1</span> of <span id="total-pages">1</span></span>
+                <button class="btn btn-sm page-nav" id="next-page" disabled>
+                    Next <i data-feather="chevron-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="drawdown-metrics">
+            <div class="metrics-card drawdown-stats">
+                <h4>Drawdown Statistics</h4>
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-value" id="max-drawdown">-37.45%</div>
+                        <div class="metric-label">Maximum Drawdown</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="avg-drawdown-stats">-14.54%</div>
+                        <div class="metric-label">Average Drawdown</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="drawdown-count">28</div>
+                        <div class="metric-label">Total Drawdowns</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="avg-drawdown-duration">22 days</div>
+                        <div class="metric-label">Avg. Duration</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="calmar-ratio">1.87</div>
+                        <div class="metric-label">Calmar Ratio</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="ulcer-index">4.23</div>
+                        <div class="metric-label">Ulcer Index</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="metrics-card recovery-stats">
+                <h4>Recovery Analysis</h4>
+                <div class="metrics-grid">
+                    <div class="metric-item">
+                        <div class="metric-value" id="max-recovery-time">187 days</div>
+                        <div class="metric-label">Longest Recovery</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="avg-recovery-time">42 days</div>
+                        <div class="metric-label">Avg. Recovery Time</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="recovery-factor">3.12</div>
+                        <div class="metric-label">Recovery Factor</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="pain-index">3.46</div>
+                        <div class="metric-label">Pain Index</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="pain-ratio">2.15</div>
+                        <div class="metric-label">Pain Ratio</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="recovery-efficiency">1.73</div>
+                        <div class="metric-label">Recovery Efficiency</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-footer">
+        <div class="drawdown-summary">
+            <div class="metric-item">
+                <span class="metric-label">Current Recovery Progress:</span>
+                <span class="metric-value" id="recovery-progress">62.5%</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Projected Recovery Date:</span>
+                <span class="metric-value" id="projected-recovery">April 12, 2025</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Time in Drawdown:</span>
+                <span class="metric-value" id="time-in-drawdown">32.5%</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Last Updated:</span>
+                <span class="metric-value" id="drawdown-last-updated">5 minutes ago</span>
+            </div>
+        </div>
+        <div class="drawdown-actions">
+            <button class="btn btn-sm" id="export-drawdown-report">
+                <i data-feather="file-text"></i> Export Report
+            </button>
+            <button class="btn btn-sm" id="drawdown-stress-test">
+                <i data-feather="activity"></i> Run Stress Test
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Drawdown Analysis Settings Modal -->
+<div id="drawdown-settings-modal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Drawdown Analysis Settings</h3>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="drawdown-definition">Drawdown Definition:</label>
+                    <select id="drawdown-definition" class="form-select">
+                        <option value="peak-to-trough" selected>Peak-to-Trough</option>
+                        <option value="threshold-based">Threshold Based</option>
+                        <option value="volatility-adjusted">Volatility-Adjusted</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="recovery-definition">Recovery Definition:</label>
+                    <select id="recovery-definition" class="form-select">
+                        <option value="full" selected>Full Recovery (100%)</option>
+                        <option value="partial-90">Partial Recovery (90%)</option>
+                        <option value="partial-80">Partial Recovery (80%)</option>
+                        <option value="new-high">New High</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="drawdown-classification">Drawdown Classification:</label>
+                    <div class="slider-container">
+                        <span class="slider-label">Minor:</span>
+                        <input type="range" id="minor-drawdown-threshold" class="form-range" min="1" max="20" step="1" value="5">
+                        <span class="slider-value">5%</span>
+                    </div>
+                    <div class="slider-container">
+                        <span class="slider-label">Moderate:</span>
+                        <input type="range" id="moderate-drawdown-threshold" class="form-range" min="5" max="25" step="1" value="10">
+                        <span class="slider-value">10%</span>
+                    </div>
+                    <div class="slider-container">
+                        <span class="slider-label">Major:</span>
+                        <input type="range" id="major-drawdown-threshold" class="form-range" min="10" max="35" step="1" value="20">
+                        <span class="slider-value">20%</span>
+                    </div>
+                    <div class="slider-container">
+                        <span class="slider-label">Severe:</span>
+                        <input type="range" id="severe-drawdown-threshold" class="form-range" min="20" max="50" step="1" value="30">
+                        <span class="slider-value">30%</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="projection-settings">Projection Settings:</label>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="use-monte-carlo" checked>
+                        <label for="use-monte-carlo">Use Monte Carlo Simulation</label>
+                    </div>
+                    <div class="slider-container">
+                        <span class="slider-label">Confidence:</span>
+                        <input type="range" id="projection-confidence" class="form-range" min="50" max="99" step="1" value="95">
+                        <span class="slider-value">95%</span>
+                    </div>
+                    <div class="slider-container">
+                        <span class="slider-label">Simulations:</span>
+                        <input type="range" id="simulation-count" class="form-range" min="100" max="10000" step="100" value="1000">
+                        <span class="slider-value">1,000</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="chart-settings">Chart Settings:</label>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="show-drawdown-labels" checked>
+                        <label for="show-drawdown-labels">Show Drawdown Labels</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="show-recovery-paths" checked>
+                        <label for="show-recovery-paths">Show Recovery Paths</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="highlight-current-drawdown" checked>
+                        <label for="highlight-current-drawdown">Highlight Current Drawdown</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="group-minor-drawdowns">
+                        <label for="group-minor-drawdowns">Group Minor Drawdowns</label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-drawdown-settings">Apply Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add CSS for the drawdown analysis panel -->
+<style>
+    .drawdown-analysis-panel {
+        margin-bottom: 1.5rem;
+    }
+    
+    .drawdown-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .portfolio-selector,
+    .time-period-selector,
+    .threshold-selector {
+        min-width: 180px;
+    }
+    
+    .market-regime-toggle {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .toggle-label {
+        font-size: 0.9rem;
+        color: var(--text);
+    }
+    
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 40px;
+        height: 20px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--border-light);
+        transition: .3s;
+        border-radius: 20px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 2px;
+        bottom: 2px;
+        background-color: white;
+        transition: .3s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background-color: var(--primary);
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(20px);
+    }
+    
+    .drawdown-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 300px 300px;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .drawdown-grid-item {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+        padding: 0.75rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chart-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text);
+        margin: 0 0 0.25rem 0;
+    }
+    
+    .chart-subtitle {
+        font-size: 0.8rem;
+        color: var(--text-light);
+        margin: 0 0 0.5rem 0;
+    }
+    
+    .value-highlight {
+        font-weight: 500;
+        color: var(--text);
+    }
+    
+    .drawdown-chart {
+        flex: 1;
+        position: relative;
+        min-height: 200px;
+        background-color: var(--card-bg);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .chart-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(var(--card-bg-rgb), 0.8);
+        font-size: 1rem;
+        color: var(--text-light);
+        z-index: 5;
+    }
+    
+    .drawdown-table-container {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .drawdown-table-container h4 {
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0 0 1rem 0;
+        color: var(--text);
+    }
+    
+    .table-controls {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    
+    .search-input {
+        position: relative;
+        min-width: 250px;
+        flex: 1;
+    }
+    
+    .search-input input {
+        width: 100%;
+        padding: 0.5rem 0.75rem;
+        padding-left: 2rem;
+        font-size: 0.9rem;
+        border: 1px solid var(--border-light);
+        border-radius: 4px;
+        background-color: var(--bg-light);
+        color: var(--text);
+    }
+    
+    .search-icon {
+        position: absolute;
+        left: 0.75rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-light);
+        width: 1rem;
+        height: 1rem;
+    }
+    
+    .sort-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .sort-control label {
+        font-size: 0.9rem;
+        color: var(--text);
+    }
+    
+    .table-responsive {
+        overflow-x: auto;
+        margin-bottom: 1rem;
+    }
+    
+    .drawdown-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .drawdown-table th,
+    .drawdown-table td {
+        padding: 0.75rem;
+        text-align: left;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .drawdown-table th {
+        font-weight: 500;
+        color: var(--text-light);
+        background-color: var(--bg-light);
+    }
+    
+    .drawdown-table tbody tr:hover {
+        background-color: rgba(var(--primary-rgb), 0.05);
+    }
+    
+    .severe-drawdown td:nth-child(3) {
+        color: var(--danger);
+        font-weight: 500;
+    }
+    
+    .major-drawdown td:nth-child(3) {
+        color: var(--warning);
+        font-weight: 500;
+    }
+    
+    .moderate-drawdown td:nth-child(3) {
+        color: var(--warning);
+        opacity: 0.8;
+    }
+    
+    .minor-drawdown td:nth-child(3) {
+        color: var(--info);
+    }
+    
+    .bear-regime,
+    .volatile-regime,
+    .correction-regime,
+    .consolidation-regime {
+        padding: 0.2rem 0.5rem;
+        border-radius: 3px;
+        font-size: 0.8rem;
+        font-weight: 500;
+    }
+    
+    .bear-regime {
+        background-color: rgba(var(--danger-rgb), 0.1);
+        color: var(--danger);
+    }
+    
+    .volatile-regime {
+        background-color: rgba(var(--warning-rgb), 0.1);
+        color: var(--warning);
+    }
+    
+    .correction-regime {
+        background-color: rgba(var(--info-rgb), 0.1);
+        color: var(--info);
+    }
+    
+    .consolidation-regime {
+        background-color: rgba(var(--secondary-rgb), 0.1);
+        color: var(--secondary);
+    }
+    
+    .analyze-btn {
+        padding: 0.2rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .table-pagination {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+    }
+    
+    .page-indicator {
+        font-size: 0.9rem;
+        color: var(--text-light);
+    }
+    
+    .page-nav {
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    
+    .page-nav:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .drawdown-metrics {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .metrics-card {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        padding: 1rem;
+    }
+    
+    .metrics-card h4 {
+        font-size: 1rem;
+        font-weight: 500;
+        margin: 0 0 1rem 0;
+        color: var(--text);
+    }
+    
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 1rem;
+    }
+    
+    .metric-item {
+        text-align: center;
+    }
+    
+    .metrics-card .metric-value {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--text);
+        margin-bottom: 0.25rem;
+    }
+    
+    .metrics-card .metric-label {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+    
+    .drawdown-summary {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+    
+    .drawdown-summary .metric-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-align: left;
+    }
+    
+    .drawdown-summary .metric-label {
+        font-size: 0.85rem;
+        color: var(--text-light);
+    }
+    
+    .drawdown-summary .metric-value {
+        font-size: 0.85rem;
+        font-weight: 500;
+        color: var(--text);
+    }
+    
+    .drawdown-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    /* Modal specific styles */
+    .form-group {
+        margin-bottom: 1.25rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--text);
+        font-size: 0.9rem;
+    }
+    
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-top: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .slider-label {
+        min-width: 80px;
+        font-size: 0.85rem;
+    }
+    
+    .slider-value {
+        min-width: 40px;
+        text-align: right;
+        font-size: 0.85rem;
+    }
+    
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .checkbox-item label {
+        margin: 0;
+        font-weight: 400;
+        font-size: 0.85rem;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .drawdown-grid {
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(4, 300px);
+        }
+        
+        .drawdown-metrics {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .drawdown-controls {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0.75rem;
+        }
+        
+        .portfolio-selector,
+        .time-period-selector,
+        .threshold-selector {
+            width: 100%;
+        }
+        
+        .market-regime-toggle {
+            justify-content: space-between;
+        }
+        
+        .table-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .sort-control {
+            justify-content: space-between;
+        }
+        
+        .metrics-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .drawdown-summary {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+    }
+</style>
+
+<!-- JavaScript for drawdown analysis panel functionality -->
+<script src="/static/js/drawdown_analysis.js"></script>

@@ -670,12 +670,12 @@ class CoinbaseExchangeConnector(BaseExchangeConnector):
             
             # Check for HTTP errors
             if response.status >= 400:
-                error_text = await response.text()
+                error_text = response.text()
                 logger.error(f"Coinbase API error ({response.status}): {error_text}")
                 return {}
             
             # Parse JSON response
-            response_data = await response.json()
+            response_data = response.json()
             return response_data
             
         except aiohttp.ClientError as e:
@@ -746,12 +746,12 @@ class CoinbaseExchangeConnector(BaseExchangeConnector):
             
             # Check for HTTP errors
             if response.status >= 400:
-                error_text = await response.text()
+                error_text = response.text()
                 logger.error(f"Coinbase API error ({response.status}): {error_text}")
                 return {}
             
             # Parse JSON response
-            response_data = await response.json()
+            response_data = response.json()
             return response_data
             
         except aiohttp.ClientError as e:

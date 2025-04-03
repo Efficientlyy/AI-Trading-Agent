@@ -116,22 +116,22 @@ def load_market_data(args):
             for col in df.columns:
                 lower_col = col.lower()
                 if 'open' in lower_col:
-                    col_map['Open'] = col
+                    col_map["Open"] = col
                 elif 'high' in lower_col:
-                    col_map['High'] = col
+                    col_map["High"] = col
                 elif 'low' in lower_col:
-                    col_map['Low'] = col
+                    col_map["Low"] = col
                 elif 'close' in lower_col or 'price' in lower_col:
-                    col_map['Close'] = col
+                    col_map["Close"] = col
                 elif 'volume' in lower_col or 'vol' in lower_col:
-                    col_map['Volume'] = col
+                    col_map["Volume"] = col
             
             # Rename columns
             df = df.rename(columns=col_map)
         
         # Calculate returns if not present
         if 'Return' not in df.columns:
-            df['Return'] = df['Close'].pct_change().fillna(0)
+            df["Return"] = df['Close'].pct_change().fillna(0)
     else:
         # Download data
         if args.start_date and args.end_date:

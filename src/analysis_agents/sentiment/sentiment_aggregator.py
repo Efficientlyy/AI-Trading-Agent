@@ -5,6 +5,7 @@ from various sources into a unified sentiment signal.
 """
 
 import asyncio
+import time
 from datetime import datetime
 from typing import Dict, List, Optional, Set, Tuple, Any
 
@@ -12,8 +13,12 @@ import numpy as np
 
 from src.analysis_agents.sentiment.sentiment_base import BaseSentimentAgent
 from src.analysis_agents.sentiment.nlp_service import NLPService
+from src.analysis_agents.sentiment.adaptive_weights import AdaptiveSentimentWeights
+from src.analysis_agents.sentiment.sentiment_validator import SentimentValidator
 from src.common.config import config
 from src.common.logging import get_logger
+from src.common.caching import Cache
+from src.common.monitoring import metrics
 from src.models.market_data import CandleData, TimeFrame
 
 
@@ -54,6 +59,20 @@ class SentimentAggregator(BaseSentimentAgent):
         # The aggregator has its own sentiment cache
         self.aggregated_cache: Dict[str, Dict[str, Any]] = {}
         
+        # Add cache for aggregated sentiment results
+        self.result_cache = Cache(ttl=self.update_interval)
+        
+        # Create adaptive weights system if enabled
+        self.use_adaptive_weights = config.get(
+            f"analysis_agents.{agent_id}.use_adaptive_weights",
+            False
+        )
+        if self.use_adaptive_weights:
+            self.adaptive_weights = AdaptiveSentimentWeights()
+        
+        # Create sentiment validator
+        self.validator = SentimentValidator()
+        
         # NLP service (will be set by manager)
         self.nlp_service: Optional[NLPService] = None
     
@@ -66,6 +85,11 @@ class SentimentAggregator(BaseSentimentAgent):
             
         self.logger.info("Initializing sentiment aggregator",
                        source_weights=self.source_weights)
+        
+        # Record initialization metric
+        metrics.counter("sentiment_aggregator_initialized", tags={
+            "agent_id": self.agent_id
+        })
     
     async def _start(self) -> None:
         """Start the sentiment aggregator."""
@@ -78,6 +102,11 @@ class SentimentAggregator(BaseSentimentAgent):
         self.update_task = self.create_task(
             self._aggregate_sentiment_periodically()
         )
+        
+        # Record start metric
+        metrics.counter("sentiment_aggregator_started", tags={
+            "agent_id": self.agent_id
+        })
     
     async def _stop(self) -> None:
         """Stop the sentiment aggregator."""
@@ -88,6 +117,11 @@ class SentimentAggregator(BaseSentimentAgent):
                 await self.update_task
             except asyncio.CancelledError:
                 pass
+        
+        # Record stop metric
+        metrics.counter("sentiment_aggregator_stopped", tags={
+            "agent_id": self.agent_id
+        })
         
         await super()._stop()
     
@@ -106,6 +140,13 @@ class SentimentAggregator(BaseSentimentAgent):
             raise
         except Exception as e:
             self.logger.error("Error in sentiment aggregation task", error=str(e))
+            
+            # Record error metric
+            metrics.counter("sentiment_aggregator_error", tags={
+                "agent_id": self.agent_id,
+                "error_type": type(e).__name__
+            })
+            
             await asyncio.sleep(60)  # Wait a minute and retry
     
     async def _aggregate_sentiment(self, symbol: str) -> None:
@@ -114,133 +155,168 @@ class SentimentAggregator(BaseSentimentAgent):
         Args:
             symbol: The trading pair symbol (e.g., "BTC/USDT")
         """
-        # Check if we have sentiment data for this symbol
-        if symbol not in self.sentiment_cache:
-            return
-            
-        # Get sentiment from all available sources
-        source_data = {}
-        sources_list = []
+        # Start timer for performance monitoring
+        timer_end = metrics.timer("sentiment_aggregation_duration", tags={
+            "agent_id": self.agent_id,
+            "symbol": symbol
+        })
         
-        for source_type in ["social_media", "news", "market_sentiment", "onchain"]:
-            if source_type in self.sentiment_cache[symbol]:
-                source_data[source_type] = self.sentiment_cache[symbol][source_type]
-                sources_list.append(source_type)
-        
-        # Need at least two sources to aggregate
-        if len(source_data) < 2:
-            return
-            
-        # Calculate weighted sentiment value
-        weighted_values = []
-        total_weight = 0
-        
-        for source_type, data in source_data.items():
-            # Get the source weight
-            weight = self.source_weights.get(source_type, 0.25)
-            
-            # Adjust weight by confidence and recency
-            now = datetime.utcnow()
-            last_update = data.get("last_update", now)
-            age_hours = (now - last_update).total_seconds() / 3600
-            recency_factor = max(0.5, 1.0 - (age_hours / 24.0))  # Decay over 24 hours
-            
-            confidence = data.get("confidence", 0.7)
-            adjusted_weight = weight * confidence * recency_factor
-            
-            # Add to weighted calculation
-            weighted_values.append(data.get("value", 0.5) * adjusted_weight)
-            total_weight += adjusted_weight
-        
-        # Calculate aggregate sentiment value
-        if total_weight > 0:
-            aggregate_value = sum(weighted_values) / total_weight
-        else:
-            aggregate_value = 0.5  # Neutral if no weights
-            
-        # Determine direction
-        if aggregate_value > 0.6:
-            direction = "bullish"
-        elif aggregate_value < 0.4:
-            direction = "bearish"
-        else:
-            direction = "neutral"
-            
-        # Calculate agreement level
-        values = [data.get("value", 0.5) for data in source_data.values()]
-        # Calculate agreement level (standard deviation of sentiment values)
-        std_dev = np.std(values)
-        agreement_level = 1.0 - (float(std_dev) / 0.5)  # Normalized standard deviation
-        agreement_level = max(0.0, min(1.0, float(agreement_level)))
-        
-        # Calculate overall confidence (mean of individual confidences, boosted by agreement)
-        confidences = [data.get("confidence", 0.7) for data in source_data.values()]
-        base_confidence = float(np.mean(confidences))
-        confidence = float(base_confidence * (0.7 + (0.3 * agreement_level)))  # Agreement boosts confidence
-        
-        # Store in aggregated cache
-        if symbol not in self.aggregated_cache:
-            self.aggregated_cache[symbol] = {}
-            
-        previous_aggregate = self.aggregated_cache[symbol].get("value", 0.5)
-        aggregate_shift = abs(aggregate_value - previous_aggregate)
-        
-        self.aggregated_cache[symbol] = {
-            "value": aggregate_value,
-            "direction": direction, 
-            "confidence": confidence,
-            "agreement_level": agreement_level,
-            "source_count": len(source_data),
-            "sources": sources_list,
-            "last_update": datetime.utcnow()
-        }
-        
-        # Publish event if significant shift or high confidence
-        is_significant = aggregate_shift > self.sentiment_shift_threshold
-        is_high_confidence = confidence > 0.85
-        
-        if is_significant or is_high_confidence:
-            details = {
-                "agreement_level": agreement_level,
-                "source_count": len(source_data),
-                "source_types": sources_list,
-                "event_type": "aggregate_sentiment_shift" if is_significant else "high_confidence_sentiment"
-            }
-            
-            # Find direction agreement
-            directions = [data.get("direction", "neutral") for data in source_data.values()]
-            bullish_count = directions.count("bullish")
-            bearish_count = directions.count("bearish")
-            neutral_count = directions.count("neutral")
-            
-            details["direction_counts"] = {
-                "bullish": bullish_count,
-                "bearish": bearish_count,
-                "neutral": neutral_count
-            }
-            
-            # Add source-specific values
-            for source_type, data in source_data.items():
-                details[f"{source_type}_value"] = data.get("value", 0.5)
-                details[f"{source_type}_confidence"] = data.get("confidence", 0.7)
+        try:
+            # Check if we have sentiment data for this symbol
+            if symbol not in self.sentiment_cache:
+                return
                 
-            await self.publish_sentiment_event(
-                symbol=symbol,
-                direction=direction,
-                value=aggregate_value,
-                confidence=confidence,
-                is_extreme=abs(aggregate_value - 0.5) > 0.3,  # Extreme if far from neutral
-                signal_type="aggregate",
-                sources=sources_list,
-                details=details
-            )
+            # Get sentiment from all available sources
+            source_data = {}
+            sources_list = []
             
-            self.logger.info("Published aggregated sentiment event", 
-                           symbol=symbol,
-                           direction=direction,
-                           value=aggregate_value, 
-                           confidence=confidence,
-                           source_count=len(source_data))
+            for source_type in ["social_media", "news", "market_sentiment", "onchain"]:
+                if source_type in self.sentiment_cache[symbol]:
+                    source_data[source_type] = self.sentiment_cache[symbol][source_type]
+                    sources_list.append(source_type)
+            
+            # Need at least one source to aggregate (changed from 2 for better resilience)
+            if len(source_data) < 1:
+                return
+                
+            # Get source weights (use adaptive weights if enabled)
+            if self.use_adaptive_weights:
+                source_weights = self.adaptive_weights.get_weights()
+            else:
+                source_weights = self.source_weights
+                
+            # Calculate weighted sentiment value using numpy for better performance
+            if source_data:
+                # Extract data into numpy arrays for vectorized operations
+                values = np.array([data.get("value", 0.5) for data in source_data.values()])
+                confidences = np.array([data.get("confidence", 0.7) for data in source_data.values()])
+                
+                # Get timestamps and calculate recency factors
+                now = datetime.utcnow()
+                timestamps = [data.get("last_update", now) for data in source_data.values()]
+                age_hours = np.array([(now - ts).total_seconds() / 3600 for ts in timestamps])
+                recency_factors = np.maximum(0.5, 1.0 - (age_hours / 24.0))
+                
+                # Get source weights
+                source_types = list(source_data.keys())
+                weights = np.array([source_weights.get(st, 0.25) for st in source_types])
+                
+                # Calculate adjusted weights
+                adjusted_weights = weights * confidences * recency_factors
+                total_weight = np.sum(adjusted_weights)
+                
+                # Calculate aggregate value
+                if total_weight > 0:
+                    aggregate_value = np.sum(values * adjusted_weights) / total_weight
+                else:
+                    aggregate_value = 0.5  # Neutral if no weights
+                    
+                # Determine direction
+                if aggregate_value > 0.6:
+                    direction = "bullish"
+                elif aggregate_value < 0.4:
+                    direction = "bearish"
+                else:
+                    direction = "neutral"
+                    
+                # Calculate agreement level (standard deviation of sentiment values)
+                std_dev = np.std(values)
+                agreement_level = 1.0 - (float(std_dev) / 0.5)  # Normalized standard deviation
+                agreement_level = max(0.0, min(1.0, float(agreement_level)))
+                
+                # Calculate overall confidence (mean of individual confidences, boosted by agreement)
+                base_confidence = float(np.mean(confidences))
+                confidence = float(base_confidence * (0.7 + (0.3 * agreement_level)))  # Agreement boosts confidence
+                
+                # Store in aggregated cache
+                if symbol not in self.aggregated_cache:
+                    self.aggregated_cache[symbol] = {}
+                    
+                previous_aggregate = self.aggregated_cache[symbol].get("value", 0.5)
+                aggregate_shift = abs(aggregate_value - previous_aggregate)
+                
+                self.aggregated_cache[symbol] = {
+                    "value": aggregate_value,
+                    "direction": direction, 
+                    "confidence": confidence,
+                    "agreement_level": agreement_level,
+                    "source_count": len(source_data),
+                    "sources": sources_list,
+                    "last_update": datetime.utcnow()
+                }
+                
+                # Record metrics
+                metrics.gauge("sentiment_aggregate_value", aggregate_value, tags={
+                    "symbol": symbol,
+                    "direction": direction
+                })
+                
+                metrics.gauge("sentiment_confidence", confidence, tags={
+                    "symbol": symbol
+                })
+                
+                metrics.gauge("sentiment_agreement", agreement_level, tags={
+                    "symbol": symbol
+                })
+                
+                # Publish event if significant shift or high confidence
+                is_significant = aggregate_shift > self.sentiment_shift_threshold
+                is_high_confidence = confidence > 0.85
+                
+                if is_significant or is_high_confidence:
+                    details = {
+                        "agreement_level": agreement_level,
+                        "source_count": len(source_data),
+                        "source_types": sources_list,
+                        "event_type": "aggregate_sentiment_shift" if is_significant else "high_confidence_sentiment"
+                    }
+                    
+                    # Find direction agreement
+                    directions = [data.get("direction", "neutral") for data in source_data.values()]
+                    bullish_count = directions.count("bullish")
+                    bearish_count = directions.count("bearish")
+                    neutral_count = directions.count("neutral")
+                    
+                    details["direction_counts"] = {
+                        "bullish": bullish_count,
+                        "bearish": bearish_count,
+                        "neutral": neutral_count
+                    }
+                    
+                    # Add source-specific values
+                    for source_type, data in source_data.items():
+                        details[f"{source_type}_value"] = data.get("value", 0.5)
+                        details[f"{source_type}_confidence"] = data.get("confidence", 0.7)
+                        
+                    await self.publish_sentiment_event(
+                        symbol=symbol,
+                        direction=direction,
+                        value=aggregate_value,
+                        confidence=confidence,
+                        is_extreme=abs(aggregate_value - 0.5) > 0.3,  # Extreme if far from neutral
+                        signal_type="aggregate",
+                        sources=sources_list,
+                        details=details
+                    )
+                    
+                    self.logger.info("Published aggregated sentiment event", 
+                                   symbol=symbol,
+                                   direction=direction,
+                                   value=aggregate_value, 
+                                   confidence=confidence,
+                                   source_count=len(source_data))
+                    
+                    # Record event metric
+                    metrics.counter("sentiment_event_published", tags={
+                        "symbol": symbol,
+                        "direction": direction,
+                        "event_type": "aggregate"
+                    })
+        finally:
+            # End timer and record duration
+            duration = timer_end()
+            self.logger.debug(f"Sentiment aggregation took {duration:.3f}s",
+                           symbol=symbol)
     
     async def aggregate_sentiment(self, symbol: str) -> Optional[Dict[str, Any]]:
         """Aggregate sentiment from all sources for a symbol.
@@ -254,10 +330,19 @@ class SentimentAggregator(BaseSentimentAgent):
         Returns:
             The aggregated sentiment data, or None if aggregation failed
         """
+        # Check cache first
+        cache_key = f"aggregate:{symbol}"
+        cached_result = self.result_cache.get(cache_key)
+        if cached_result is not None:
+            return cached_result
+            
+        # Not in cache, perform aggregation
         await self._aggregate_sentiment(symbol)
         
         # Return aggregated data if available
         if symbol in self.aggregated_cache:
+            # Cache the result
+            self.result_cache.set(cache_key, self.aggregated_cache[symbol])
             return self.aggregated_cache[symbol]
         
         return None
@@ -298,9 +383,9 @@ class SentimentAggregator(BaseSentimentAgent):
             return
             
         # Get price data
-        closes = [candle.close for candle in candles]
+        closes = np.array([candle.close for candle in candles])
         
-        # Calculate recent performance
+        # Calculate recent performance using numpy for better performance
         price_change_1d = (closes[-1] / closes[-1]) - 1 if len(closes) > 1 else 0
         price_change_5d = (closes[-1] / closes[-5]) - 1 if len(closes) > 5 else 0
         price_change_20d = (closes[-1] / closes[-20]) - 1 if len(closes) > 20 else 0
@@ -343,3 +428,41 @@ class SentimentAggregator(BaseSentimentAgent):
                            direction=direction,
                            divergence_type=divergence_type,
                            confidence=confidence * 0.9)
+            
+            # Record divergence event metric
+            metrics.counter("sentiment_divergence_event", tags={
+                "symbol": symbol,
+                "direction": direction,
+                "divergence_type": divergence_type
+            })
+            
+        # Record performance for adaptive learning if enabled
+        if self.use_adaptive_weights and len(candles) > 3:
+            # Get the sentiment prediction from a few candles ago
+            lookback = 3  # Number of candles to look back
+            
+            # Get sentiment value from when the prediction was made
+            prediction_time = candles[-lookback].timestamp
+            
+            # Find the closest sentiment update
+            for source_type in ["social_media", "news", "market_sentiment", "onchain"]:
+                if (symbol in self.sentiment_cache and 
+                    source_type in self.sentiment_cache[symbol]):
+                    source_data = self.sentiment_cache[symbol][source_type]
+                    timestamp = source_data.get("last_update")
+                    
+                    # If this update was close to the prediction time
+                    if timestamp and abs((timestamp - prediction_time).total_seconds()) < 3600:
+                        # Calculate actual outcome (normalized price change)
+                        price_change = (candles[-1].close / candles[-lookback].close) - 1
+                        normalized_outcome = 0.5 + (price_change * 5)  # Scale to 0-1 range
+                        normalized_outcome = max(0, min(1, normalized_outcome))
+                        
+                        # Record performance for this source
+                        if self.use_adaptive_weights:
+                            self.adaptive_weights.record_performance(
+                                source=source_type,
+                                prediction=source_data.get("value", 0.5),
+                                actual_outcome=normalized_outcome,
+                                timestamp=timestamp
+                            )

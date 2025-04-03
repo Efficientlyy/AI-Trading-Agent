@@ -349,6 +349,6 @@ def calculate_comprehensive_metrics(
     
     # Add regime-specific metrics if provided
     if regimes is not None:
-        metrics['regime_metrics'] = calculate_regime_metrics(returns, regimes)
+        metrics["regime_metrics"] = calculate_regime_metrics(returns, regimes)
     
     return metrics 

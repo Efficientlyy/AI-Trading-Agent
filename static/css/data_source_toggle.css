@@ -1,0 +1,265 @@
+/* Data Source Toggle Button Styles and Toast Notifications */
+.data-source-toggle {
+    position: relative;
+    display: inline-block;
+    width: 120px;
+    height: 34px;
+    margin: 10px;
+}
+
+.data-source-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.data-source-toggle-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: .4s;
+    border-radius: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+}
+
+.data-source-toggle-slider:before {
+    position: absolute;
+    content: "";
+    height: 26px;
+    width: 26px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+    z-index: 2;
+}
+
+.data-source-toggle-labels {
+    position: absolute;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 10px;
+    box-sizing: border-box;
+    color: white;
+    font-size: 12px;
+    font-weight: bold;
+    z-index: 1;
+}
+
+.data-source-toggle-labels span {
+    line-height: 34px;
+}
+
+input:checked+.data-source-toggle-slider {
+    background-color: #2196F3;
+}
+
+input:focus+.data-source-toggle-slider {
+    box-shadow: 0 0 1px #2196F3;
+}
+
+input:checked+.data-source-toggle-slider:before {
+    transform: translateX(85px);
+}
+
+/* Active state styling */
+.data-source-toggle-slider .mock-label {
+    opacity: 0.6;
+}
+
+.data-source-toggle-slider .real-label {
+    opacity: 0.6;
+}
+
+input:not(:checked)+.data-source-toggle-slider .mock-label {
+    opacity: 1;
+}
+
+input:checked+.data-source-toggle-slider .real-label {
+    opacity: 1;
+}
+
+/* Disabled state */
+.data-source-toggle.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.data-source-toggle.disabled .data-source-toggle-slider {
+    cursor: not-allowed;
+}
+
+/* Toast Notification Styles */
+.toast-notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 12px 20px;
+    border-radius: 4px;
+    color: white;
+    font-weight: 500;
+    max-width: 300px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 9999;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.toast-notification.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast-notification.success {
+    background-color: #28a745;
+}
+
+.toast-notification.error {
+    background-color: #dc3545;
+}
+
+.toast-notification.warning {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.toast-notification.info {
+    background-color: #17a2b8;
+}
+
+/* Loading state for control groups */
+.control-group.loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.control-group.loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    margin: -10px 0 0 -10px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Error Details Styles */
+.error-details {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    padding: 20px;
+    max-width: 500px;
+    width: 90%;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease;
+}
+
+.error-details .error-title {
+    color: #dc3545;
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.error-details .error-message {
+    margin-bottom: 15px;
+    color: #333;
+    font-size: 14px;
+}
+
+.error-details .error-help {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.error-details .error-help p {
+    margin-top: 0;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.error-details .error-help ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.error-details .error-help li {
+    margin-bottom: 5px;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
+/* Global Loading Indicator */
+.global-loading-indicator {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: #f3f3f3;
+    z-index: 10000;
+    overflow: hidden;
+}
+
+.global-loading-indicator::before {
+    content: "";
+    position: absolute;
+    height: 100%;
+    width: 50%;
+    background-color: #2196F3;
+    animation: loading-animation 1.5s infinite ease-in-out;
+}
+
+@keyframes loading-animation {
+    0% {
+        left: -50%;
+    }
+
+    100% {
+        left: 100%;
+    }
+}
+
+.global-loading-indicator.hidden {
+    display: none;
+}

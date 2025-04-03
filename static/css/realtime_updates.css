@@ -1,0 +1,308 @@
+/**
+ * Real-time Updates Styles
+ * 
+ * Styles for real-time data updates and animations
+ */
+
+/* Connection Status Indicator */
+.connection-status {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+    position: relative;
+}
+
+.connection-status::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.connection-status.connected {
+    background-color: var(--success-color);
+}
+
+.connection-status.connected::after {
+    background-color: var(--success-color);
+}
+
+.connection-status.disconnected {
+    background-color: var(--warning-color);
+}
+
+.connection-status.disconnected::after {
+    background-color: var(--warning-color);
+}
+
+.connection-status.error {
+    background-color: var(--danger-color);
+}
+
+.connection-status.error::after {
+    background-color: var(--danger-color);
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    70% {
+        transform: scale(1.5);
+        opacity: 0;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 0;
+    }
+}
+
+/* Real-time Update Animations */
+.updated {
+    animation: highlight-update 1s ease-in-out;
+}
+
+@keyframes highlight-update {
+    0% {
+        background-color: rgba(var(--primary-color-rgb), 0.2);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+.new-row {
+    animation: highlight-new-row 1s ease-in-out;
+}
+
+@keyframes highlight-new-row {
+    0% {
+        background-color: rgba(var(--primary-color-rgb), 0.2);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+.new-alert {
+    animation: highlight-new-alert 1s ease-in-out;
+}
+
+@keyframes highlight-new-alert {
+    0% {
+        background-color: rgba(var(--primary-color-rgb), 0.2);
+    }
+
+    100% {
+        background-color: transparent;
+    }
+}
+
+/* Real-time Data Indicators */
+.real-time-indicator {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: 0.5rem;
+}
+
+.real-time-indicator .connection-status {
+    margin-right: 0.25rem;
+}
+
+/* Real-time Data Sections */
+.real-time-section {
+    position: relative;
+}
+
+.real-time-section .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.real-time-section .real-time-indicator {
+    margin-left: auto;
+}
+
+/* Real-time Data Tables */
+.real-time-table tbody tr {
+    transition: background-color 0.3s ease;
+}
+
+.real-time-table tbody tr:hover {
+    background-color: rgba(var(--primary-color-rgb), 0.05);
+}
+
+.real-time-table tbody tr td {
+    transition: background-color 0.3s ease;
+}
+
+/* Real-time Data Cards */
+.real-time-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.real-time-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 16px 16px 0;
+    border-color: transparent var(--primary-color) transparent transparent;
+    opacity: 0.7;
+}
+
+/* Real-time Data Metrics */
+.real-time-metric {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.real-time-metric .metric-value {
+    transition: all 0.3s ease;
+}
+
+.real-time-metric .metric-value.positive {
+    color: var(--success-color);
+}
+
+.real-time-metric .metric-value.negative {
+    color: var(--danger-color);
+}
+
+.real-time-metric .metric-change {
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+}
+
+.real-time-metric .metric-change.positive {
+    color: var(--success-color);
+}
+
+.real-time-metric .metric-change.positive::before {
+    content: "▲";
+    margin-right: 0.125rem;
+}
+
+.real-time-metric .metric-change.negative {
+    color: var(--danger-color);
+}
+
+.real-time-metric .metric-change.negative::before {
+    content: "▼";
+    margin-right: 0.125rem;
+}
+
+/* Real-time Charts */
+.real-time-chart {
+    position: relative;
+}
+
+.real-time-chart .chart-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(var(--bg-color-rgb), 0.7);
+    z-index: 10;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+
+.real-time-chart.loading .chart-overlay {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.real-time-chart .chart-overlay .spinner {
+    width: 2rem;
+    height: 2rem;
+    border: 0.25rem solid var(--border-color);
+    border-top-color: var(--primary-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Real-time Alerts */
+.alerts-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.alert-item {
+    display: flex;
+    flex-direction: column;
+    padding: 0.75rem;
+    border-left: 3px solid var(--primary-color);
+    background-color: var(--secondary-bg);
+    margin-bottom: 0.5rem;
+    border-radius: 0.25rem;
+    transition: all 0.3s ease;
+}
+
+.alert-item.info {
+    border-left-color: var(--primary-color);
+}
+
+.alert-item.success {
+    border-left-color: var(--success-color);
+}
+
+.alert-item.warning {
+    border-left-color: var(--warning-color);
+}
+
+.alert-item.error {
+    border-left-color: var(--danger-color);
+}
+
+.alert-time {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 0.25rem;
+}
+
+.alert-message {
+    font-size: 0.875rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .real-time-section .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .real-time-section .real-time-indicator {
+        margin-left: 0;
+        margin-top: 0.5rem;
+    }
+}

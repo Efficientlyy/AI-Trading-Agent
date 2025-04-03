@@ -33,15 +33,15 @@ def main():
     
     # Set API URL if provided
     if args.api_url:
-        os.environ['API_BASE_URL'] = args.api_url
+        os.environ["API_BASE_URL"] = args.api_url
     
     # Set Flask environment variables
     if args.debug:
-        os.environ['FLASK_ENV'] = 'development'
-        os.environ['FLASK_DEBUG'] = '1'
+        os.environ["FLASK_ENV"] = 'development'
+        os.environ["FLASK_DEBUG"] = '1'
     else:
-        os.environ['FLASK_ENV'] = 'production'
-        os.environ['FLASK_DEBUG'] = '0'
+        os.environ["FLASK_ENV"] = 'production'
+        os.environ["FLASK_DEBUG"] = '0'
     
     # Print info
     print(f"Starting Market Regime Detection Web UI at http://{args.host}:{args.port}")

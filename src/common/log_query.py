@@ -488,6 +488,47 @@ class LogQuery:
         if query:
             self.compile(query)
             
+    def get_logs(self, limit=100, level=None, component=None, search=None):
+        """
+        Get logs matching the specified criteria.
+        
+        This method provides compatibility with the dashboard's expected interface.
+        
+        Args:
+            limit: Maximum number of logs to return
+            level: Optional log level to filter by
+            component: Optional component to filter by
+            search: Optional search string to filter by
+            
+        Returns:
+            List of log entries matching the criteria
+        """
+        # Build a query string from the parameters
+        query_parts = []
+        
+        if level:
+            query_parts.append(f'level = "{level}"')
+            
+        if component:
+            query_parts.append(f'component = "{component}"')
+            
+        if search:
+            query_parts.append(f'message ~ "{search}"')
+            
+        # Combine query parts with AND
+        query_str = " AND ".join(query_parts) if query_parts else None
+        
+        # Create a new query if parameters were provided
+        if query_str:
+            query = LogQuery(query_str)
+            return query.search_directory(limit=limit)
+        elif self.query_str:
+            # Use existing query if no parameters were provided
+            return self.search_directory(limit=limit)
+        else:
+            # No query, return all logs up to the limit
+            return self.search_directory(limit=limit)
+            
     def compile(self, query: str) -> None:
         """
         Compile a query string.

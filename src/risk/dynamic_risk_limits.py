@@ -240,7 +240,7 @@ class DynamicRiskLimits:
             return 0.0
         
         # Calculate daily returns
-        data['returns'] = data['close'].pct_change().dropna()
+        data["returns"] = data['close'].pct_change().dropna()
         
         # Calculate rolling volatility (standard deviation of returns)
         volatility = data['returns'].std()

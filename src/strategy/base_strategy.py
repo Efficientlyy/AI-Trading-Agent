@@ -75,7 +75,7 @@ class Strategy(Component, ABC):
                         timeframes=[tf.value for tf in self.timeframes])
         
         # Additional initialization
-        await self._strategy_initialize()
+        self._strategy_initialize()
     
     async def _start(self) -> None:
         """Start the strategy."""
@@ -89,7 +89,7 @@ class Strategy(Component, ABC):
             event_bus.subscribe(event_type, self._handle_event)
         
         # Additional startup
-        await self._strategy_start()
+        self._strategy_start()
     
     async def _stop(self) -> None:
         """Stop the strategy."""
@@ -103,7 +103,7 @@ class Strategy(Component, ABC):
             event_bus.unsubscribe(event_type, self._handle_event)
         
         # Additional shutdown
-        await self._strategy_stop()
+        self._strategy_stop()
     
     async def _handle_event(self, event) -> None:
         """Handle an event.

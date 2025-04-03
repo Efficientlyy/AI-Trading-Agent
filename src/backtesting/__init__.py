@@ -198,7 +198,7 @@ class PyBacktestEngine:
         
         # Find orders for this symbol
         for i, order in enumerate(self.open_orders[:]):
-            if order["symbol"] == symbol:
+            if order["symbol"] = = symbol:
                 orders_to_process.append(order)
                 self.open_orders.remove(order)
         
@@ -206,33 +206,33 @@ class PyBacktestEngine:
         for order in orders_to_process:
             executed_price = None
             
-            if order["order_type"] == OrderType.MARKET:
+            if order["order_type"] = = OrderType.MARKET:
                 # Market orders execute at current price with slippage
-                if order["side"] == OrderSide.BUY:
+                if order["side"] = = OrderSide.BUY:
                     executed_price = close * (1 + self.slippage)
                 else:
                     executed_price = close * (1 - self.slippage)
             
-            elif order["order_type"] == OrderType.LIMIT:
+            elif order["order_type"] = = OrderType.LIMIT:
                 # Limit orders execute if price crosses the limit price
-                if order["side"] == OrderSide.BUY and low <= order["price"]:
+                if order["side"] = = OrderSide.BUY and low <= order["price"]:
                     executed_price = order["price"]
-                elif order["side"] == OrderSide.SELL and high >= order["price"]:
+                elif order["side"] = = OrderSide.SELL and high >= order["price"]:
                     executed_price = order["price"]
             
-            elif order["order_type"] == OrderType.STOP_MARKET:
+            elif order["order_type"] = = OrderType.STOP_MARKET:
                 # Stop orders execute if price crosses the stop price
-                if order["side"] == OrderSide.BUY and high >= order["stop_price"]:
+                if order["side"] = = OrderSide.BUY and high >= order["stop_price"]:
                     executed_price = order["stop_price"] * (1 + self.slippage)
-                elif order["side"] == OrderSide.SELL and low <= order["stop_price"]:
+                elif order["side"] = = OrderSide.SELL and low <= order["stop_price"]:
                     executed_price = order["stop_price"] * (1 - self.slippage)
             
-            elif order["order_type"] == OrderType.STOP_LIMIT:
+            elif order["order_type"] = = OrderType.STOP_LIMIT:
                 # Stop limit orders: first the stop price must be reached,
                 # then the limit order is placed
-                if order["side"] == OrderSide.BUY and high >= order["stop_price"] and low <= order["price"]:
+                if order["side"] = = OrderSide.BUY and high >= order["stop_price"] and low <= order["price"]:
                     executed_price = order["price"]
-                elif order["side"] == OrderSide.SELL and low <= order["stop_price"] and high >= order["price"]:
+                elif order["side"] = = OrderSide.SELL and low <= order["stop_price"] and high >= order["price"]:
                     executed_price = order["price"]
             
             if executed_price is not None:
@@ -250,7 +250,7 @@ class PyBacktestEngine:
         order["executed_at"] = timestamp
         order["status"] = "filled"
         
-        if order["side"] == OrderSide.BUY:
+        if order["side"] = = OrderSide.BUY:
             # Subtract the cost plus commission from balance
             cost = price * order["amount"] + commission
             if cost > self.balance:
@@ -269,7 +269,7 @@ class PyBacktestEngine:
                     realized_pnl = self._close_position(order["symbol"], order["amount"], price, timestamp)
                     self._update_stats_with_trade(realized_pnl)
                     
-                    if position["amount"] == 0:
+                    if position["amount"] = = 0:
                         # Position fully closed
                         del self.positions[order["symbol"]]
                 else:
@@ -290,7 +290,7 @@ class PyBacktestEngine:
                     "updated_at": timestamp,
                 }
         
-        elif order["side"] == OrderSide.SELL:
+        elif order["side"] = = OrderSide.SELL:
             sell_amount = order["amount"]
             
             if order["symbol"] in self.positions:
@@ -304,7 +304,7 @@ class PyBacktestEngine:
                     proceeds = price * sell_amount - commission
                     self.balance += proceeds
                     
-                    if position["amount"] == 0:
+                    if position["amount"] = = 0:
                         # Position fully closed
                         del self.positions[order["symbol"]]
                 else:
@@ -356,7 +356,7 @@ class PyBacktestEngine:
         position["updated_at"] = timestamp
         
         # If position is closed, reset unrealized PnL
-        if position["amount"] == 0:
+        if position["amount"] = = 0:
             position["unrealized_pnl"] = 0.0
         else:
             # Recalculate unrealized PnL for remaining position
@@ -492,7 +492,7 @@ class PyBacktestEngine:
     def cancel_order(self, order_id: str) -> None:
         """Cancel an open order."""
         for i, order in enumerate(self.open_orders):
-            if order["id"] == order_id:
+            if order["id"] = = order_id:
                 order["status"] = "canceled"
                 self.filled_orders.append(order)
                 self.open_orders.pop(i)
@@ -566,10 +566,10 @@ class PyBacktestEngine:
             avg_loss=avg_loss,
             largest_win=max([o["executed_price"] * o["amount"] - o["price"] * o["amount"] 
                             for o in self.filled_orders 
-                            if o["status"] == "filled" and o["side"] == OrderSide.SELL and o["executed_price"]] + [0]) if self.filled_orders else None,
+                            if o["status"] = = "filled" and o["side"] = = OrderSide.SELL and o["executed_price"]] + [0]) if self.filled_orders else None,                            if o["status"] = = "filled" and o["side"] = = OrderSide.SELL and o["executed_price"]] + [0]) if self.filled_orders else None,
             largest_loss=max([o["price"] * o["amount"] - o["executed_price"] * o["amount"] 
                              for o in self.filled_orders 
-                             if o["status"] == "filled" and o["side"] == OrderSide.SELL and o["executed_price"]] + [0]) if self.filled_orders else None,
+                             if o["status"] = = "filled" and o["side"] = = OrderSide.SELL and o["executed_price"]] + [0]) if self.filled_orders else None,                             if o["status"] = = "filled" and o["side"] = = OrderSide.SELL and o["executed_price"]] + [0]) if self.filled_orders else None,
         )
 
 class BacktestEngine:

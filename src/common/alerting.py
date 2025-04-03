@@ -368,9 +368,9 @@ class AlertManager:
         
         # Create message
         msg = MIMEMultipart()
-        msg['From'] = sender
-        msg['To'] = ', '.join(recipients)
-        msg['Subject'] = subject
+        msg["From"] = sender
+        msg["To"] = ', '.join(recipients)
+        msg["Subject"] = subject
         
         # Add HTML body
         body = f"""

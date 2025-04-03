@@ -1,163 +1,204 @@
-# Log Dashboard Usage Instructions
+# AI Trading Agent Dashboard Instructions
 
-This document provides instructions for running and using the log analytics dashboard.
+This document provides instructions for running and using the AI Trading Agent modern dashboard.
+
+## Overview
+
+The modern dashboard provides a unified interface with tabs for:
+
+1. **Overview** - System status, performance metrics, component health
+2. **Market Regime** - Market regime detection and visualization
+3. **Sentiment Analysis** - Market sentiment from various sources
+4. **Risk Management** - Risk utilization and portfolio metrics
+5. **Performance Analytics** - Trading performance and strategy comparison
+6. **Logs & Monitoring** - System logs and health monitoring
 
 ## Prerequisites
 
 Before running the dashboard, ensure you have the following dependencies installed:
 
 ```bash
-pip install dash dash-bootstrap-components pandas plotly structlog psutil
+pip install flask flask-socketio plotly pandas numpy psutil
 ```
-
-## Generating Test Logs
-
-We've created a script to generate test log data for the dashboard. To generate test logs:
-
-1. Run the test log generator:
-   ```bash
-   python tests/generate_test_logs.py
-   ```
-
-This will create log entries in the `logs/crypto_trading.log` file with various log levels, components, and messages.
 
 ## Running the Dashboard
 
-1. Use the provided helper script:
-   ```bash
-   python run_dashboard.py
-   ```
+### Basic Usage
 
-2. The dashboard will start and be available at:
-   ```
-   http://127.0.0.1:8050/
-   ```
+To run the modern dashboard:
 
-3. Open this URL in your web browser to access the dashboard.
+**Windows:**
+```powershell
+.\start_dashboard.ps1
+```
+
+**Linux/macOS:**
+```bash
+./start_dashboard.sh
+```
+
+Or directly:
+```bash
+python run_modern_dashboard.py
+```
+
+The dashboard will start and be available at: `http://127.0.0.1:8000/` (or another available port if 8000 is taken)
+
+### Login Credentials
+
+The dashboard requires authentication. Use one of the following credentials:
+
+- **Admin:** Username: `admin`, Password: `admin123`
+- **Operator:** Username: `operator`, Password: `operator123`
+- **Viewer:** Username: `viewer`, Password: `viewer123`
+
+### Advanced Options
+
+The dashboard runner supports several command-line options:
+
+```bash
+python run_modern_dashboard.py --host 0.0.0.0 --port 8080 --debug
+```
+
+Options:
+- `--host`: Host to bind to (default: 127.0.0.1)
+- `--port`: Port to bind to (default: 0 for auto-detection)
+- `--debug`: Enable debug mode for development
 
 ## Dashboard Features
 
-The log dashboard offers the following features:
+### Overview
 
-1. **Log Overview** - Shows log distribution by levels, components, and time
+The Overview tab provides:
 
-2. **Log Query** - Allows you to search and filter logs based on:
-   - Time range
-   - Component
-   - Log level
-   - Custom search terms
+- System power status (running/stopped)
+- Trading status (enabled/disabled)
+- Real-time status of all system components
+- Active orders and recent trades
+- Execution metrics
+- System alerts and warnings
+- Performance statistics
 
-3. **Health Monitor** - Displays system health metrics including:
-   - CPU usage
-   - Memory usage
-   - Disk usage
-   - Error rates
+### Market Regime
 
-4. **Log Replay** - Allows you to replay logs in sequence for debugging and analysis
+The Market Regime tab provides:
 
-5. **Anomaly Detection** - Automatically identifies unusual patterns in your logs:
-   - Detects abnormal frequencies of log levels (e.g., sudden spike in errors)
-   - Identifies unusual component activity
-   - Spots temporal anomalies (activity at unusual times)
-   - Detects error bursts
-   - Provides visualizations of anomalies over time
+- Current market regime detection
+- Regime confidence indicators
+- Regime transition probabilities
+- Strategy performance across different regimes
+- Historical regime tracking
 
-6. **Advanced Analytics** - Provides sophisticated visualizations and custom date range analysis:
-   - Custom date range selection for precise time period analysis
-   - Multiple visualization types:
-     - Time Heatmaps: View log activity patterns across time periods
-     - Log Patterns: Analyze how log patterns evolve over time
-     - Field Correlations: Discover relationships between different log fields
-     - Volume Comparison: Compare log volumes across different components or levels
-     - Error Distribution: Analyze error types across different components
+### Sentiment Analysis
 
-## Using the Anomaly Detection Feature
+The Sentiment tab shows:
 
-The Anomaly Detection tab provides advanced analytics to automatically identify potential issues:
+- Overall market sentiment indicators
+- Sentiment by source (social media, news, etc.)
+- Sentiment trends over time
+- Sentiment impact on price
+- Sentiment extremes and contrarian signals
+- Sentiment-price correlation analysis
 
-1. **Analysis Window** - Select the time range for analysis:
-   - Last hour (for recent issues)
-   - Last 12 hours
-   - Last day
-   - Last week
-   - All logs
+### Risk Management
 
-2. **Sensitivity** - Adjust the detection sensitivity:
-   - Low: Only detect major anomalies
-   - Medium: Balanced detection
-   - High: Detect even minor anomalies
+The Risk tab displays:
 
-3. Click "Detect Anomalies" to analyze your logs.
+- Risk capacity utilization
+- Risk tolerance level
+- Key risk metrics (VaR, drawdown, etc.)
+- Position sizing and exposure
+- Strategy and asset risk visualization
 
-4. Results are displayed in a table showing:
-   - Anomaly type
-   - Severity score
-   - Detailed explanation
+### Performance Analytics
 
-5. A scatter plot visualization shows anomalies by time and severity.
+The Performance tab shows:
 
-## Using the Advanced Analytics Feature
+- Return metrics
+- Win rate and profit factor
+- Strategy comparison
+- Drawdown analysis
 
-The Advanced Analytics tab provides sophisticated visualization tools for deeper log analysis:
+### Logs & Monitoring
 
-1. **Custom Date Range** - Select precise start and end dates for your analysis:
-   - Start Date: Choose the beginning of your analysis period
-   - End Date: Choose the end of your analysis period
+The Logs tab includes:
 
-2. **Visualization Type** - Select from multiple visualization options:
-   - Time Heatmap: Shows log activity patterns across different time periods
-   - Log Patterns: Displays how log patterns evolve over time
-   - Field Correlations: Reveals relationships between different log fields
-   - Volume Comparison: Compares log volumes across different components or levels
-   - Error Distribution: Analyzes error types across different components
+- Filterable log viewer
+- Log level selection
+- Component filtering
+- Search functionality
+- Resource usage monitoring (CPU, memory, disk)
+- Error tracking and anomaly detection
 
-3. **Field to Analyze** - Choose which log field to focus on:
-   - Log Level: Analyze by severity level (info, warning, error, etc.)
-   - Component: Analyze by system component
-   - Error Type: Focus on specific error categories
-   - User ID: Analyze logs by user
-   - Request ID: Analyze logs by request
+## Real-time Updates
 
-4. Click "Generate Visualization" to create your custom visualization.
+The modern dashboard uses WebSockets for real-time updates:
 
-5. **Export Data** - Save your analysis results in various formats:
-   - CSV: For spreadsheet analysis
-   - JSON: For programmatic processing
-   - Excel: For detailed spreadsheet analysis with multiple sheets
-   - PNG: For including visualizations in reports
-
-6. Use these visualizations to:
-   - Identify usage patterns and peak activity times
-   - Discover correlations between errors and specific components
-   - Track system behavior changes over time
-   - Optimize system performance based on usage patterns
-   - Troubleshoot complex issues by visualizing relationships
+- Dashboard data refreshes automatically at configurable intervals
+- System status changes are pushed immediately
+- Trading status updates are pushed in real-time
+- Component health changes are pushed as they occur
 
 ## Troubleshooting
 
 If you encounter issues running the dashboard:
 
-1. **Module Not Found Errors**:
-   - Ensure you're running the dashboard with the correct Python path using `run_dashboard.py`
-   
-2. **No Data Displayed**:
-   - Make sure you've generated test logs using `tests/generate_test_logs.py`
-   - Check that the logs directory and log file exist: `logs/crypto_trading.log`
+1. **Dashboard Not Starting**
+   - Check if port 8000 is already in use
+   - Verify all dependencies are installed
+   - Check logs for specific errors
 
-3. **Dashboard Not Loading**:
-   - Verify that all required dependencies are installed
-   - Check the terminal output for any error messages
+2. **Login Issues**
+   - Ensure you're using the correct credentials
+   - Clear browser cookies and cache
+   - Try a different browser
+
+3. **Missing Data**
+   - Verify the system is running (click "Start" button)
+   - Check if trading is enabled
+   - Ensure data source is properly configured
+
+4. **Visualization Problems**
+   - Check browser console for JavaScript errors
+   - Try refreshing the page
+   - Ensure browser is up to date
+
+## Advanced Usage
+
+### Custom Data Sources
+
+The dashboard can switch between mock and real data:
+
+1. Use the data source toggle in the dashboard settings
+2. Mock data is automatically used when real data is unavailable
+3. Data service provides seamless switching between sources
+
+### Development Mode
+
+For development and customization:
+
+1. Enable debug mode: `python run_modern_dashboard.py --debug`
+2. Edit templates in the `templates/` directory
+3. Modify styles in `static/css/`
+4. Add custom JavaScript in `static/js/`
+
+## Technical Details
+
+For more detailed technical information, see the implementation documentation:
+
+- [Dashboard Architecture](docs/DASHBOARD_ARCHITECTURE.md)
+- [Dashboard Implementation Guide](docs/DASHBOARD_IMPLEMENTATION.md)
+- [Dashboard Redesign Plan](docs/DASHBOARD_REDESIGN_PLAN.md)
+- [Modern Dashboard Guide](docs/MODERN_DASHBOARD_GUIDE.md)
+- [Dashboard Testing Guide](docs/dashboard_testing_guide.md)
 
 ## Next Steps
 
-Future dashboard enhancements could include:
+Future dashboard enhancements include:
 
-1. User-customizable dashboards with saved views
-2. Real-time log streaming
-3. Advanced anomaly detection with machine learning
-4. Integration with alerting systems
-5. ~~Export capabilities for log analysis results~~
-6. Scheduled reports and automated analysis
-7. Integration with external monitoring systems
-8. Mobile-friendly dashboard views
-9. Collaborative sharing and annotation of insights
+1. React-based frontend with Tailwind CSS
+2. Enhanced interactive components
+3. Customizable layouts and saved views
+4. Advanced analytics capabilities
+5. Mobile responsiveness
+6. Expanded risk management features

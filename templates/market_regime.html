@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market Regime Analysis - AI Trading Agent</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/modern_dashboard.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/plotly.js@2.20.0/dist/plotly.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar Navigation -->
+            <nav class="col-md-2 d-none d-md-block sidebar">
+                <div class="sidebar-sticky">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('dashboard') }}">
+                                <span data-feather="home"></span>
+                                Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="{{ url_for('market_regime_tab') }}">
+                                <span data-feather="trending-up"></span>
+                                Market Regime
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('sentiment_tab') }}">
+                                <span data-feather="message-circle"></span>
+                                Sentiment Analysis
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('risk_tab') }}">
+                                <span data-feather="shield"></span>
+                                Risk Management
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('performance_tab') }}">
+                                <span data-feather="bar-chart-2"></span>
+                                Performance
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('logs_tab') }}">
+                                <span data-feather="file-text"></span>
+                                System Logs
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main role="main" class="col-md-10 ml-sm-auto px-4">
+                <div
+                    class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Market Regime Analysis</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group mr-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="share-btn">Share</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                id="export-btn">Export</button>
+                        </div>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button"
+                                id="timeRangeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span data-feather="calendar"></span>
+                                This week
+                            </button>
+                            <ul class="dropdown-menu" aria-labelledby="timeRangeDropdown">
+                                <li><a class="dropdown-item" href="#">Today</a></li>
+                                <li><a class="dropdown-item" href="#">This week</a></li>
+                                <li><a class="dropdown-item" href="#">This month</a></li>
+                                <li><a class="dropdown-item" href="#">This quarter</a></li>
+                                <li><a class="dropdown-item" href="#">This year</a></li>
+                                <li>
+                                    <hr class="dropdown-divider">
+                                </li>
+                                <li><a class="dropdown-item" href="#">Custom range...</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Include the market regime panel -->
+                {% include 'market_regime_panel.html' %}
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Initialize feather icons
+        document.addEventListener('DOMContentLoaded', function () {
+            feather.replace();
+        });
+    </script>
+    <script src="{{ url_for('static', filename='js/market_regime_analysis.js') }}"></script>
+</body>
+
+</html>

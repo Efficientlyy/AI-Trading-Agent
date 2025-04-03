@@ -59,7 +59,7 @@ class ExchangeConnector(Component, ABC):
         
         # Initialize REST client
         try:
-            await self._init_rest_client()
+            self._init_rest_client()
             self.logger.debug("REST client initialized")
         except Exception as e:
             self.logger.error("Failed to initialize REST client", error=str(e))
@@ -67,7 +67,7 @@ class ExchangeConnector(Component, ABC):
         
         # Fetch available symbols
         try:
-            self.available_symbols = await self.fetch_available_symbols()
+            self.available_symbols = self.fetch_available_symbols()
             self.logger.info("Fetched available symbols", 
                             exchange=self.exchange_id, 
                             symbol_count=len(self.available_symbols))
@@ -128,14 +128,14 @@ class ExchangeConnector(Component, ABC):
         # Initialize WebSocket client if needed
         if self.subscribed_symbols:
             try:
-                await self._init_websocket_client()
+                self._init_websocket_client()
                 self.logger.debug("WebSocket client initialized")
             except Exception as e:
                 self.logger.error("Failed to initialize WebSocket client", error=str(e))
                 return False
         
         # Start data polling tasks for REST-based data
-        await self._start_polling_tasks()
+        self._start_polling_tasks()
         
         return await super().start()
     
@@ -150,7 +150,7 @@ class ExchangeConnector(Component, ABC):
         # Close WebSocket connection if open
         if self.ws_client:
             try:
-                await self._close_websocket_client()
+                self._close_websocket_client()
                 self.logger.debug("WebSocket client closed")
             except Exception as e:
                 self.logger.error("Error closing WebSocket client", error=str(e))
@@ -196,7 +196,7 @@ class ExchangeConnector(Component, ABC):
         
         # If already running, update subscriptions
         if self.is_running:
-            await self._update_subscriptions()
+            self._update_subscriptions()
         
         return True
     
@@ -225,7 +225,7 @@ class ExchangeConnector(Component, ABC):
         
         # If already running, update subscriptions
         if self.is_running:
-            await self._update_subscriptions()
+            self._update_subscriptions()
         
         return True
     
@@ -254,7 +254,7 @@ class ExchangeConnector(Component, ABC):
         
         # If already running, update subscriptions
         if self.is_running:
-            await self._update_subscriptions()
+            self._update_subscriptions()
         
         return True
     
@@ -288,7 +288,7 @@ class ExchangeConnector(Component, ABC):
         
         # If already running, update subscriptions
         if self.is_running:
-            await self._update_subscriptions()
+            self._update_subscriptions()
         
         return True
     
@@ -312,7 +312,7 @@ class ExchangeConnector(Component, ABC):
         
         # If already running, update subscriptions
         if self.is_running:
-            await self._update_subscriptions()
+            self._update_subscriptions()
         
         return True
     
@@ -336,7 +336,7 @@ class ExchangeConnector(Component, ABC):
         
         # If already running, update subscriptions
         if self.is_running:
-            await self._update_subscriptions()
+            self._update_subscriptions()
         
         return True
     

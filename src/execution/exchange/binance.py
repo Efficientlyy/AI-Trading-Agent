@@ -477,10 +477,10 @@ class BinanceExchangeConnector(BaseExchangeConnector):
         headers = {"X-MBX-APIKEY": self.api_key} if self.api_key else {}
         
         # Apply rate limiting
-        await self._respect_rate_limits()
+        self._respect_rate_limits()
         
         async with self._session.request(method, url, params=params, headers=headers) as response:
-            text = await response.text()
+            text = response.text()
             if not response.ok:
                 raise ValueError(f"Error in public request: {text}")
             
@@ -522,25 +522,25 @@ class BinanceExchangeConnector(BaseExchangeConnector):
         headers = {"X-MBX-APIKEY": self.api_key}
         
         # Apply rate limiting
-        await self._respect_rate_limits()
+        self._respect_rate_limits()
         
         if method == "GET":
             async with self._session.get(url, params=params, headers=headers) as response:
-                text = await response.text()
+                text = response.text()
                 if not response.ok:
                     raise ValueError(f"Error in private request: {text}")
                 
                 return json.loads(text) if text else {}
         elif method == "POST":
             async with self._session.post(url, params=params, headers=headers) as response:
-                text = await response.text()
+                text = response.text()
                 if not response.ok:
                     raise ValueError(f"Error in private request: {text}")
                 
                 return json.loads(text) if text else {}
         elif method == "DELETE":
             async with self._session.delete(url, params=params, headers=headers) as response:
-                text = await response.text()
+                text = response.text()
                 if not response.ok:
                     raise ValueError(f"Error in private request: {text}")
                 

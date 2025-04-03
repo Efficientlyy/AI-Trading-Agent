@@ -28,7 +28,7 @@ app = Flask(__name__,
 app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'development_secret_key')
 
 # Session lifetime
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=1)
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=1)
 
 # Helper functions
 def get_api_url(endpoint):
@@ -86,7 +86,7 @@ def detect_regimes():
         
         # Store results in session
         result = response.json()
-        session['detection_result'] = result
+        session["detection_result"] = result
         
         # Redirect to results page
         return redirect(url_for('results'))
@@ -185,12 +185,12 @@ def backtest():
         
         # Add optional parameters only if they have values
         if stop_loss_pct is not None:
-            payload['stop_loss_pct'] = stop_loss_pct
+            payload["stop_loss_pct"] = stop_loss_pct
             
         if take_profit_pct is not None:
-            payload['take_profit_pct'] = take_profit_pct
+            payload["take_profit_pct"] = take_profit_pct
             
-        payload['include_transaction_costs'] = include_transaction_costs
+        payload["include_transaction_costs"] = include_transaction_costs
         
         # Call API
         response = requests.post(api_url, json=payload)
@@ -200,7 +200,7 @@ def backtest():
         
         # Store results in session
         result = response.json()
-        session['backtest_result'] = result
+        session["backtest_result"] = result
         
         # Redirect to backtest results page
         return redirect(url_for('backtest_results'))

@@ -22,8 +22,8 @@ async def initialize_monitoring():
     """Initialize the monitoring service."""
     logger.info("Initializing monitoring service...")
     monitoring_service = get_monitoring_service()
-    await monitoring_service.initialize()
-    await monitoring_service.start()
+    monitoring_service.initialize()
+    monitoring_service.start()
     logger.info("Monitoring service started")
 
 

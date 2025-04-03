@@ -1,6 +1,6 @@
 """Data models for the Market Regime Detection API."""
 
-from pydantic import BaseModel, Field
+from src.common.pydantic_compat import BaseModel, Field
 from typing import Dict, List, Optional, Union, Any
 from datetime import datetime
 

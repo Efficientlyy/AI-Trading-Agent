@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
 
 import yaml
-from dotenv import load_dotenv
-from pydantic import BaseModel, create_model, validator
+from src.common.dotenv_compat import load_dotenv
+from src.common.pydantic_compat import BaseModel, create_model_compat as create_model, validator_compat as validator
 
 from src.common.config_schema import ConfigSchema
 

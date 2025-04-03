@@ -1,0 +1,290 @@
+<!-- Admin Controls Panel -->
+<div class="admin-panel-container">
+    <div class="admin-tabs">
+        <button class="admin-tab active" data-tab="system">System</button>
+        <button class="admin-tab" data-tab="users">Users</button>
+        <button class="admin-tab" data-tab="logs">Logs</button>
+        <button class="admin-tab" data-tab="config">Configuration</button>
+    </div>
+
+    <div class="admin-content">
+        <!-- System Tab -->
+        <div class="admin-tab-content" id="system-tab-content">
+            <div class="section-header">
+                <h3>System Status</h3>
+                <div class="section-actions">
+                    <button id="run-diagnostics" class="btn btn-primary">Run Diagnostics</button>
+                </div>
+            </div>
+
+            <div id="system-status" class="status-cards">
+                <!-- Status cards will be inserted here -->
+                <div class="loading-indicator">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Loading system status...</div>
+                </div>
+            </div>
+
+            <div id="diagnostic-results" class="diagnostic-results">
+                <!-- Diagnostic results will be inserted here -->
+            </div>
+
+            <div class="section-header">
+                <h3>Quick Actions</h3>
+            </div>
+
+            <div class="action-buttons">
+                <button id="enable-real-data" class="btn btn-primary">Enable Real Data</button>
+                <button id="disable-real-data" class="btn btn-secondary">Disable Real Data</button>
+                <button id="restart-services" class="btn btn-warning">Restart Services</button>
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div class="admin-tab-content" id="users-tab-content" style="display: none;">
+            <div class="section-header">
+                <h3>User Management</h3>
+                <div class="section-actions">
+                    <button id="add-user" class="btn btn-primary">Add User</button>
+                </div>
+            </div>
+
+            <div id="user-list" class="user-list">
+                <!-- User items will be inserted here -->
+                <div class="loading-indicator">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Loading users...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Tab -->
+        <div class="admin-tab-content" id="logs-tab-content" style="display: none;">
+            <div class="section-header">
+                <h3>System Logs</h3>
+                <div class="section-actions">
+                    <button id="refresh-logs" class="btn btn-secondary">Refresh</button>
+                    <button id="download-logs" class="btn btn-secondary">Download</button>
+                </div>
+            </div>
+
+            <form id="log-filter-form" class="log-filter">
+                <div class="filter-group">
+                    <label for="log-level">Level</label>
+                    <select id="log-level" class="form-select">
+                        <option value="">All Levels</option>
+                        <option value="DEBUG">Debug</option>
+                        <option value="INFO">Info</option>
+                        <option value="WARNING">Warning</option>
+                        <option value="ERROR">Error</option>
+                        <option value="CRITICAL">Critical</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="log-component">Component</label>
+                    <select id="log-component" class="form-select">
+                        <option value="">All Components</option>
+                        <option value="DataService">Data Service</option>
+                        <option value="SystemMonitor">System Monitor</option>
+                        <option value="PerformanceTracker">Performance Tracker</option>
+                        <option value="Dashboard">Dashboard</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="log-lines">Lines</label>
+                    <select id="log-lines" class="form-select">
+                        <option value="100">100</option>
+                        <option value="500">500</option>
+                        <option value="1000">1000</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="log-query">Search</label>
+                    <input type="text" id="log-query" class="form-control" placeholder="Search logs...">
+                </div>
+
+                <button type="submit" class="btn btn-primary">Apply</button>
+            </form>
+
+            <div id="log-content" class="log-content">
+                <!-- Log entries will be inserted here -->
+                <div class="loading-indicator">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Loading logs...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Tab -->
+        <div class="admin-tab-content" id="config-tab-content" style="display: none;">
+            <div class="section-header">
+                <h3>System Configuration</h3>
+                <div class="section-actions">
+                    <button id="export-config" class="btn btn-secondary">Export All</button>
+                    <button id="import-config" class="btn btn-secondary">Import</button>
+                    <input type="file" id="config-import-file" style="display: none;">
+                </div>
+            </div>
+
+            <div id="config-list" class="config-list">
+                <!-- Config items will be inserted here -->
+                <div class="loading-indicator">
+                    <div class="spinner"></div>
+                    <div class="loading-text">Loading configurations...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User Form Modal -->
+<div id="user-form-modal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="user-form-title">Add User</h5>
+                <button type="button" class="btn-close" id="close-user-form"></button>
+            </div>
+            <div class="modal-body">
+                <form id="user-form">
+                    <input type="hidden" id="user-id">
+
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input type="email" id="email" class="form-control" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" class="form-control">
+                        <small class="form-text text-muted">Leave blank to keep current password</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="role">Role</label>
+                        <select id="role" class="form-select" required>
+                            <option value="admin">Admin</option>
+                            <option value="analyst">Analyst</option>
+                            <option value="viewer">Viewer</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="active">Active</label>
+                        <div class="form-check">
+                            <input type="checkbox" id="active" class="form-check-input" checked>
+                            <label class="form-check-label" for="active">User is active</label>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancel-user-form">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-user">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Config Editor Modal -->
+<div id="config-editor-modal" class="modal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editor-title">Edit Configuration</h5>
+                <button type="button" class="btn-close" id="close-editor"></button>
+            </div>
+            <div class="modal-body">
+                <textarea id="config-editor" class="code-editor"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="cancel-config">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-config">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Config Viewer Modal -->
+<div id="config-viewer-modal" class="modal">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="viewer-title">View Configuration</h5>
+                <button type="button" class="btn-close" id="close-viewer"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="config-viewer" class="code-viewer"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="close-view">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Status Card Template -->
+<template id="status-card-template">
+    <div class="status-card">
+        <div class="status-title"></div>
+        <div class="status-value"></div>
+        <div class="status-details"></div>
+    </div>
+</template>
+
+<!-- User Item Template -->
+<template id="user-item-template">
+    <div class="user-item">
+        <div class="user-avatar">
+            <img src="/static/img/default-avatar.png" alt="">
+        </div>
+        <div class="user-info">
+            <div class="user-name"></div>
+            <div class="user-role"></div>
+            <div class="user-status"></div>
+        </div>
+        <div class="user-actions">
+            <button class="btn btn-sm btn-secondary edit-user">Edit</button>
+            <button class="btn btn-sm btn-danger deactivate-user">Deactivate</button>
+        </div>
+    </div>
+</template>
+
+<!-- Log Entry Template -->
+<template id="log-entry-template">
+    <div class="log-entry">
+        <div class="log-timestamp"></div>
+        <div class="log-level"></div>
+        <div class="log-component"></div>
+        <div class="log-message"></div>
+    </div>
+</template>
+
+<!-- Config Item Template -->
+<template id="config-item-template">
+    <div class="config-item">
+        <div class="config-name"></div>
+        <div class="config-path"></div>
+        <div class="config-actions">
+            <button class="btn btn-sm btn-secondary edit-config">Edit</button>
+            <button class="btn btn-sm btn-secondary view-config">View</button>
+        </div>
+    </div>
+</template>
+
+<!-- Diagnostic Check Template -->
+<template id="diagnostic-check-template">
+    <div class="diagnostic-check">
+        <div class="check-name"></div>
+        <div class="check-status"></div>
+        <div class="check-message"></div>
+    </div>
+</template>

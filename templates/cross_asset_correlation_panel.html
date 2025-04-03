@@ -1,0 +1,646 @@
+<!-- 
+    Cross-Asset Correlation Networks Component
+    
+    This component visualizes relationships between different assets using interactive
+    network graphs, correlation matrices, and correlation change analysis.
+-->
+
+<div class="card cross-asset-correlation-panel">
+    <div class="card-header">
+        <div class="card-title">
+            <h3>Cross-Asset Correlation Networks</h3>
+            <div class="card-actions">
+                <button id="correlation-settings-btn" class="btn btn-icon" data-tooltip="Correlation settings" data-position="top">
+                    <i data-feather="settings"></i>
+                </button>
+                <button id="download-correlation-data-btn" class="btn btn-icon" data-tooltip="Download data" data-position="top">
+                    <i data-feather="download"></i>
+                </button>
+                <button id="expand-correlation-panel-btn" class="btn btn-icon" data-tooltip="Expand panel" data-position="top">
+                    <i data-feather="maximize-2"></i>
+                </button>
+            </div>
+        </div>
+        <div class="correlation-controls">
+            <div class="asset-class-selector">
+                <label for="asset-class">Asset Class:</label>
+                <select id="asset-class" class="form-select">
+                    <option value="crypto" selected>Cryptocurrencies</option>
+                    <option value="stock">Stock Indices</option>
+                    <option value="forex">Forex</option>
+                    <option value="commodity">Commodities</option>
+                    <option value="mixed">Mixed Assets</option>
+                </select>
+            </div>
+            <div class="timeframe-selector">
+                <label for="correlation-timeframe">Timeframe:</label>
+                <select id="correlation-timeframe" class="form-select">
+                    <option value="1h">1h</option>
+                    <option value="4h">4h</option>
+                    <option value="1d" selected>1d</option>
+                    <option value="1w">1w</option>
+                    <option value="1M">1M</option>
+                </select>
+            </div>
+            <div class="period-selector">
+                <label for="correlation-period">Period:</label>
+                <select id="correlation-period" class="form-select">
+                    <option value="30">1 Month</option>
+                    <option value="90" selected>3 Months</option>
+                    <option value="180">6 Months</option>
+                    <option value="365">1 Year</option>
+                </select>
+            </div>
+            <div class="metric-selector">
+                <label for="correlation-metric">Correlation Metric:</label>
+                <select id="correlation-metric" class="form-select">
+                    <option value="pearson" selected>Pearson</option>
+                    <option value="spearman">Spearman Rank</option>
+                    <option value="kendall">Kendall's Tau</option>
+                    <option value="distance">Distance Correlation</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-body">
+        <div class="correlation-grid">
+            <!-- Network Graph -->
+            <div class="correlation-grid-item network-graph-container">
+                <h4 class="chart-title">Asset Correlation Network</h4>
+                <div class="visualization-controls">
+                    <div class="threshold-control">
+                        <label for="correlation-threshold">Threshold: <span id="threshold-value">0.6</span></label>
+                        <input type="range" id="correlation-threshold" min="0" max="1" step="0.05" value="0.6">
+                    </div>
+                    <div class="view-options">
+                        <button class="view-option active" data-view="force">Force Directed</button>
+                        <button class="view-option" data-view="circular">Circular</button>
+                        <button class="view-option" data-view="cluster">Clustered</button>
+                    </div>
+                </div>
+                <div id="correlation-network" class="correlation-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Correlation Matrix -->
+            <div class="correlation-grid-item correlation-matrix-container">
+                <h4 class="chart-title">Correlation Matrix Heatmap</h4>
+                <div class="visualization-controls">
+                    <div class="sort-control">
+                        <label for="matrix-sort">Sort:</label>
+                        <select id="matrix-sort" class="form-select">
+                            <option value="alphabetical">Alphabetical</option>
+                            <option value="cluster" selected>Cluster</option>
+                            <option value="value">Value</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="correlation-matrix" class="correlation-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Correlation Changes Over Time -->
+            <div class="correlation-grid-item correlation-changes-container">
+                <h4 class="chart-title">Correlation Changes Over Time</h4>
+                <div class="visualization-controls">
+                    <div class="pair-selector">
+                        <label for="asset-pair">Asset Pair:</label>
+                        <select id="asset-pair" class="form-select">
+                            <option value="BTC-ETH" selected>BTC-ETH</option>
+                            <option value="BTC-SOL">BTC-SOL</option>
+                            <option value="ETH-SOL">ETH-SOL</option>
+                            <option value="BTC-GOLD">BTC-GOLD</option>
+                            <option value="BTC-SPX">BTC-SPX</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="correlation-changes" class="correlation-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+            
+            <!-- Correlation Analysis & Stats -->
+            <div class="correlation-grid-item correlation-stats-container">
+                <h4 class="chart-title">Correlation Analysis</h4>
+                <div class="visualization-controls">
+                    <div class="analysis-type-selector">
+                        <button class="analysis-tab active" data-tab="stats">Statistics</button>
+                        <button class="analysis-tab" data-tab="clusters">Clusters</button>
+                        <button class="analysis-tab" data-tab="outliers">Outliers</button>
+                    </div>
+                </div>
+                <div id="correlation-analysis" class="correlation-chart">
+                    <div class="chart-overlay">Loading...</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="correlation-insights">
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Key Insights</h4>
+                </div>
+                <div class="insight-body">
+                    <ul id="correlation-insights-list">
+                        <li><span class="highlight">Strong Cluster Formation:</span> BTC, ETH, and SOL showing 0.85+ correlation indicating strong market alignment</li>
+                        <li><span class="highlight">Notable Decorrelation:</span> XMR and LINK have separated from major assets (correlation decreased by 0.22)</li>
+                        <li><span class="highlight">Emerging Correlation:</span> BTC and Gold correlation has strengthened to 0.32 (up from 0.14)</li>
+                        <li><span class="highlight">Potential Diversification:</span> AVAX shows minimal correlation with major layer-1s (0.45 average)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="insight-card">
+                <div class="insight-header">
+                    <h4>Trading Implications</h4>
+                </div>
+                <div class="insight-body">
+                    <p id="correlation-implications">
+                        Current correlation structure suggests heightened systematic risk in crypto markets, with limited diversification benefits among top assets. Consider exposure to less correlated assets like XMR or AVAX for portfolio hedging. BTC-Gold correlation shift may indicate changing macro narratives worth monitoring for sector rotation strategies.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-footer">
+        <div class="correlation-metrics">
+            <div class="metric-item">
+                <span class="metric-label">Average Correlation:</span>
+                <span class="metric-value" id="avg-correlation">0.58</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Correlation Structure Stability:</span>
+                <span class="metric-value" id="correlation-stability">Medium</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Distinct Clusters:</span>
+                <span class="metric-value" id="cluster-count">3</span>
+            </div>
+            <div class="metric-item">
+                <span class="metric-label">Updated:</span>
+                <span class="metric-value" id="last-updated">12 minutes ago</span>
+            </div>
+        </div>
+        <div class="correlation-actions">
+            <button class="btn btn-sm" id="correlation-learn-more">
+                <i data-feather="info"></i> Learn More
+            </button>
+            <button class="btn btn-sm" id="export-correlation-report">
+                <i data-feather="file-text"></i> Export Report
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Correlation Settings Modal -->
+<div id="correlation-settings-modal" class="modal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Correlation Analysis Settings</h3>
+                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="correlation-window">Rolling Window Size:</label>
+                    <select id="correlation-window" class="form-select">
+                        <option value="14">14 days</option>
+                        <option value="30" selected>30 days</option>
+                        <option value="60">60 days</option>
+                        <option value="90">90 days</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="return-type">Return Calculation:</label>
+                    <select id="return-type" class="form-select">
+                        <option value="arithmetic">Simple Returns</option>
+                        <option value="log" selected>Log Returns</option>
+                        <option value="percentage">Percentage Change</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Included Assets:</label>
+                    <div class="assets-checklist" id="assets-list">
+                        <!-- Asset checkboxes will be dynamically populated -->
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="asset-BTC" checked>
+                            <label for="asset-BTC">Bitcoin (BTC)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="asset-ETH" checked>
+                            <label for="asset-ETH">Ethereum (ETH)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="asset-SOL" checked>
+                            <label for="asset-SOL">Solana (SOL)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="asset-BNB" checked>
+                            <label for="asset-BNB">Binance Coin (BNB)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="asset-XRP" checked>
+                            <label for="asset-XRP">Ripple (XRP)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="asset-ADA" checked>
+                            <label for="asset-ADA">Cardano (ADA)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="asset-DOGE" checked>
+                            <label for="asset-DOGE">Dogecoin (DOGE)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="asset-DOT" checked>
+                            <label for="asset-DOT">Polkadot (DOT)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="asset-AVAX" checked>
+                            <label for="asset-AVAX">Avalanche (AVAX)</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="asset-LINK" checked>
+                            <label for="asset-LINK">Chainlink (LINK)</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="min-threshold">Minimum Threshold for Visualization:</label>
+                    <div class="slider-container">
+                        <input type="range" id="min-threshold" class="form-range" min="0" max="1" step="0.05" value="0.2">
+                        <span class="slider-value">0.2</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Advanced Settings:</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-inline">
+                            <input type="checkbox" id="use-advanced-settings"> Enable Advanced Settings
+                        </label>
+                    </div>
+                    <div id="advanced-settings" class="advanced-settings-container" style="display: none;">
+                        <div class="form-group">
+                            <label for="smoothing-factor">Correlation Smoothing Factor:</label>
+                            <input type="number" id="smoothing-factor" class="form-input" value="0.2" min="0" max="1" step="0.05">
+                        </div>
+                        <div class="form-group">
+                            <label for="eigenvector-method">Eigenvector Method:</label>
+                            <select id="eigenvector-method" class="form-select">
+                                <option value="standard">Standard</option>
+                                <option value="normalized">Normalized</option>
+                                <option value="randomized">Randomized</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="cluster-method">Clustering Method:</label>
+                            <select id="cluster-method" class="form-select">
+                                <option value="hierarchical">Hierarchical</option>
+                                <option value="kmeans">K-Means</option>
+                                <option value="spectral">Spectral</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-correlation-settings">Apply Settings</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add CSS for the cross-asset correlation panel -->
+<style>
+    .cross-asset-correlation-panel {
+        margin-bottom: 1.5rem;
+    }
+    
+    .correlation-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        align-items: center;
+        margin-top: 0.75rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .asset-class-selector,
+    .timeframe-selector,
+    .period-selector,
+    .metric-selector {
+        min-width: 150px;
+    }
+    
+    .correlation-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 1fr 1fr;
+        gap: 1rem;
+        height: 800px;
+        margin-bottom: 1rem;
+    }
+    
+    .correlation-grid-item {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+        padding: 0.5rem;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chart-title {
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: var(--text);
+        margin: 0 0 0.5rem 0;
+        padding: 0 0 0.5rem 0;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .correlation-chart {
+        flex: 1;
+        position: relative;
+        min-height: 200px;
+        background-color: var(--card-bg);
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    
+    .chart-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(var(--card-bg-rgb), 0.8);
+        font-size: 1rem;
+        color: var(--text-light);
+    }
+    
+    .visualization-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        align-items: center;
+        justify-content: space-between;
+    }
+    
+    .threshold-control {
+        display: flex;
+        flex-direction: column;
+        min-width: 150px;
+    }
+    
+    .threshold-control label {
+        font-size: 0.8rem;
+        margin-bottom: 0.25rem;
+        color: var(--text-light);
+    }
+    
+    .threshold-control input {
+        width: 100%;
+    }
+    
+    .view-options {
+        display: flex;
+        gap: 0.25rem;
+    }
+    
+    .view-option {
+        background-color: var(--bg);
+        border: 1px solid var(--border-light);
+        color: var(--text);
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        cursor: pointer;
+    }
+    
+    .view-option.active {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    .sort-control {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .sort-control label {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+    
+    .sort-control select {
+        max-width: 120px;
+        font-size: 0.8rem;
+    }
+    
+    .pair-selector {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .pair-selector label {
+        font-size: 0.8rem;
+        color: var(--text-light);
+    }
+    
+    .pair-selector select {
+        max-width: 150px;
+        font-size: 0.8rem;
+    }
+    
+    .analysis-type-selector {
+        display: flex;
+        gap: 0.25rem;
+    }
+    
+    .analysis-tab {
+        background-color: var(--bg);
+        border: 1px solid var(--border-light);
+        color: var(--text);
+        border-radius: 4px;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        cursor: pointer;
+        flex: 1;
+        text-align: center;
+    }
+    
+    .analysis-tab.active {
+        background-color: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+    
+    .correlation-insights {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .insight-card {
+        background-color: var(--bg-light);
+        border-radius: 6px;
+        overflow: hidden;
+    }
+    
+    .insight-header {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-light);
+    }
+    
+    .insight-header h4 {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .insight-body {
+        padding: 0.75rem 1rem;
+    }
+    
+    .insight-body ul {
+        margin: 0;
+        padding-left: 1.5rem;
+    }
+    
+    .insight-body li {
+        margin-bottom: 0.5rem;
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+    
+    .insight-body p {
+        margin: 0;
+        font-size: 0.85rem;
+        line-height: 1.5;
+    }
+    
+    .highlight {
+        font-weight: 600;
+        color: var(--primary);
+    }
+    
+    .correlation-metrics {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1.5rem;
+    }
+    
+    .metric-item {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .metric-label {
+        font-size: 0.75rem;
+        color: var(--text-light);
+    }
+    
+    .metric-value {
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+    
+    .correlation-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    /* Modal specific styles */
+    .assets-checklist {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 0.5rem;
+        border: 1px solid var(--border-light);
+        border-radius: 4px;
+        margin-top: 0.5rem;
+    }
+    
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .checkbox-item label {
+        font-size: 0.85rem;
+        margin: 0;
+    }
+    
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .form-range {
+        flex: 1;
+    }
+    
+    .slider-value {
+        min-width: 2rem;
+        text-align: right;
+    }
+    
+    .advanced-settings-container {
+        margin-top: 0.75rem;
+        padding: 0.75rem;
+        background-color: var(--bg-light);
+        border-radius: 4px;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 992px) {
+        .correlation-grid {
+            grid-template-columns: 1fr;
+            grid-template-rows: repeat(4, 350px);
+            height: auto;
+        }
+        
+        .correlation-insights {
+            grid-template-columns: 1fr;
+        }
+    }
+    
+    @media (max-width: 768px) {
+        .correlation-controls {
+            flex-direction: column;
+            align-items: stretch;
+        }
+        
+        .asset-class-selector,
+        .timeframe-selector,
+        .period-selector,
+        .metric-selector {
+            width: 100%;
+        }
+        
+        .correlation-metrics {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+    }
+</style>
+
+<!-- JavaScript for cross-asset correlation panel functionality will be loaded separately -->

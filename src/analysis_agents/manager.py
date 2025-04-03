@@ -98,7 +98,7 @@ class AnalysisManager(Component):
                 self.agents[agent_id] = agent
                 
                 # Initialize the agent
-                success = await agent.initialize()
+                success = agent.initialize()
                 if not success:
                     self.logger.error("Failed to initialize analysis agent", agent=agent_id)
                     continue
@@ -130,7 +130,7 @@ class AnalysisManager(Component):
         # Start all agents
         for agent_id, agent in self.agents.items():
             try:
-                success = await agent.start()
+                success = agent.start()
                 if not success:
                     self.logger.error("Failed to start analysis agent", agent=agent_id)
                     continue
@@ -159,7 +159,7 @@ class AnalysisManager(Component):
         # Stop all agents in reverse order
         for agent_id, agent in reversed(list(self.agents.items())):
             try:
-                success = await agent.stop()
+                success = agent.stop()
                 if not success:
                     self.logger.error("Failed to stop analysis agent", agent=agent_id)
                     continue

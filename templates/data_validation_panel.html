@@ -1,0 +1,151 @@
+<!-- Data Validation Panel -->
+<div class="validation-panel">
+    <div class="validation-panel-header">
+        <h2>Data Validation</h2>
+        <div class="validation-actions">
+            <button id="add-validation-rule" class="btn btn-primary">
+                <i data-feather="plus"></i> Add Rule
+            </button>
+            <button id="refresh-validation" class="btn btn-secondary">
+                <i data-feather="refresh-cw"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <div class="validation-tabs">
+        <button class="validation-tab active" data-tab="rules">Rules</button>
+        <button class="validation-tab" data-tab="results">Results</button>
+        <button class="validation-tab" data-tab="anomalies">Anomalies</button>
+    </div>
+
+    <div class="validation-content">
+        <!-- Rule Form -->
+        <div id="validation-rule-form" class="validation-rule-form">
+            <h3 class="form-title">Add Validation Rule</h3>
+            <form>
+                <div class="form-row">
+                    <label for="rule-type">Rule Type</label>
+                    <select id="rule-type" name="type" class="form-control" required>
+                        <option value="">Select Rule Type</option>
+                        <option value="range">Range Validation</option>
+                        <option value="temporal">Temporal Validation</option>
+                        <option value="cross-field">Cross-Field Validation</option>
+                        <option value="anomaly">Anomaly Detection</option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label for="rule-field">Field</label>
+                    <input type="text" id="rule-field" name="field" class="form-control" placeholder="Enter field name"
+                        required>
+                </div>
+
+                <div id="rule-config-container">
+                    <!-- Rule configuration fields will be added dynamically based on rule type -->
+                </div>
+
+                <div class="form-actions">
+                    <button id="save-validation-rule" class="btn btn-primary">
+                        <i data-feather="save"></i> Save Rule
+                    </button>
+                    <button id="cancel-validation-rule" class="btn btn-secondary">
+                        <i data-feather="x"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Rules Tab -->
+        <div id="rules-tab" class="validation-tab-content active">
+            <div id="validation-rules-container" class="validation-rules-container">
+                <!-- Rules will be inserted here -->
+                <div class="empty-message">Loading validation rules...</div>
+            </div>
+        </div>
+
+        <!-- Results Tab -->
+        <div id="results-tab" class="validation-tab-content">
+            <div id="validation-results-container" class="validation-results-container">
+                <!-- Results will be inserted here -->
+                <div class="empty-message">Loading validation results...</div>
+            </div>
+        </div>
+
+        <!-- Anomalies Tab -->
+        <div id="anomalies-tab" class="validation-tab-content">
+            <div id="validation-anomalies-container" class="anomalies-container">
+                <!-- Anomalies will be inserted here -->
+                <div class="empty-message">Loading anomalies...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Validation Details Modal Template -->
+<template id="validation-details-modal-template">
+    <div class="modal" id="validation-details-modal">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Validation Details</h5>
+                    <button type="button" class="btn-close" id="close-validation-details-modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="validation-details-content">
+                        <div class="validation-details-summary">
+                            <div class="details-item">
+                                <div class="details-label">Status</div>
+                                <div class="details-value" id="validation-status"></div>
+                            </div>
+                            <div class="details-item">
+                                <div class="details-label">Timestamp</div>
+                                <div class="details-value" id="validation-timestamp"></div>
+                            </div>
+                            <div class="details-item">
+                                <div class="details-label">Data Type</div>
+                                <div class="details-value" id="validation-data-type"></div>
+                            </div>
+                        </div>
+
+                        <h4>Rule Results</h4>
+                        <div id="validation-rule-results" class="validation-rule-results">
+                            <!-- Rule results will be inserted here -->
+                        </div>
+
+                        <h4>Anomalies</h4>
+                        <div id="validation-details-anomalies" class="validation-details-anomalies">
+                            <!-- Anomalies will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="close-validation-details">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Set up validation tabs
+        const tabs = document.querySelectorAll('.validation-tab');
+        const tabContents = document.querySelectorAll('.validation-tab-content');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function () {
+                const tabId = this.getAttribute('data-tab');
+
+                // Update active tab
+                tabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+
+                // Show selected tab content
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                });
+                document.getElementById(`${tabId}-tab`).classList.add('active');
+            });
+        });
+    });
+</script>

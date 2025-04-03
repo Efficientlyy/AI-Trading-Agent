@@ -96,7 +96,7 @@ class DataCollectionService(Component):
                 self.exchange_connectors[exchange_id] = connector
                 
                 # Initialize the connector
-                success = await connector.initialize()
+                success = connector.initialize()
                 if not success:
                     self.logger.error("Failed to initialize exchange connector", exchange=exchange_id)
                     await self.publish_error(
@@ -145,7 +145,7 @@ class DataCollectionService(Component):
         # Start all exchange connectors
         for exchange_id, connector in self.exchange_connectors.items():
             try:
-                success = await connector.start()
+                success = connector.start()
                 if not success:
                     self.logger.error("Failed to start exchange connector", exchange=exchange_id)
                     await self.publish_error(
@@ -189,7 +189,7 @@ class DataCollectionService(Component):
         # Stop all exchange connectors in reverse order
         for exchange_id, connector in reversed(list(self.exchange_connectors.items())):
             try:
-                success = await connector.stop()
+                success = connector.stop()
                 if not success:
                     self.logger.error("Failed to stop exchange connector", exchange=exchange_id)
                     continue

@@ -286,7 +286,7 @@ def plot_trade_analysis(
     
     # Calculate holding period in days if not already present
     if 'holding_period' not in df.columns and 'entry_time' in df.columns and 'exit_time' in df.columns:
-        df['holding_period'] = (df['exit_time'] - df['entry_time']).dt.total_seconds() / (60 * 60 * 24)
+        df["holding_period"] = (df['exit_time'] - df['entry_time']).dt.total_seconds() / (60 * 60 * 24)
     
     # Create figure with subplots
     fig = plt.figure(figsize=figsize)
@@ -319,7 +319,7 @@ def plot_trade_analysis(
     ax3 = fig.add_subplot(gs[1, :])
     if 'exit_time' in df.columns and 'pnl' in df.columns:
         df_sorted = df.sort_values('exit_time')
-        df_sorted['cumulative_pnl'] = df_sorted['pnl'].cumsum()
+        df_sorted["cumulative_pnl"] = df_sorted['pnl'].cumsum()
         ax3.plot(df_sorted['exit_time'], df_sorted['cumulative_pnl'], marker='o', markersize=3)
         ax3.set_title("Cumulative P&L Over Time")
         ax3.set_xlabel("Exit Time")

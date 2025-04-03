@@ -226,7 +226,7 @@ class BaseRegimeDetector(ABC):
         if 'returns' not in data.columns:
             if 'close' in data.columns:
                 data = data.copy()
-                data['returns'] = data['close'].pct_change()
+                data["returns"] = data['close'].pct_change()
             else:
                 raise ValueError("Data must have 'returns' or 'close' column.")
         
@@ -266,7 +266,7 @@ class BaseRegimeDetector(ABC):
         regime_names = self.get_regime_names()
         if len(regime_names) >= len(unique_regimes):
             regime_map = {i: regime_names[i] for i in range(len(unique_regimes))}
-            stats_df['regime_name'] = stats_df['regime'].map(regime_map)
+            stats_df["regime_name"] = stats_df['regime'].map(regime_map)
         
         return stats_df
         """
