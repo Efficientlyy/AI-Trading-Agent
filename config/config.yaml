@@ -1,0 +1,46 @@
+# AI Trading Agent Configuration
+
+# System settings
+system:
+  name: "AI Trading Agent"
+  version: "2.0.0"
+  log_level: "INFO"
+  log_file: "logs/trading_agent.log"
+  timezone: "UTC"
+
+# Data sources configuration
+data_source:
+  # Use mock data for development and testing
+  use_mock: true
+
+  # Historical data settings
+  historical:
+    provider: "mock"  # Options: mock, ccxt, yfinance
+    timeframes: ["1h", "4h", "1d"]
+    default_symbols: ["BTC/USD", "ETH/USD"]
+
+  # Real-time data settings (when use_mock is false)
+  realtime:
+    provider: "mock"  # Options: mock, ccxt_websocket
+    update_interval_seconds: 60
+
+# Dashboard settings
+dashboard:
+  host: "127.0.0.1"
+  port: 8050
+  debug: true
+  theme: "dark"  # Options: light, dark
+  title: "AI Trading Agent Dashboard"
+
+# Sentiment analysis settings
+sentiment:
+  enabled: true
+  use_mock: true  # Use mock sentiment data
+  sources: ["twitter", "reddit", "news", "fear_greed"]
+  update_interval_minutes: 30
+
+# Trading settings (to be expanded in future phases)
+trading:
+  mode: "backtest"  # Options: backtest, paper, live
+  default_strategy: "sentiment_basic"
+  risk_per_trade_pct: 1.0
