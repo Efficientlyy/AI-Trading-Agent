@@ -63,7 +63,7 @@ To accelerate data processing and backtesting, we will incrementally integrate R
 - [x] Use `ta-rs` and `ndarray` crates
 - [x] Expose SMA, EMA, MACD as PyO3 functions
 - [x] Expose RSI as PyO3 function
-- [ ] Implement lag features as PyO3 functions
+- [x] Implement lag features as PyO3 functions
 - [x] Support NumPy array inputs/outputs
 - [x] Replace Python implementations with Rust-backed calls
 - [x] Validate with unit tests and benchmarks

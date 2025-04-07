@@ -1,6 +1,9 @@
 use pyo3::prelude::*;
 use ta::indicators::{SimpleMovingAverage, ExponentialMovingAverage, RelativeStrengthIndex};
 use ta::Next;
+use pyo3::types::PyList;
+use numpy::{PyArray1, PyArray2, PyReadonlyArray1, IntoPyArray};
+use ndarray::{Array1, Array2};
 
 // Import backtesting module
 mod backtesting;
@@ -253,6 +256,45 @@ fn calculate_rsi_rs(_py: Python<'_>, data: Vec<f64>, period: usize) -> PyResult<
     Ok(results)
 }
 
+/// Calculate lag features from a time series.
+///
+/// Args:
+///     series (array): Input time series as a 1D array.
+///     lags (list): List of lag periods.
+///
+/// Returns:
+///     array: 2D array with each column representing a lag feature.
+#[pyfunction]
+fn create_lag_features_rs(
+    py: Python<'_>,
+    series: PyReadonlyArray1<f64>,
+    lags: Vec<usize>,
+) -> PyResult<Py<PyArray2<f64>>> {
+    // Convert input to Rust array
+    let series_array = series.as_array();
+    let n_samples = series_array.len();
+    
+    // Create output array with shape (n_samples, n_lags)
+    let n_lags = lags.len();
+    let mut result = Array2::<f64>::zeros((n_samples, n_lags));
+    
+    // Fill the output array with lagged values
+    for (i, &lag) in lags.iter().enumerate() {
+        for j in 0..n_samples {
+            if j >= lag {
+                // Set the value to the lagged value
+                result[[j, i]] = series_array[j - lag];
+            } else {
+                // Set to NaN for indices where lag is not available
+                result[[j, i]] = f64::NAN;
+            }
+        }
+    }
+    
+    // Convert to Python array
+    Ok(result.into_pyarray(py).to_owned())
+}
+
 /// AI Trading Agent Rust extensions module.
 #[pymodule]
 fn rust_extensions(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -260,6 +302,7 @@ fn rust_extensions(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(calculate_ema_rs, m)?)?;
     m.add_function(wrap_pyfunction!(calculate_macd_rs, m)?)?;
     m.add_function(wrap_pyfunction!(calculate_rsi_rs, m)?)?;
+    m.add_function(wrap_pyfunction!(create_lag_features_rs, m)?)?;
     
     // Add backtesting function
     m.add_function(wrap_pyfunction!(backtesting::run_backtest_rs, m)?)?;
