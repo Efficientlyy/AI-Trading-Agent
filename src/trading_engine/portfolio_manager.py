@@ -62,7 +62,11 @@ class PortfolioManager:
         Args:
             trade: Trade to update the portfolio with
         """
-        self.portfolio.update_from_trade(trade)
+        # Create a dictionary with the current market price (using trade price as fallback)
+        current_market_prices = {trade.symbol: trade.price}
+        
+        # Update portfolio
+        self.portfolio.update_from_trade(trade, current_market_prices)
         
         # Record portfolio state
         self._record_portfolio_state(trade.timestamp)
@@ -83,7 +87,7 @@ class PortfolioManager:
                 position.update_market_price(price)
         
         # Update total portfolio value
-        self.portfolio.update_total_value()
+        self.portfolio.update_total_value(prices)
         
         # Record portfolio state
         self._record_portfolio_state(timestamp)
@@ -97,13 +101,12 @@ class PortfolioManager:
         """
         portfolio_snapshot = {
             'timestamp': timestamp,
-            'cash': self.portfolio.cash,
+            'cash': self.portfolio.current_balance,
             'total_value': self.portfolio.total_value,
             'positions': {
                 symbol: {
                     'quantity': position.quantity,
                     'entry_price': position.entry_price,
-                    'market_price': position.market_price,
                     'unrealized_pnl': position.unrealized_pnl,
                     'realized_pnl': position.realized_pnl
                 }
@@ -346,13 +349,12 @@ class PortfolioManager:
             Dict[str, Any]: Dictionary containing portfolio state
         """
         return {
-            'cash': self.portfolio.cash,
+            'cash': self.portfolio.current_balance,
             'total_value': self.portfolio.total_value,
             'positions': {
                 symbol: {
                     'quantity': position.quantity,
                     'entry_price': position.entry_price,
-                    'market_price': position.market_price,
                     'unrealized_pnl': position.unrealized_pnl,
                     'realized_pnl': position.realized_pnl
                 }

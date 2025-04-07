@@ -158,13 +158,13 @@ def test_position_validation():
 
 def test_position_update_unrealized_pnl():
     pos = Position(symbol="ETH/USD", side='long', quantity=2.0, entry_price=3000.0)
-    pos.update_unrealized_pnl(current_market_price=3100.0)
+    pos.update_market_price(current_price=3100.0)
     assert pos.unrealized_pnl == pytest.approx((3100.0 - 3000.0) * 2.0) # 200
 
     pos_short = Position(symbol="BTC/USDT", side='short', quantity=0.1, entry_price=50000.0)
-    pos_short.update_unrealized_pnl(current_market_price=49000.0)
+    pos_short.update_market_price(current_price=49000.0)
     assert pos_short.unrealized_pnl == pytest.approx((50000.0 - 49000.0) * 0.1) # 100
-    pos_short.update_unrealized_pnl(current_market_price=51000.0)
+    pos_short.update_market_price(current_price=51000.0)
     assert pos_short.unrealized_pnl == pytest.approx((50000.0 - 51000.0) * 0.1) # -100
 
 def test_position_update_open_new():
@@ -337,7 +337,7 @@ def test_portfolio_update_from_trade_multiple_positions(sample_portfolio):
     # Check BTC position (only updated on first trade, PnL updated on second)
     assert btc_pos.quantity == 0.1
     assert btc_pos.entry_price == 50000
-    btc_pos.update_unrealized_pnl(52000) # Manual update for check
+    btc_pos.update_market_price(52000) # Manual update for check
     assert btc_pos.unrealized_pnl == pytest.approx((52000 - 50000) * 0.1) # 200
 
     # Check ETH position
