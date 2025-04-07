@@ -212,3 +212,72 @@ plt.show()
 ```
 
 Refer to `docs/architecture.md` for a component overview and `examples/multi_asset_backtest.py` for a complete working example.
+
+## Rust-Accelerated Features
+
+The AI Trading Agent uses Rust for performance-critical components to significantly improve execution speed, especially for large datasets and complex strategies.
+
+### Technical Indicators
+
+The following technical indicators are implemented in Rust and exposed via PyO3:
+
+```python
+from src.rust_integration import calculate_sma, calculate_ema, calculate_macd, calculate_rsi
+
+# Calculate Simple Moving Average
+prices = [100.0, 102.0, 104.0, 103.0, 105.0]
+sma_values = calculate_sma(prices, period=3)
+print(sma_values)  # Output: [nan, nan, 102.0, 103.0, 104.0]
+
+# Calculate Exponential Moving Average
+ema_values = calculate_ema(prices, period=3)
+print(ema_values)  # Output: [nan, nan, 102.0, 102.5, 103.75]
+
+# Calculate MACD
+macd_line, signal_line, histogram = calculate_macd(
+    prices, 
+    fast_period=2, 
+    slow_period=4, 
+    signal_period=2
+)
+
+# Calculate RSI
+rsi_values = calculate_rsi(prices, period=3)
+```
+
+### Lag Features for Time Series Analysis
+
+The new lag features functionality allows for efficient creation of lagged values for time series analysis, which is essential for many machine learning models:
+
+```python
+from src.rust_integration import create_lag_features, create_lag_features_df
+import pandas as pd
+import numpy as np
+
+# Create lag features from a numpy array
+prices = np.array([100.0, 102.0, 104.0, 103.0, 105.0])
+lags = [1, 2]  # Create lag-1 and lag-2 features
+lag_features = create_lag_features(prices, lags)
+print(lag_features)
+# Output:
+# [[  nan   nan]
+#  [100.0   nan]
+#  [102.0 100.0]
+#  [104.0 102.0]
+#  [103.0 104.0]]
+
+# Create lag features for multiple columns in a DataFrame
+df = pd.DataFrame({
+    'close': [100.0, 102.0, 104.0, 103.0, 105.0],
+    'volume': [1000, 1200, 900, 1100, 1300]
+})
+result_df = create_lag_features_df(df, columns=['close', 'volume'], lags=[1, 2])
+print(result_df.columns)
+# Output: ['close', 'volume', 'close_lag_1', 'close_lag_2', 'volume_lag_1', 'volume_lag_2']
+```
+
+These lag features can be used as inputs to machine learning models for time series prediction or as part of a feature engineering pipeline for trading strategies.
+
+### Backtesting Core Loop
+
+The backtesting core loop is also implemented in Rust for significant performance improvements. This is handled internally by the `Backtester` class, which automatically uses the Rust implementation when available.

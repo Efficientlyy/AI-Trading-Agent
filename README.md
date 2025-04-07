@@ -23,7 +23,10 @@ See `docs/PLAN.md` for the development roadmap and `docs/architecture.md` for a 
 *   Pydantic models for data validation
 *   Multi-asset backtesting with portfolio-level analysis
 *   Performance metrics calculation (Sharpe ratio, Sortino ratio, drawdowns, etc.)
-*   Rust acceleration for performance-critical components
+*   Rust acceleration for performance-critical components:
+    * Technical indicators (SMA, EMA, MACD, RSI)
+    * Lag features for time series analysis
+    * Backtesting core loop
 *   Comprehensive test suite
 *   Support for multiple data providers (planned)
 *   Integration with various exchanges via `ccxt` (planned)
