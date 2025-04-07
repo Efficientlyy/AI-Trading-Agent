@@ -1,12 +1,28 @@
-# AI Trading Agent (Rebuild V2)
+# AI Trading Agent
 
-This repository contains the rebuilt version of the AI Trading Agent.
+[![Code Coverage](<coverage-badge-url>)](<coverage-report-url>)
+[![Build Status](<build-status-badge-url>)](<build-status-url>)
+
+This repository contains an AI Trading Agent designed for backtesting and potentially live trading financial strategies. The agent leverages data acquisition, feature engineering, and machine learning models to inform trading decisions.
 
 ## Project Status
 
-Currently in **Phase 1: Foundational Setup**.
+Currently under active development. Key components include:
 
-See `docs/PLAN.md` for the full rebuild plan.
+*   **Data Acquisition**: Using `ccxt` to fetch historical market data.
+*   **Data Processing**: Includes feature engineering and indicator calculations.
+*   **Trading Engine**: Core components for managing orders, positions, and portfolio state.
+*   **Testing**: Extensive unit tests using `pytest` to ensure reliability.
+
+See `docs/PLAN.md` for the development roadmap and `docs/architecture.md` for a high-level overview.
+
+## Key Features
+
+*   Modular architecture
+*   Pydantic models for data validation
+*   Comprehensive test suite
+*   Support for multiple data providers (planned)
+*   Integration with various exchanges via `ccxt` (planned)
 
 ## Setup
 
@@ -36,8 +52,29 @@ See `docs/PLAN.md` for the full rebuild plan.
 
 ## Usage
 
-(To be added in later phases)
+### Running Tests
+
+To run the full test suite:
+```bash
+pytest
+```
+
+To run tests for a specific module:
+```bash
+pytest tests/unit/trading_engine/
+```
+
+For verbose output:
+```bash
+pytest -v
+```
+
+### Running the Application
+
+(Instructions for running backtesting or other core functionalities will be added here as development progresses.)
+
+See `docs/usage_guide.md` for more details.
 
 ## Contributing
 
-(To be added later)
+Contributions are welcome! Please refer to `docs/contributing.md` for guidelines on how to contribute to the project, including setting up a development environment and submitting pull requests.

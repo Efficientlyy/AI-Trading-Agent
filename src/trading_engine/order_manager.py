@@ -10,7 +10,7 @@ Responsibilities:
 
 from typing import Dict, Optional, Literal
 from .models import Order, Trade, Portfolio, OrderStatus
-from common import logger
+from src.common import logger
 
 class OrderManager:
     """Handles order creation, tracking, and updates."""
@@ -117,6 +117,70 @@ class OrderManager:
         else:
             logger.warning(f"Attempted to cancel non-existent order ID: {order_id}")
             return False
+
+    def place_order(self, order: Order) -> bool:
+        """
+        Place an order directly into the order management system.
+        
+        This method is primarily used by the backtester to directly place orders
+        that have already been created by the strategy.
+        
+        Args:
+            order: The Order object to place
+            
+        Returns:
+            bool: True if the order was successfully placed, False otherwise
+        """
+        try:
+            # Add the order to the portfolio's order dictionary
+            self.portfolio.orders[order.order_id] = order
+            
+            # Update the order status to 'open'
+            self.update_order_status(order.order_id, OrderStatus.OPEN)
+            
+            logger.info(f"Placed Order {order.order_id}: {order.side} {order.quantity} {order.symbol} @ {order.type} {order.price or 'N/A'}")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error placing order {order.order_id}: {e}")
+            return False
+
+    def finalize_order(self, order_id: str) -> bool:
+        """
+        Finalize an order by updating its status to FILLED, REJECTED, or CANCELED
+        if it's not already in a final state.
+        
+        Args:
+            order_id: The ID of the order to finalize
+            
+        Returns:
+            bool: True if the order was finalized, False otherwise
+        """
+        order = self.get_order(order_id)
+        if not order:
+            logger.warning(f"Attempted to finalize non-existent order ID: {order_id}")
+            return False
+            
+        # Check if the order is already in a final state
+        final_statuses = [OrderStatus.FILLED, OrderStatus.REJECTED, OrderStatus.CANCELED, OrderStatus.EXPIRED]
+        if order.status in final_statuses:
+            logger.info(f"Order {order_id} already in final state: {order.status}")
+            return True
+            
+        # If order is partially filled, mark it as filled
+        if order.status == OrderStatus.PARTIALLY_FILLED:
+            self.update_order_status(order_id, OrderStatus.FILLED)
+            logger.info(f"Finalized partially filled order {order_id} as FILLED")
+            return True
+            
+        # If order is open or new, mark it as canceled
+        if order.status in [OrderStatus.OPEN, OrderStatus.NEW]:
+            self.update_order_status(order_id, OrderStatus.CANCELED)
+            logger.info(f"Finalized open order {order_id} as CANCELED")
+            return True
+            
+        logger.warning(f"Order {order_id} in unexpected state: {order.status}, not finalized")
+        return False
 
     def process_trade(self, trade: Trade, current_market_prices: Dict[str, float]):
         """

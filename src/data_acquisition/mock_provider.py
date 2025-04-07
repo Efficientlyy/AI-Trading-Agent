@@ -101,6 +101,38 @@ class MockDataProvider(BaseDataProvider):
 
         return results
 
+    def get_historical_data(
+        self,
+        symbol: str,
+        start_date,
+        end_date,
+        interval: str = '1d'
+    ) -> pd.DataFrame:
+        """
+        Non-async version of fetch_historical_data for a single symbol.
+        
+        Args:
+            symbol: Symbol to get data for
+            start_date: Start date
+            end_date: End date
+            interval: Data interval/timeframe
+            
+        Returns:
+            DataFrame with OHLCV data
+        """
+        logger.info(f"Getting mock historical data for {symbol} ({interval}) between {start_date} and {end_date}")
+        
+        # Convert dates to pandas Timestamps if they're not already
+        if not isinstance(start_date, pd.Timestamp):
+            start_date = pd.Timestamp(start_date)
+        if not isinstance(end_date, pd.Timestamp):
+            end_date = pd.Timestamp(end_date)
+            
+        df = self._generate_ohlcv(start_date, end_date, interval, symbol)
+        self._last_generated_time[symbol] = df.index[-1] if not df.empty else start_date
+        
+        return df
+
     async def connect_realtime(self):
         """Simulate connecting to real-time feed."""
         logger.info("MockDataProvider: Connecting to real-time feed (simulated).")
@@ -176,4 +208,3 @@ class MockDataProvider(BaseDataProvider):
     def get_supported_timeframes(self) -> List[str]:
         """Return timeframes mock data can be generated for."""
         return ['1m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '1w']
-

@@ -5,18 +5,13 @@ Defines structures for Orders, Trades, and Positions.
 """
 
 from pydantic import BaseModel, Field, field_validator, model_validator, ValidationInfo
-from typing import Literal, Optional, Dict, List, Any, ClassVar
+from typing import Optional, Dict, List, Any, ClassVar
 from datetime import datetime, timezone
 import uuid
 import logging
 
-# --- Enums (using Literal for simplicity) ---
-OrderSide = Literal['buy', 'sell']
-OrderType = Literal['market', 'limit', 'stop_limit'] # Extend later (stop_loss, take_profit, etc.)
-OrderStatus = Literal[
-    'new', 'open', 'partially_filled', 'filled', 'canceled', 'rejected', 'expired'
-]
-PositionSide = Literal['long', 'short']
+# Import enums from the enums module
+from src.trading_engine.enums import OrderSide, OrderType, OrderStatus, PositionSide
 
 # --- Helper Functions ---
 def utcnow() -> datetime:
@@ -31,7 +26,7 @@ def calculate_position_pnl(position: 'Position', current_market_price: float) ->
     """Calculates unrealized PnL for a given position object."""
     if position.quantity == 0:
         position.unrealized_pnl = 0.0
-    elif position.side == 'long':
+    elif position.side == PositionSide.LONG:
         # Unrealized P&L for long positions:
         # (Current Price - Entry Price) * Quantity
         position.unrealized_pnl = (current_market_price - position.entry_price) * position.quantity
@@ -46,22 +41,23 @@ def calculate_position_pnl(position: 'Position', current_market_price: float) ->
 
 class Order(BaseModel):
     """
-    Represents a trading order with validation and state management.
+    Represents a trading order.
     
-    An Order tracks its lifecycle from creation through execution, including partial fills.
-    It maintains a history of fills and calculates the average fill price.
+    An Order tracks the lifecycle of a trading instruction from creation to execution.
+    It includes validation for order quantity and price, and manages the state of
+    partial fills and order status.
     
     Attributes:
         order_id: Unique identifier for the order
         symbol: Trading pair symbol (e.g., "BTC/USDT")
         side: Buy or sell
-        type: Market or limit order type
-        quantity: Total order quantity
-        price: Limit price (required for limit orders)
+        type: Order type (market, limit, etc.)
+        quantity: Order quantity
+        price: Order price (required for limit orders)
         status: Current order status
-        filled_quantity: Amount of the order that has been executed
-        remaining_quantity: Amount of the order that is still pending
-        fills: List of individual fill events
+        filled_quantity: Amount of the order that has been filled
+        remaining_quantity: Amount of the order that remains to be filled
+        fills: List of fill records with quantity, price, and timestamp
         created_at: Timestamp when the order was created
         updated_at: Timestamp of the last update to the order
     """
@@ -71,18 +67,68 @@ class Order(BaseModel):
     type: OrderType
     quantity: float = Field(gt=0) # Order quantity must be positive
     price: Optional[float] = None # Required for limit orders, validated in model_validator
-    status: OrderStatus = 'new'
+    status: OrderStatus = OrderStatus.NEW
     filled_quantity: float = 0.0
     remaining_quantity: float = Field(default=0.0) # Will be set to quantity in __init__
     fills: List[Dict[str, Any]] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=utcnow)
     updated_at: datetime = Field(default_factory=utcnow)
-    # Add more fields as needed: stop price, time in force, etc.
+    
+    # Aliases for backward compatibility
+    order_type: Optional[OrderType] = None
+    limit_price: Optional[float] = None
+    
+    model_config = {
+        "populate_by_name": True,
+        "extra": "ignore",
+    }
     
     def __init__(self, **data):
+        # Handle backward compatibility
+        if 'order_type' in data and 'type' not in data:
+            data['type'] = data['order_type']
+            
+        if 'limit_price' in data and 'price' not in data:
+            data['price'] = data['limit_price']
+        
+        # Convert string literals to enum values
+        if 'side' in data and isinstance(data['side'], str):
+            try:
+                data['side'] = OrderSide[data['side']]
+            except KeyError:
+                # Try case-insensitive match
+                for enum_val in OrderSide:
+                    if enum_val.name.lower() == data['side'].lower():
+                        data['side'] = enum_val
+                        break
+        
+        if 'type' in data and isinstance(data['type'], str):
+            try:
+                data['type'] = OrderType[data['type']]
+            except KeyError:
+                # Try case-insensitive match
+                for enum_val in OrderType:
+                    if enum_val.name.lower() == data['type'].lower():
+                        data['type'] = enum_val
+                        break
+        
+        if 'status' in data and isinstance(data['status'], str):
+            try:
+                data['status'] = OrderStatus[data['status']]
+            except KeyError:
+                # Try case-insensitive match
+                for enum_val in OrderStatus:
+                    if enum_val.name.lower() == data['status'].lower():
+                        data['status'] = enum_val
+                        break
+            
         super().__init__(**data)
         if self.remaining_quantity == 0.0:
             self.remaining_quantity = self.quantity
+            
+        # Set aliases for backward compatibility
+        self.order_type = self.type
+        self.limit_price = self.price
 
     @field_validator('quantity')
     @classmethod
@@ -94,18 +140,30 @@ class Order(BaseModel):
     @model_validator(mode='after')
     def ensure_timestamps_consistent(self) -> 'Order':
         """Ensure updated_at is the same as created_at when order is first created."""
-        if self.status == 'new' and self.filled_quantity == 0.0:
+        if self.status == OrderStatus.NEW and self.filled_quantity == 0.0:
             self.updated_at = self.created_at
         return self
         
     @model_validator(mode='after')
     def validate_limit_order_price(self) -> 'Order':
         """Validate that limit orders have a valid price."""
-        if self.type == 'limit':
+        if self.type == OrderType.LIMIT:
             if self.price is None:
                 raise ValueError("Price is required for limit orders")
             if self.price <= 0:
                 raise ValueError("Limit price must be positive")
+        return self
+
+    @model_validator(mode='after')
+    def set_price_from_limit_price(self) -> 'Order':
+        """
+        For backward compatibility, handle the case where price is passed directly
+        instead of limit_price.
+        """
+        # If we have a price but no limit_price, set limit_price to price
+        if hasattr(self, 'price') and self.price is not None:
+            # Already set in the model
+            pass
         return self
 
     def update_status(self, new_status: OrderStatus):
@@ -141,9 +199,11 @@ class Order(BaseModel):
         """
         return self.get_average_fill_price()
 
-    def add_fill(self, fill_quantity: float, fill_price: float, 
-                 commission: Optional[float] = None, 
-                 commission_asset: Optional[str] = None) -> Dict[str, Any]:
+    def add_fill(self, fill_quantity: float = None, fill_price: float = None, 
+             commission: Optional[float] = None, 
+             commission_asset: Optional[str] = None, 
+             exchange_order_id: Optional[str] = None,
+             **kwargs) -> Dict[str, Any]:
         """
         Add a fill to the order and update its state.
         
@@ -152,6 +212,7 @@ class Order(BaseModel):
             fill_price: Price at which the fill occurred
             commission: Optional commission amount
             commission_asset: Optional asset in which commission was paid
+            exchange_order_id: Optional exchange order ID
             
         Returns:
             The fill record that was added
@@ -161,6 +222,16 @@ class Order(BaseModel):
         """
         import logging
         logger = logging.getLogger(__name__)
+        
+        # Handle keyword arguments for backward compatibility
+        if 'quantity' in kwargs and fill_quantity is None:
+            fill_quantity = kwargs['quantity']
+        if 'price' in kwargs and fill_price is None:
+            fill_price = kwargs['price']
+        if 'timestamp' in kwargs:
+            # Ignore timestamp as we'll use utcnow()
+            pass
+            
         logger.info(f"Adding fill to order {self.order_id}: {fill_quantity} @ {fill_price}")
         logger.info(f"Before fill - Status: {self.status}, Filled: {self.filled_quantity}, Remaining: {self.remaining_quantity}")
         
@@ -178,6 +249,8 @@ class Order(BaseModel):
             fill_record["commission"] = commission
         if commission_asset is not None:
             fill_record["commission_asset"] = commission_asset
+        if exchange_order_id is not None:
+            fill_record["exchange_order_id"] = exchange_order_id
             
         self.fills.append(fill_record)
         self.filled_quantity += fill_quantity
@@ -185,9 +258,9 @@ class Order(BaseModel):
         
         # Update order status
         if self.remaining_quantity < 1e-8:  # Effectively zero
-            self.status = 'filled'
+            self.status = OrderStatus.FILLED
         else:
-            self.status = 'partially_filled'
+            self.status = OrderStatus.PARTIALLY_FILLED
             
         # Calculate and log the average fill price
         total_value = sum(fill["quantity"] * fill["price"] for fill in self.fills)
@@ -200,7 +273,25 @@ class Order(BaseModel):
 
 
 class Trade(BaseModel):
-    """Represents an executed trade (fill)."""
+    """
+    Represents an executed trade (fill).
+    
+    A Trade is created when an Order is executed, either fully or partially.
+    It records the details of the execution including price, quantity, and timestamp.
+    
+    Attributes:
+        trade_id: Unique identifier for the trade
+        order_id: ID of the order that generated this trade
+        exchange_trade_id: Optional ID from the exchange
+        symbol: Trading pair symbol (e.g., "BTC/USDT")
+        side: Side of the original order (BUY or SELL)
+        quantity: Executed quantity
+        price: Execution price
+        timestamp: When the trade occurred
+        commission: Optional commission amount
+        commission_asset: Optional asset in which commission was paid
+        is_maker: Whether this trade was a maker (vs taker)
+    """
     trade_id: str = Field(default_factory=lambda: f"trd_{uuid.uuid4()}")
     order_id: str # Link back to the order that generated this trade
     exchange_trade_id: Optional[str] = None # ID from the exchange
@@ -212,6 +303,25 @@ class Trade(BaseModel):
     commission: Optional[float] = None
     commission_asset: Optional[str] = None
     is_maker: Optional[bool] = None # Useful for fee calculation
+    
+    model_config = {
+        "populate_by_name": True,
+        "extra": "ignore",
+    }
+    
+    def __init__(self, **data):
+        # Convert string literals to enum values
+        if 'side' in data and isinstance(data['side'], str):
+            try:
+                data['side'] = OrderSide[data['side']]
+            except KeyError:
+                # Try case-insensitive match
+                for enum_val in OrderSide:
+                    if enum_val.name.lower() == data['side'].lower():
+                        data['side'] = enum_val
+                        break
+        
+        super().__init__(**data)
 
 
 class Position(BaseModel):
@@ -239,6 +349,25 @@ class Position(BaseModel):
     realized_pnl: float = 0.0
     last_update_time: datetime = Field(default_factory=utcnow)
     # Add more fields as needed: leverage, margin, liquidation price, etc.
+    
+    model_config = {
+        "populate_by_name": True,
+        "extra": "ignore",
+    }
+    
+    def __init__(self, **data):
+        # Convert string literals to enum values
+        if 'side' in data and isinstance(data['side'], str):
+            try:
+                data['side'] = PositionSide[data['side']]
+            except KeyError:
+                # Try case-insensitive match
+                for enum_val in PositionSide:
+                    if enum_val.name.lower() == data['side'].lower():
+                        data['side'] = enum_val
+                        break
+        
+        super().__init__(**data)
 
     @field_validator('quantity')
     @classmethod
@@ -255,7 +384,24 @@ class Position(BaseModel):
             raise ValueError("Entry price must be positive for non-zero positions")
         return self
 
-    # --- Utility Methods ---
+    def update_market_price(self, current_price: float) -> None:
+        """
+        Update the position's unrealized profit/loss based on the current market price.
+        
+        Args:
+            current_price: The current market price of the asset
+        """
+        if self.quantity <= 0:
+            return
+            
+        # Calculate unrealized P&L
+        if self.side == PositionSide.LONG:
+            self.unrealized_pnl = (current_price - self.entry_price) * self.quantity
+        else:  # SHORT
+            self.unrealized_pnl = (self.entry_price - current_price) * self.quantity
+            
+        self.last_update_time = utcnow()
+
     def update_position(self, trade_qty: float, trade_price: float, trade_side: OrderSide, current_market_price: float) -> None:
         """
         Updates the position based on a new trade and current market price.
@@ -274,13 +420,13 @@ class Position(BaseModel):
             current_market_price: Current market price for PnL calculation
         """
         if self.quantity == 0: # Opening a new position
-            self.side = 'long' if trade_side == 'buy' else 'short'
+            self.side = PositionSide.LONG if trade_side == OrderSide.BUY else PositionSide.SHORT
             self.entry_price = trade_price
             self.quantity = abs(trade_qty)
             self.realized_pnl = 0 # Reset realized PnL for new position
 
-        elif (self.side == 'long' and trade_side == 'buy') or \
-             (self.side == 'short' and trade_side == 'sell'): # Increasing position size
+        elif (self.side == PositionSide.LONG and trade_side == OrderSide.BUY) or \
+             (self.side == PositionSide.SHORT and trade_side == OrderSide.SELL): # Increasing position size
             # Update average entry price
             current_value = self.entry_price * self.quantity
             trade_value = trade_price * abs(trade_qty)
@@ -290,7 +436,7 @@ class Position(BaseModel):
         else: # Reducing or closing position (or flipping)
             reduction_qty = min(self.quantity, abs(trade_qty))
             trade_pnl = 0
-            if self.side == 'long': # Selling to reduce/close long
+            if self.side == PositionSide.LONG: # Selling to reduce/close long
                 trade_pnl = (trade_price - self.entry_price) * reduction_qty
             else: # Buying to reduce/close short
                 trade_pnl = (self.entry_price - trade_price) * reduction_qty
@@ -303,29 +449,33 @@ class Position(BaseModel):
             if self.quantity < 1e-9: # Position closed
                 self.quantity = 0
                 self.entry_price = 0
-                self.side = 'long' # Reset side, doesn't matter when quantity is 0
+                self.side = PositionSide.LONG # Reset side, doesn't matter when quantity is 0
                 # If trade was larger than position, open new position in opposite direction
                 if remaining_trade_qty > 1e-9:
-                    self.side = 'long' if trade_side == 'buy' else 'short'
+                    self.side = PositionSide.LONG if trade_side == OrderSide.BUY else PositionSide.SHORT
                     self.entry_price = trade_price
                     self.quantity = remaining_trade_qty
             # Else: Position reduced, entry price remains the same
 
-        calculate_position_pnl(self, current_market_price)
-        self.last_update_time = utcnow()
+        # Update unrealized PnL based on current market price
+        self.update_market_price(current_market_price)
 
-    def get_position_value(self, current_market_price: float) -> float:
+    def get_position_value(self, current_market_price: float = None) -> float:
         """
         Calculate the current market value of the position.
         
         Args:
-            current_market_price: Current market price for the symbol
-            
-        Returns:
-            The current market value of the position
-        """
-        return self.quantity * current_market_price if self.quantity > 0 else 0.0
+            current_market_price: The current market price of the asset (optional)
+                                 If not provided, uses the entry price
         
+        Returns:
+            float: The current market value
+        """
+        if current_market_price is None:
+            # Use entry price as fallback
+            return self.quantity * self.entry_price
+        return self.quantity * current_market_price
+
     def get_total_pnl(self) -> float:
         """
         Get the total profit/loss (realized + unrealized).
@@ -363,9 +513,23 @@ class Portfolio(BaseModel):
     trades: List[Trade] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=utcnow)
     total_realized_portfolio_pnl: float = 0.0
+    total_value: float = 0.0
     # Add equity, margin used, etc. later
 
     logger: ClassVar[logging.Logger] = logging.getLogger(__name__)
+
+    model_config = {
+        "populate_by_name": True,
+        "extra": "ignore",
+    }
+    
+    def __init__(self, **data):
+        # Handle aliases for backward compatibility
+        if 'initial_capital' in data and 'starting_balance' not in data:
+            data['starting_balance'] = data['initial_capital']
+            data['current_balance'] = data['initial_capital']
+            
+        super().__init__(**data)
 
     def get_position(self, symbol: str) -> Optional[Position]:
         """
@@ -412,7 +576,7 @@ class Portfolio(BaseModel):
                 del self.positions[symbol] # Remove closed position
         else:
             # Create new position if it doesn't exist (should only happen if it was closed before)
-            new_side: PositionSide = 'long' if trade.side == 'buy' else 'short'
+            new_side: PositionSide = PositionSide.LONG if trade.side == OrderSide.BUY else PositionSide.SHORT
             new_position = Position(
                 symbol=symbol,
                 side=new_side,
@@ -428,7 +592,7 @@ class Portfolio(BaseModel):
         # 2. Update Cash Balance (simplistic, ignoring margin for now)
         trade_value = trade.quantity * trade.price
         commission = trade.commission or 0
-        if trade.side == 'buy':
+        if trade.side == OrderSide.BUY:
             self.current_balance -= trade_value
         else: # Sell
             self.current_balance += trade_value
@@ -509,3 +673,48 @@ class Portfolio(BaseModel):
             
         position_value = position.quantity * current_market_price
         return position_value / self.total_equity
+
+    def update_total_value(self, current_market_prices: Dict[str, float]) -> float:
+        """
+        Calculate and update the total portfolio value.
+        
+        This includes cash balance plus the value of all open positions.
+        
+        Args:
+            current_market_prices: Dictionary of current market prices keyed by symbol
+            
+        Returns:
+            The updated total portfolio value
+        """
+        # Start with cash balance
+        total_value = self.current_balance
+        
+        # Add value of all positions
+        for symbol, position in self.positions.items():
+            if position.quantity > 0:
+                current_price = current_market_prices.get(symbol)
+                if current_price is not None:
+                    position_value = position.get_position_value(current_price)
+                    total_value += position_value
+                else:
+                    # If no current price is available, use the entry price as a fallback
+                    position_value = position.get_position_value()
+                    total_value += position_value
+                    self.logger.warning(f"No current market price for {symbol} in update_total_value. Using entry price as fallback.")
+        
+        # Store the total value
+        self.total_value = total_value
+        
+        return total_value
+
+    @property
+    def cash(self) -> float:
+        """
+        Property that returns the current cash balance.
+        
+        This is an alias for current_balance for backward compatibility.
+        
+        Returns:
+            The current cash balance
+        """
+        return self.current_balance

@@ -43,6 +43,54 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
     *   [x] Create feature engineering pipeline.
     *   [x] Add unit tests for processing utilities.
     *   [x] Fix RSI calculation bug.
+
+---
+
+### **Rust Integration for Performance-Critical Components**
+
+To accelerate data processing and backtesting, we will incrementally integrate Rust using PyO3/maturin. This plan ensures maintainability and leverages mature Rust tooling.
+
+**Phases:**
+
+**1. Setup**
+
+- Install Rust toolchain and maturin
+- Create `rust_extensions/` with a Rust library crate
+- Configure `Cargo.toml` for PyO3 bindings
+
+**2. Port Technical Indicators & Feature Engineering**
+
+- [x] Use `ta-rs` and `ndarray` crates
+- [x] Expose SMA, EMA, MACD as PyO3 functions
+- [x] Expose RSI as PyO3 function
+- [ ] Implement lag features as PyO3 functions
+- [x] Support NumPy array inputs/outputs
+- [x] Replace Python implementations with Rust-backed calls
+- [x] Validate with unit tests and benchmarks
+
+**3. Accelerate Backtesting Core Loop**
+
+- [x] Implement core simulation loop in Rust
+- [x] Accept preprocessed features, initial portfolio, signals
+- [x] Return trade logs, portfolio history, metrics
+- [x] Expose via PyO3
+- [x] Replace Python loop, validate correctness and speedup
+
+**4. CI/CD Integration**
+
+- Automate Rust build with maturin
+- Run Rust and Python tests in CI
+- Ensure cross-platform builds
+
+**5. Documentation**
+
+- Document Rust build, usage, and developer workflow
+- Provide benchmarks and integration examples
+
+---
+
+This integration will **significantly improve performance** of data processing and backtesting, while keeping the rest of the system in Python for flexibility.
+
 3.  **Implement Trading Engine Core:**
     *   [x] Define core data models (`Order`, `Trade`, `Position`, `Portfolio`) using Pydantic (`src/trading_engine/models.py`).
     *   [x] Implement robust validation within models (Pydantic v2 compatible).
@@ -53,16 +101,16 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
     *   [x] Add `average_fill_price` property to Order class.
     *   [x] Fix parameter name mismatches in Order.add_fill method calls.
     *   [x] Implement proper handling of finalized orders.
-    *   [ ] Implement `ExecutionHandler` to simulate trade execution (`src/trading_engine/execution_handler.py` - previously `execution_simulator.py`).
-    *   [ ] Implement `PortfolioManager` logic (partially covered by `Portfolio` model methods, may need a dedicated manager later).
+    *   [x] Implement `ExecutionHandler` to simulate trade execution (`src/trading_engine/execution_handler.py` - previously `execution_simulator.py`).
+    *   [x] Implement `PortfolioManager` logic (partially covered by `Portfolio` model methods, may need a dedicated manager later).
     *   [x] Add unit tests for OrderManager (`tests/unit/trading_engine/test_order_manager.py`).
     *   [ ] Add unit tests for other managers and handlers.
 4.  **Develop Backtesting Framework:**
-    *   [ ] Implement basic backtesting loop (`src/backtesting/backtester.py`).
-    *   [ ] Define performance metrics calculation (`src/backtesting/performance_metrics.py`).
+    *   [x] Implement basic backtesting loop (`src/backtesting/backtester.py`).
+    *   [x] Define performance metrics calculation (`src/backtesting/performance_metrics.py`).
 5.  **Define Base Strategy Interface:**
-    *   [ ] Create `BaseStrategy` class with methods for initialization and generating signals (`generate_signals`).
-    *   [ ] Add basic example strategy implementation.
+    *   [x] Create `BaseStrategy` class with methods for initialization and generating signals (`generate_signals`).
+    *   [x] Add basic example strategy implementation.
 
 **Status: In Progress**
 
