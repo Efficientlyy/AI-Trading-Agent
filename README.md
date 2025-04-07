@@ -12,6 +12,7 @@ Currently under active development. Key components include:
 *   **Data Acquisition**: Using `ccxt` to fetch historical market data.
 *   **Data Processing**: Includes feature engineering and indicator calculations.
 *   **Trading Engine**: Core components for managing orders, positions, and portfolio state.
+*   **Backtesting Framework**: Comprehensive backtesting system with multi-asset support.
 *   **Testing**: Extensive unit tests using `pytest` to ensure reliability.
 
 See `docs/PLAN.md` for the development roadmap and `docs/architecture.md` for a high-level overview.
@@ -20,6 +21,9 @@ See `docs/PLAN.md` for the development roadmap and `docs/architecture.md` for a 
 
 *   Modular architecture
 *   Pydantic models for data validation
+*   Multi-asset backtesting with portfolio-level analysis
+*   Performance metrics calculation (Sharpe ratio, Sortino ratio, drawdowns, etc.)
+*   Rust acceleration for performance-critical components
 *   Comprehensive test suite
 *   Support for multiple data providers (planned)
 *   Integration with various exchanges via `ccxt` (planned)
@@ -69,9 +73,14 @@ For verbose output:
 pytest -v
 ```
 
-### Running the Application
+### Running Backtests
 
-(Instructions for running backtesting or other core functionalities will be added here as development progresses.)
+To run a multi-asset backtest example:
+```bash
+python examples/multi_asset_backtest.py
+```
+
+This will run a moving average crossover strategy on multiple assets and generate performance metrics and visualizations.
 
 See `docs/usage_guide.md` for more details.
 
