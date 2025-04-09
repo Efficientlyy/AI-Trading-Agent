@@ -90,15 +90,27 @@ For testing purposes, you can use the following mock credentials:
 ## Development Roadmap
 
 - **Stage 1**: Foundation (Authentication, Layout, API Integration) - ✅ COMPLETED
-- **Stage 2**: Dashboard Core (Portfolio Widgets, Charts) - 🔄 IN PROGRESS
+- **Stage 2**: Dashboard Core (Portfolio Widgets, Charts) - ✅ COMPLETED
   - Basic dashboard widgets implemented
   - WebSocket integration with mock data support
   - Dark/light theme toggle
-- **Stage 3**: Trading Tools (Order Management, Technical Analysis) - ⏱️ PLANNED
+  - Enhanced UI components with better visualization and user experience
+- **Stage 3**: Trading Tools (Order Management, Technical Analysis) - 🔄 IN PROGRESS
+  - Order entry form with position information and validation
+  - Asset allocation visualization with detailed metrics
+  - Sentiment analysis dashboard with signal distribution
 - **Stage 4**: Advanced Features (Strategy Builder, Backtest Visualization) - ⏱️ PLANNED
 - **Stage 5**: Polish and Optimization (Performance, Responsive Design) - ⏱️ PLANNED
 
 ## Recent Updates
+
+### v0.3.0 (April 2025)
+- Enhanced OrderEntryForm with position information display and MAX/CURRENT buttons
+- Improved AssetAllocationChart with better visualization and summary statistics
+- Redesigned SentimentSummary with overall market sentiment indicator and signal distribution
+- Fixed notification system by properly implementing NotificationProvider
+- Added better null handling and loading states across all components
+- Improved type safety throughout the application
 
 ### v0.2.0 (April 2025)
 - Fixed WebSocket connection issues with reconnection strategy

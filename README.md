@@ -19,9 +19,13 @@ Currently under active development. Key components include:
 *   **Frontend** (React/TypeScript):
     * **Authentication System**: Secure JWT-based authentication
     * **Dashboard**: Real-time portfolio and performance monitoring
+    * **Trading Interface**: Enhanced order entry form with position information
+    * **Asset Visualization**: Interactive charts for portfolio allocation and equity curve
+    * **Sentiment Analysis**: Comprehensive sentiment dashboard with signal distribution
     * **WebSocket Integration**: Live data updates with mock data support for development
     * **Responsive Design**: Works across desktop, tablet, and mobile devices
     * **Dark/Light Mode**: Theme customization
+    * **Notification System**: Toast notifications for user actions and system alerts
 
 See `docs/PLAN.md` for the development roadmap and `docs/architecture.md` for a high-level overview.
 

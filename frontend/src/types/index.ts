@@ -27,6 +27,8 @@ export interface Position {
   symbol: string;
   quantity: number;
   entry_price: number;
+  current_price: number;
+  market_value: number;
   unrealized_pnl: number;
   realized_pnl: number;
 }
@@ -34,7 +36,9 @@ export interface Position {
 export interface Portfolio {
   cash: number;
   total_value: number;
-  positions: Record<string, { quantity: number; value: number }>;
+  positions: Record<string, Position>;
+  daily_pnl?: number;
+  margin_multiplier?: number;
 }
 
 export interface Order {
@@ -49,6 +53,18 @@ export interface Order {
   filled_quantity: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface Trade {
+  id: string;
+  symbol: string;
+  side: 'buy' | 'sell';
+  quantity: number;
+  price: number;
+  timestamp: number | string;
+  status: 'pending' | 'filled' | 'partial' | 'cancelled' | 'rejected';
+  fee?: number;
+  total?: number;
 }
 
 export interface OrderRequest {
@@ -96,11 +112,8 @@ export interface BacktestResult {
 
 // Sentiment types
 export interface SentimentSignal {
-  symbol: string;
   signal: 'buy' | 'sell' | 'hold';
   strength: number;
-  sources: Array<{ name: string; sentiment: number }>;
-  timestamp: string;
 }
 
 // Strategy types
@@ -141,17 +154,22 @@ export interface HistoricalDataRequest {
 }
 
 // WebSocket subscription types
+export type TopicType = 'portfolio' | 'sentiment_signal' | 'performance';
+
 export interface WebSocketMessage {
   action: 'subscribe' | 'unsubscribe';
-  topic: 'portfolio' | 'sentiment' | 'performance';
+  topic: TopicType;
 }
 
 export interface WebSocketUpdate {
   portfolio?: Portfolio;
-  sentiment_signal?: Record<string, { signal: 'buy' | 'sell' | 'hold'; strength: number }>;
+  sentiment_signal?: Record<string, SentimentSignal>;
   performance?: {
     total_return: number;
     sharpe_ratio: number;
     max_drawdown: number;
+    win_rate?: number;
+    profit_factor?: number;
+    avg_trade?: number;
   };
 }
