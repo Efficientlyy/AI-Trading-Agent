@@ -14,6 +14,7 @@ import uuid
 from src.trading_engine.models import Order, Trade
 from src.trading_engine.enums import OrderSide, OrderType, OrderStatus
 from src.common import logger
+from src.trading_engine.exceptions import ExecutionError, TradingEngineError
 
 
 class ExecutionHandler:
@@ -76,54 +77,61 @@ class ExecutionHandler:
         Returns:
             List[Trade]: List of trades resulting from the order execution
         """
-        # Check if order should be rejected
-        if np.random.random() < self.rejection_probability:
-            order.status = OrderStatus.REJECTED
-            logger.warning(f"Order {order.order_id} rejected due to random rejection")
-            return []
+        try:
+            # Check if order should be rejected
+            if np.random.random() < self.rejection_probability:
+                order.status = OrderStatus.REJECTED
+                logger.warning(f"Order rejected", order_id=order.order_id, reason="random rejection")
+                return []
+            
+            # Get current market data
+            current_bar = market_data.loc[market_data.index <= timestamp].iloc[-1]
+            
+            # Calculate execution price based on order type
+            execution_price = self._calculate_execution_price(order, current_bar)
+            
+            # If execution price is None, order cannot be executed
+            if execution_price is None:
+                logger.info("Order not executed (price condition not met)", order_id=order.order_id)
+                return []
+            
+            # Apply slippage
+            execution_price = self._apply_slippage(order, execution_price)
+            
+            # Determine fill quantity
+            fill_quantity = self._determine_fill_quantity(order)
+            
+            # Create trade
+            trade = Trade(
+                symbol=order.symbol,
+                order_id=order.order_id,
+                side=order.side,
+                quantity=fill_quantity,
+                price=execution_price,
+                timestamp=timestamp,
+            )
+            
+            # Update order with fill
+            order.add_fill(
+                fill_quantity=fill_quantity,
+                fill_price=execution_price,
+                commission=fill_quantity * execution_price * self.commission_rate,
+            )
+            
+            # Update order status
+            if order.remaining_quantity < 1e-8:  # Effectively zero
+                order.status = OrderStatus.FILLED
+            else:
+                order.status = OrderStatus.PARTIALLY_FILLED
+            
+            logger.info(f"Executed order", order_id=order.order_id, side=order.side.value,
+                        quantity=fill_quantity, price=execution_price, status=order.status.value)
+            
+            return [trade]
         
-        # Get current market data
-        current_bar = market_data.loc[market_data.index <= timestamp].iloc[-1]
-        
-        # Calculate execution price based on order type
-        execution_price = self._calculate_execution_price(order, current_bar)
-        
-        # If execution price is None, order cannot be executed
-        if execution_price is None:
-            return []
-        
-        # Apply slippage
-        execution_price = self._apply_slippage(order, execution_price)
-        
-        # Determine fill quantity
-        fill_quantity = self._determine_fill_quantity(order)
-        
-        # Create trade
-        trade = Trade(
-            symbol=order.symbol,
-            order_id=order.order_id,
-            side=order.side,
-            quantity=fill_quantity,
-            price=execution_price,
-            timestamp=timestamp,
-        )
-        
-        # Update order with fill
-        order.add_fill(
-            fill_quantity=fill_quantity,
-            fill_price=execution_price,
-            commission=fill_quantity * execution_price * self.commission_rate,
-        )
-        
-        # Update order status
-        if order.remaining_quantity < 1e-8:  # Effectively zero
-            order.status = OrderStatus.FILLED
-        else:
-            order.status = OrderStatus.PARTIALLY_FILLED
-        
-        logger.info(f"Executed order {order.order_id}: {order.side.value} {fill_quantity} {order.symbol} @ {execution_price:.4f}")
-        
-        return [trade]
+        except Exception as e:
+            logger.error(f"Execution error for order {order.order_id}: {e}", exc_info=True)
+            raise ExecutionError(f"Execution failed for order {order.order_id}") from e
     
     def _calculate_execution_price(self, order: Order, bar: pd.Series) -> Optional[float]:
         """
@@ -137,34 +145,48 @@ class ExecutionHandler:
             float: Execution price, or None if order cannot be executed
         """
         if order.order_type == OrderType.MARKET:
-            # Market orders execute at the open of the next bar
-            return bar['open']
-        
+            # Market orders execute at current price
+            if order.side == OrderSide.BUY:
+                return bar["close"]
+            else:  # SELL
+                return bar["close"]
+                
         elif order.order_type == OrderType.LIMIT:
-            if order.side == OrderSide.BUY and bar['low'] <= order.limit_price:
-                # Buy limit orders execute at limit price if low <= limit price
-                return min(bar['open'], order.limit_price)
-            elif order.side == OrderSide.SELL and bar['high'] >= order.limit_price:
-                # Sell limit orders execute at limit price if high >= limit price
-                return max(bar['open'], order.limit_price)
-        
+            # Limit orders execute if price is favorable
+            if order.side == OrderSide.BUY:
+                # Buy limit: execute if current price <= limit price
+                if bar["close"] <= order.price:
+                    return bar["close"]
+            else:  # SELL
+                # Sell limit: execute if current price >= limit price
+                if bar["close"] >= order.price:
+                    return bar["close"]
+                    
         elif order.order_type == OrderType.STOP:
-            if order.side == OrderSide.BUY and bar['high'] >= order.stop_price:
-                # Buy stop orders execute at stop price if high >= stop price
-                return max(bar['open'], order.stop_price)
-            elif order.side == OrderSide.SELL and bar['low'] <= order.stop_price:
-                # Sell stop orders execute at stop price if low <= stop price
-                return min(bar['open'], order.stop_price)
-        
+            # Stop orders execute if price crosses the stop price
+            if order.side == OrderSide.BUY:
+                # Buy stop: execute if current price >= stop price
+                if bar["close"] >= order.stop_price:
+                    return bar["close"]
+            else:  # SELL
+                # Sell stop: execute if current price <= stop price
+                if bar["close"] <= order.stop_price:
+                    return bar["close"]
+                    
         elif order.order_type == OrderType.STOP_LIMIT:
-            if order.side == OrderSide.BUY and bar['high'] >= order.stop_price:
-                # Buy stop-limit orders trigger at stop price, then execute as limit orders
-                if bar['low'] <= order.limit_price:
-                    return min(max(bar['open'], order.stop_price), order.limit_price)
-            elif order.side == OrderSide.SELL and bar['low'] <= order.stop_price:
-                # Sell stop-limit orders trigger at stop price, then execute as limit orders
-                if bar['high'] >= order.limit_price:
-                    return max(min(bar['open'], order.stop_price), order.limit_price)
+            # Stop-limit orders: first check if stop price is triggered
+            if order.side == OrderSide.BUY:
+                # Buy stop-limit: trigger if current price >= stop price
+                if bar["close"] >= order.stop_price:
+                    # Then check if limit price is favorable
+                    if bar["close"] <= order.price:
+                        return bar["close"]
+            else:  # SELL
+                # Sell stop-limit: trigger if current price <= stop price
+                if bar["close"] <= order.stop_price:
+                    # Then check if limit price is favorable
+                    if bar["close"] >= order.price:
+                        return bar["close"]
         
         # Order cannot be executed
         return None
@@ -297,8 +319,8 @@ class SimulatedExchange:
             logger.warning(f"Order {order.order_id} rejected: Symbol {order.symbol} not available")
             return
         
-        # Set order status to submitted
-        order.status = OrderStatus.SUBMITTED
+        # Set order status to open
+        order.status = OrderStatus.OPEN
         
         logger.info(f"Placed order {order.order_id}: {order.side.value} {order.quantity} {order.symbol}")
     
@@ -317,8 +339,8 @@ class SimulatedExchange:
         trades = []
         
         for order in orders:
-            # Skip orders that are not submitted
-            if order.status != OrderStatus.SUBMITTED:
+            # Skip orders that are not open
+            if order.status != OrderStatus.OPEN:
                 continue
             
             # Get market data for the symbol
@@ -369,3 +391,65 @@ class SimulatedExchange:
             }
         
         return prices
+    
+    def generate_order_book(self, symbol: str, timestamp: pd.Timestamp) -> Dict[str, List[Tuple[float, float]]]:
+        """
+        Generate a simulated order book for a symbol at a given timestamp.
+        
+        Args:
+            symbol: Symbol to generate order book for
+            timestamp: Timestamp for the order book
+            
+        Returns:
+            Dict with 'bids' and 'asks' lists, each containing (price, quantity) tuples
+        """
+        if symbol not in self.market_data:
+            logger.warning(f"Cannot generate order book: No market data for {symbol}")
+            return {"bids": [], "asks": []}
+            
+        # Get current price data
+        data = self.market_data[symbol]
+        bars = data[data.index <= timestamp]
+        if len(bars) == 0:
+            logger.warning(f"Cannot generate order book: No data for {symbol} at {timestamp}")
+            return {"bids": [], "asks": []}
+            
+        bar = bars.iloc[-1]
+        mid_price = bar["close"]
+        
+        # Generate random order book with realistic depth
+        bids = []
+        asks = []
+        
+        # Number of price levels
+        num_levels = np.random.randint(5, 15)
+        
+        # Price step as a percentage of mid price
+        price_step_pct = np.random.uniform(0.0005, 0.002)  # 0.05% to 0.2%
+        
+        # Generate bids (buy orders) - prices below mid price
+        for i in range(num_levels):
+            # Price decreases as we go down the order book
+            price_level = mid_price * (1 - (i + 1) * price_step_pct)
+            # Quantity tends to increase for lower prices
+            quantity = np.random.lognormal(mean=1.0, sigma=0.5) * (1 + i * 0.1)
+            bids.append((price_level, quantity))
+        
+        # Generate asks (sell orders) - prices above mid price
+        for i in range(num_levels):
+            # Price increases as we go up the order book
+            price_level = mid_price * (1 + (i + 1) * price_step_pct)
+            # Quantity tends to increase for higher prices
+            quantity = np.random.lognormal(mean=1.0, sigma=0.5) * (1 + i * 0.1)
+            asks.append((price_level, quantity))
+        
+        # Sort bids in descending order (highest price first)
+        bids.sort(key=lambda x: x[0], reverse=True)
+        
+        # Sort asks in ascending order (lowest price first)
+        asks.sort(key=lambda x: x[0])
+        
+        return {
+            "bids": bids,
+            "asks": asks
+        }

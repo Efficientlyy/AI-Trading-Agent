@@ -14,13 +14,11 @@ import logging
 from src.trading_engine.enums import OrderSide, OrderType, OrderStatus, PositionSide
 
 # --- Helper Functions ---
-def utcnow() -> datetime:
-    """Return timezone-aware UTC timestamp."""
-    return datetime.now(timezone.utc)
+from src.common.time_utils import to_utc_naive
 
-# --- Standalone PnL Calculation Function ---
-class Position(BaseModel):
-    pass # Just needed for the type hint in the standalone function
+def utcnow() -> datetime:
+    """Return naive UTC timestamp."""
+    return to_utc_naive(datetime.now(timezone.utc))
 
 def calculate_position_pnl(position: 'Position', current_market_price: float) -> None:
     """Calculates unrealized PnL for a given position object."""
@@ -54,6 +52,7 @@ class Order(BaseModel):
         type: Order type (market, limit, etc.)
         quantity: Order quantity
         price: Order price (required for limit orders)
+        stop_price: Order stop price (required for stop and stop-limit orders)
         status: Current order status
         filled_quantity: Amount of the order that has been filled
         remaining_quantity: Amount of the order that remains to be filled
@@ -67,6 +66,7 @@ class Order(BaseModel):
     type: OrderType
     quantity: float = Field(gt=0) # Order quantity must be positive
     price: Optional[float] = None # Required for limit orders, validated in model_validator
+    stop_price: Optional[float] = None # Required for stop and stop-limit orders
     status: OrderStatus = OrderStatus.NEW
     filled_quantity: float = 0.0
     remaining_quantity: float = Field(default=0.0) # Will be set to quantity in __init__
@@ -153,6 +153,20 @@ class Order(BaseModel):
             if self.price <= 0:
                 raise ValueError("Limit price must be positive")
         return self
+        
+    @model_validator(mode='after')
+    def validate_stop_order_price(self) -> 'Order':
+        """Validate that stop orders have a valid stop price."""
+        if self.type in [OrderType.STOP, OrderType.STOP_LIMIT]:
+            if self.stop_price is None:
+                raise ValueError("Stop price is required for stop orders")
+            if self.stop_price <= 0:
+                raise ValueError("Stop price must be positive")
+                
+            # For stop-limit orders, also validate the limit price
+            if self.type == OrderType.STOP_LIMIT and self.price is None:
+                raise ValueError("Limit price is required for stop-limit orders")
+        return self
 
     @model_validator(mode='after')
     def set_price_from_limit_price(self) -> 'Order':
@@ -199,7 +213,7 @@ class Order(BaseModel):
         """
         return self.get_average_fill_price()
 
-    def add_fill(self, fill_quantity: float = None, fill_price: float = None, 
+    def add_fill(self, fill_quantity: Optional[float] = None, fill_price: Optional[float] = None, 
              commission: Optional[float] = None, 
              commission_asset: Optional[str] = None, 
              exchange_order_id: Optional[str] = None,
@@ -234,6 +248,9 @@ class Order(BaseModel):
             
         logger.info(f"Adding fill to order {self.order_id}: {fill_quantity} @ {fill_price}")
         logger.info(f"Before fill - Status: {self.status}, Filled: {self.filled_quantity}, Remaining: {self.remaining_quantity}")
+        
+        if fill_quantity is None or fill_price is None:
+            raise ValueError("Both fill_quantity and fill_price must be provided (not None)")
         
         if fill_quantity <= 0:
             raise ValueError("Fill quantity must be positive")
@@ -402,7 +419,7 @@ class Position(BaseModel):
             
         self.last_update_time = utcnow()
 
-    def update_position(self, trade_qty: float, trade_price: float, trade_side: OrderSide, current_market_price: float) -> None:
+    def update_position(self, trade_qty: Optional[float], trade_price: Optional[float], trade_side: OrderSide, current_market_price: float) -> None:
         """
         Updates the position based on a new trade and current market price.
         
@@ -419,6 +436,9 @@ class Position(BaseModel):
             trade_side: Buy or sell
             current_market_price: Current market price for PnL calculation
         """
+        if trade_qty is None or trade_price is None:
+            raise ValueError("Both trade_qty and trade_price must be provided (not None)")
+        
         if self.quantity == 0: # Opening a new position
             self.side = PositionSide.LONG if trade_side == OrderSide.BUY else PositionSide.SHORT
             self.entry_price = trade_price
@@ -460,7 +480,7 @@ class Position(BaseModel):
         # Update unrealized PnL based on current market price
         self.update_market_price(current_market_price)
 
-    def get_position_value(self, current_market_price: float = None) -> float:
+    def get_position_value(self, current_market_price: Optional[float] = None) -> float:
         """
         Calculate the current market value of the position.
         
@@ -521,6 +541,7 @@ class Portfolio(BaseModel):
     model_config = {
         "populate_by_name": True,
         "extra": "ignore",
+        "arbitrary_types_allowed": True,  # Allow arbitrary types like pandas Timestamp
     }
     
     def __init__(self, **data):
@@ -557,6 +578,15 @@ class Portfolio(BaseModel):
             trade: The executed trade
             current_market_prices: Dictionary of current market prices keyed by symbol
         """
+        # Ensure trade timestamp is a Python datetime object
+        from src.common.time_utils import to_utc_naive
+        try:
+            trade_copy = trade.model_copy()
+            trade_copy.timestamp = to_utc_naive(trade.timestamp)
+            trade = trade_copy
+        except Exception:
+            pass
+            
         symbol = trade.symbol
         current_price = current_market_prices.get(symbol)
         if current_price is None:

@@ -11,6 +11,7 @@ Responsibilities:
 from typing import Dict, Optional, Literal
 from .models import Order, Trade, Portfolio, OrderStatus
 from src.common import logger
+from src.trading_engine.exceptions import OrderValidationError, TradingEngineError
 
 class OrderManager:
     """Handles order creation, tracking, and updates."""
@@ -47,11 +48,13 @@ class OrderManager:
         try:
             # Basic validation (more can be added, e.g., balance check)
             if quantity <= 0:
-                logger.error(f"Order creation failed: Quantity must be positive ({quantity}).")
-                return None # Indented under if
+                logger.error("Order creation failed: Quantity must be positive.",
+                             order_params={"symbol": symbol, "side": side, "type": order_type, "quantity": quantity, "price": price})
+                raise OrderValidationError("Quantity must be positive.")
             if order_type == 'limit' and (price is None or price <= 0):
-                logger.error(f"Order creation failed: Limit orders require a positive price (got {price}).")
-                return None # Indented under if
+                logger.error("Order creation failed: Limit orders require a positive price.",
+                             order_params={"symbol": symbol, "side": side, "type": order_type, "quantity": quantity, "price": price})
+                raise OrderValidationError("Limit orders require a positive price.")
 
             # Check available balance (simplistic for now, assumes base currency)
             required_balance = 0
@@ -77,12 +80,15 @@ class OrderManager:
             logger.info(f"Created Order {order.order_id}: {side} {quantity} {symbol} @ {order_type} {price or 'N/A'}")
             return order # Indented under try
 
-        except ValueError as e: # Correctly indented except
+        except OrderValidationError as e:
+            logger.warning(f"Order validation failed: {e}")
+            return None
+        except ValueError as e:
             logger.error(f"Order creation failed due to validation error: {e}")
-            return None # Indented under except
-        except Exception as e: # Correctly indented except
+            return None
+        except Exception as e:
             logger.error(f"Unexpected error during order creation: {e}", exc_info=True)
-            return None # Indented under except
+            raise TradingEngineError("Unexpected error during order creation") from e
 
     def get_order(self, order_id: str) -> Optional[Order]:
         """Retrieves an order by its internal ID."""
