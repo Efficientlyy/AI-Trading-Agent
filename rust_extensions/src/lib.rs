@@ -276,17 +276,156 @@ fn create_lag_features_rs(
     
     // Create output array with shape (n_samples, n_lags)
     let n_lags = lags.len();
-    let mut result = Array2::<f64>::zeros((n_samples, n_lags));
+    let mut result = Array2::<f64>::from_elem((n_samples, n_lags), f64::NAN);
     
-    // Fill the output array with lagged values
+    // Fill the output array with lag values
     for (i, &lag) in lags.iter().enumerate() {
         for j in 0..n_samples {
             if j >= lag {
-                // Set the value to the lagged value
                 result[[j, i]] = series_array[j - lag];
-            } else {
-                // Set to NaN for indices where lag is not available
-                result[[j, i]] = f64::NAN;
+            }
+        }
+    }
+    
+    // Convert to Python array
+    Ok(result.into_pyarray(py).to_owned())
+}
+
+/// Calculate difference features from a time series.
+///
+/// Args:
+///     series (array): Input time series as a 1D array.
+///     periods (list): List of periods for calculating differences.
+///
+/// Returns:
+///     array: 2D array with each column representing a difference feature.
+#[pyfunction]
+fn create_diff_features_rs(
+    py: Python<'_>,
+    series: PyReadonlyArray1<f64>,
+    periods: Vec<usize>,
+) -> PyResult<Py<PyArray2<f64>>> {
+    // Convert input to Rust array
+    let series_array = series.as_array();
+    let n_samples = series_array.len();
+    
+    // Create output array with shape (n_samples, n_periods)
+    let n_periods = periods.len();
+    let mut result = Array2::<f64>::from_elem((n_samples, n_periods), f64::NAN);
+    
+    // Fill the output array with difference values
+    for (i, &period) in periods.iter().enumerate() {
+        for j in 0..n_samples {
+            if j >= period {
+                result[[j, i]] = series_array[j] - series_array[j - period];
+            }
+        }
+    }
+    
+    // Convert to Python array
+    Ok(result.into_pyarray(py).to_owned())
+}
+
+/// Calculate percentage change features from a time series.
+///
+/// Args:
+///     series (array): Input time series as a 1D array.
+///     periods (list): List of periods for calculating percentage changes.
+///
+/// Returns:
+///     array: 2D array with each column representing a percentage change feature.
+#[pyfunction]
+fn create_pct_change_features_rs(
+    py: Python<'_>,
+    series: PyReadonlyArray1<f64>,
+    periods: Vec<usize>,
+) -> PyResult<Py<PyArray2<f64>>> {
+    // Convert input to Rust array
+    let series_array = series.as_array();
+    let n_samples = series_array.len();
+    
+    // Create output array with shape (n_samples, n_periods)
+    let n_periods = periods.len();
+    let mut result = Array2::<f64>::from_elem((n_samples, n_periods), f64::NAN);
+    
+    // Fill the output array with percentage change values
+    for (i, &period) in periods.iter().enumerate() {
+        for j in 0..n_samples {
+            if j >= period && series_array[j - period] != 0.0 {
+                result[[j, i]] = (series_array[j] - series_array[j - period]) / series_array[j - period];
+            }
+        }
+    }
+    
+    // Convert to Python array
+    Ok(result.into_pyarray(py).to_owned())
+}
+
+/// Calculate rolling window features from a time series.
+///
+/// Args:
+///     series (array): Input time series as a 1D array.
+///     window_sizes (list): List of window sizes for rolling calculations.
+///     feature_type (str): Type of feature to calculate ('min', 'max', 'mean', 'std', 'sum').
+///
+/// Returns:
+///     array: 2D array with each column representing a rolling window feature.
+#[pyfunction]
+fn create_rolling_window_features_rs(
+    py: Python<'_>,
+    series: PyReadonlyArray1<f64>,
+    window_sizes: Vec<usize>,
+    feature_type: String,
+) -> PyResult<Py<PyArray2<f64>>> {
+    // Convert input to Rust array
+    let series_array = series.as_array();
+    let n_samples = series_array.len();
+    
+    // Create output array with shape (n_samples, n_windows)
+    let n_windows = window_sizes.len();
+    let mut result = Array2::<f64>::from_elem((n_samples, n_windows), f64::NAN);
+    
+    // Fill the output array with rolling window values
+    for (i, &window) in window_sizes.iter().enumerate() {
+        for j in 0..n_samples {
+            if j >= window - 1 {
+                // Get the window of values
+                let window_start = j - window + 1;
+                let window_end = j + 1;
+                let window_values = &series_array.slice(ndarray::s![window_start..window_end]);
+                
+                // Calculate the feature based on the type
+                match feature_type.as_str() {
+                    "min" => {
+                        let min_val = window_values.iter().fold(f64::INFINITY, |a, &b| a.min(b));
+                        result[[j, i]] = min_val;
+                    },
+                    "max" => {
+                        let max_val = window_values.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b));
+                        result[[j, i]] = max_val;
+                    },
+                    "mean" => {
+                        let sum: f64 = window_values.iter().sum();
+                        result[[j, i]] = sum / (window as f64);
+                    },
+                    "sum" => {
+                        let sum: f64 = window_values.iter().sum();
+                        result[[j, i]] = sum;
+                    },
+                    "std" => {
+                        let sum: f64 = window_values.iter().sum();
+                        let mean = sum / (window as f64);
+                        let variance: f64 = window_values.iter()
+                            .map(|&x| (x - mean).powi(2))
+                            .sum::<f64>() / (window as f64);
+                        result[[j, i]] = variance.sqrt();
+                    },
+                    _ => {
+                        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                            format!("Unsupported feature type: {}", feature_type)
+                        ));
+                    }
+                }
             }
         }
     }
@@ -303,6 +442,9 @@ fn rust_extensions(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(calculate_macd_rs, m)?)?;
     m.add_function(wrap_pyfunction!(calculate_rsi_rs, m)?)?;
     m.add_function(wrap_pyfunction!(create_lag_features_rs, m)?)?;
+    m.add_function(wrap_pyfunction!(create_diff_features_rs, m)?)?;
+    m.add_function(wrap_pyfunction!(create_pct_change_features_rs, m)?)?;
+    m.add_function(wrap_pyfunction!(create_rolling_window_features_rs, m)?)?;
     
     // Add backtesting function
     m.add_function(wrap_pyfunction!(backtesting::run_backtest_rs, m)?)?;

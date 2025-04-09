@@ -1,9 +1,10 @@
 [package]
-name = "rust_extensions"
+name = "ai_trading_agent_rs"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
+name = "ai_trading_agent_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
