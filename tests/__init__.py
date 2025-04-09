@@ -1,3 +1,1 @@
-"""
-Test package for the AI Trading Agent.
-"""
+import src.common.nltk_patch
