@@ -9,20 +9,26 @@ system:
   timezone: "UTC"
 
 # Data sources configuration
-data_source:
-  # Use mock data for development and testing
-  use_mock: true
+data_sources:
+  active_provider: ccxt # Options: mock, ccxt, yfinance (when added)
 
-  # Historical data settings
-  historical:
-    provider: "mock"  # Options: mock, ccxt, yfinance
-    timeframes: ["1h", "4h", "1d"]
-    default_symbols: ["BTC/USD", "ETH/USD"]
+  # Mock Provider Settings
+  mock:
+    generation_seed: 42 # Example specific setting for mock
 
-  # Real-time data settings (when use_mock is false)
-  realtime:
-    provider: "mock"  # Options: mock, ccxt_websocket
-    update_interval_seconds: 60
+  # CCXT Provider Settings
+  ccxt:
+    exchange_id: binance # Default exchange (e.g., binance, kraken, kucoin, bybit)
+    api_key: null       # Optional: Set via .env or leave null for public endpoints
+    secret_key: null    # Optional: Set via .env or leave null for public endpoints
+    password: null      # Optional: For exchanges like KuCoin, set via .env
+    fetch_limit: 1000   # Max candles per historical data request
+    options:            # Custom CCXT exchange options (optional)
+      # defaultType: 'future' # Example: uncomment to default to futures markets
+      # adjustForTimeDifference: True
+
+  # YFinance Provider Settings (Example for later)
+  # yfinance:
 
 # Dashboard settings
 dashboard:

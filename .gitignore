@@ -1,52 +1,63 @@
-# Environment variables
-.env
-.env.*
-\!.env.example
-
-# Python
+# Python cache
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
-.Python
-env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-*.egg-info/
-.installed.cfg
-*.egg
 
-# Virtual environments
+# Virtual environment
+.venv/
 venv/
-virtualenv/
 ENV/
 
-# IDE files
+# IDE / Editor specific
 .idea/
 .vscode/
-*.swp
-*.swo
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# OS files
+# OS specific
 .DS_Store
 Thumbs.db
 
-# Jupyter Notebook
-.ipynb_checkpoints
+# Pytest
+.pytest_cache/
+htmlcov/
+.coverage
 
-# Output files
-output/
-reports/
+# Logs & Outputs
 *.log
+*.out
+*.err
+debug_output.txt
+test_output.txt
+test_debug.txt
 
-# Cached data
-.cache/
+# Rust / Cargo
+/target/
+Cargo.lock
+rust_extensions/target/
+rust_extensions/Cargo.lock
+
+# Environment variables
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Generated images and plots
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+
+# Temporary test files
+debug_order.py
+import_test.py
+simple_import_test.py
+
+# MCP server
+mcp-server-browserbase/
