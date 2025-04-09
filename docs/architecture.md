@@ -221,3 +221,96 @@ The system is designed for ongoing enhancement. This includes:
 *   Analyzing logs and backtest results to identify areas for improvement.
 *   Facilitating human-in-the-loop analysis and adjustments via the dashboard interface.
 
+---
+
+## Genetic Algorithm Optimizer
+
+The GA optimizer automates tuning of strategy parameters to maximize performance.
+
+### Overview
+
+- Uses evolutionary algorithms to search parameter space
+- Evaluates each candidate via backtesting
+- Selects, crosses over, and mutates candidates over generations
+- Returns the best parameter set found
+
+### Defining Parameter Spaces
+
+Provide a dictionary mapping parameter names to lists of possible values:
+
+```python
+param_space = {
+    "fast_period": list(range(5, 30)),
+    "slow_period": list(range(20, 100)),
+    "threshold": [0.0, 0.01, 0.02, 0.05]
+}
+```
+
+### Writing Fitness Functions
+
+Create a function that:
+
+- Accepts a parameter dictionary
+- Runs a backtest with those parameters
+- Returns a performance metric (e.g., Sharpe ratio)
+
+Example:
+
+```python
+def run_backtest_with_params(params):
+    # Initialize strategy with params
+    # Run backtest
+    # Return Sharpe ratio
+    return sharpe_ratio
+```
+
+### Running Optimization
+
+Use the `GAOptimizer` class:
+
+```python
+optimizer = GAOptimizer(
+    param_space=param_space,
+    fitness_func=run_backtest_with_params,
+    population_size=20,
+    generations=50,
+    crossover_rate=0.7,
+    mutation_rate=0.1
+)
+best_params = optimizer.evolve()
+```
+
+### Analyzing Results
+
+- Run multiple experiments for robustness
+- Save results to JSON or CSV
+- Analyze parameter distributions and performance metrics
+- Select best parameters for deployment or further testing
+
+---
+---
+
+## Exception Hierarchy
+
+- `TradingEngineError`
+  - `OrderValidationError`
+  - `ExecutionError`
+  - `PortfolioUpdateError`
+  - `DataProviderError`
+
+Use these exceptions for clear, structured error handling.
+
+---
+
+## Contribution Guidelines
+
+- Follow **PEP8** and use **type annotations**
+- Write **docstrings** for all public classes and methods
+- Use **structured logging** with context
+- Raise **custom exceptions** instead of generic ones
+- Add **unit and integration tests** for new features
+- Update **docs/PLAN.md** and this architecture doc with changes
+- Use **feature branches** and submit **pull requests** for review
+- Run tests and linters before submitting code
+
+---
