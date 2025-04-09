@@ -359,4 +359,59 @@ def calculate_omega_ratio(returns: pd.Series, threshold: float = 0) -> float:
     # Calculate Omega ratio
     omega = expected_gain / expected_loss if expected_loss != 0 else float('inf')
     
+def calculate_asset_metrics(portfolio_history: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
+    """
+    Calculate asset-level returns and drawdowns.
+
+    Args:
+        portfolio_history: List of portfolio snapshots with 'positions' key.
+
+    Returns:
+        Dict mapping symbol to metrics dict.
+    """
+    import pandas as pd
+
+    # Build time series per asset
+    asset_values = {}
+    for snapshot in portfolio_history:
+        ts = snapshot['timestamp']
+        for symbol, pos in snapshot.get('positions', {}).items():
+            if symbol not in asset_values:
+                asset_values[symbol] = []
+            value = pos.get('quantity', 0) * pos.get('entry_price', 0)
+            asset_values[symbol].append((ts, value))
+
+    metrics = {}
+    for symbol, series in asset_values.items():
+        df = pd.DataFrame(series, columns=["timestamp", "value"]).set_index("timestamp")
+        returns = df["value"].pct_change().fillna(0)
+        total_return = (df["value"].iloc[-1] / df["value"].iloc[0]) - 1 if df["value"].iloc[0] != 0 else 0
+        max_drawdown = (df["value"] / df["value"].cummax() - 1).min()
+        metrics[symbol] = {
+            "total_return": total_return,
+            "max_drawdown": max_drawdown,
+            "volatility": returns.std() * (252 ** 0.5)
+        }
+    return metrics
+
+def calculate_portfolio_diversification(correlation_matrix: Dict[str, Dict[str, float]]) -> float:
+    """
+    Calculate a simple diversification score based on average pairwise correlations.
+
+    Args:
+        correlation_matrix: Nested dict of correlations.
+
+    Returns:
+        Diversification score (lower average correlation = higher diversification).
+    """
+    corrs = []
+    symbols = list(correlation_matrix.keys())
+    for i, sym1 in enumerate(symbols):
+        for sym2 in symbols[i+1:]:
+            corrs.append(abs(correlation_matrix[sym1].get(sym2, 0)))
+    if not corrs:
+        return 1.0  # No diversification info
+    avg_corr = sum(corrs) / len(corrs)
+    diversification_score = 1 - avg_corr
+    return diversification_score
     return omega
