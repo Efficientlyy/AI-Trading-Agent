@@ -1,208 +1,240 @@
 import React, { useMemo } from 'react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Portfolio } from '../../types';
 
-interface AssetAllocationChartProps {
-  portfolio: Portfolio | null;
-  isLoading: boolean;
+// Check if @nivo/pie is installed
+// If not, we'll use a simpler chart implementation
+let ResponsivePie: any;
+try {
+  ResponsivePie = require('@nivo/pie').ResponsivePie;
+} catch (e) {
+  // Fallback if @nivo/pie is not installed
+  console.warn('Missing @nivo/pie dependency. Using fallback chart.');
 }
 
-const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ portfolio, isLoading }) => {
+export interface AssetAllocationChartProps {
+  portfolio: Portfolio | null;
+  isLoading: boolean;
+  onAssetSelect?: (symbol: string) => void;
+  selectedAsset?: string;
+}
+
+const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ portfolio, isLoading, onAssetSelect, selectedAsset }) => {
   // Generate chart data from portfolio positions
   const { chartData, totalValue, cashPercentage } = useMemo(() => {
     if (!portfolio) {
       return { chartData: [], totalValue: 0, cashPercentage: 0 };
     }
-
-    const positions = Object.values(portfolio.positions || {});
-    const positionValues = positions.map(position => ({
-      name: position.symbol,
-      value: position.market_value,
-      quantity: position.quantity,
-      price: position.current_price,
-      pnl: position.unrealized_pnl,
-      pnlPercentage: (position.unrealized_pnl / position.market_value) * 100
-    }));
-
-    // Sort by market value (descending)
-    positionValues.sort((a, b) => b.value - a.value);
-
-    // Add cash as a position
-    const cashValue = portfolio.cash;
-    const totalPortfolioValue = portfolio.total_value;
-    const cashPercentage = (cashValue / totalPortfolioValue) * 100;
-
-    // Only add cash if there's any
-    const chartData = [...positionValues];
+    
+    const positions = portfolio.positions || {};
+    let calculatedTotalValue = portfolio.total_value || 0;
+    const cashValue = portfolio.cash || 0;
+    const cashPct = (cashValue / calculatedTotalValue) * 100;
+    
+    const data = Object.entries(positions).map(([symbol, position]) => {
+      const value = position.current_price * position.quantity;
+      const percentage = (value / calculatedTotalValue) * 100;
+      
+      return {
+        id: symbol,
+        label: symbol,
+        value: parseFloat(percentage.toFixed(2)),
+        rawValue: value,
+        color: getColorForAsset(symbol),
+      };
+    });
+    
+    // Add cash position if it exists
     if (cashValue > 0) {
-      chartData.push({
-        name: 'Cash',
-        value: cashValue,
-        quantity: cashValue,
-        price: 1,
-        pnl: 0,
-        pnlPercentage: 0
+      data.push({
+        id: 'CASH',
+        label: 'Cash',
+        value: parseFloat(cashPct.toFixed(2)),
+        rawValue: cashValue,
+        color: '#A3A3A3', // Gray color for cash
       });
     }
-
+    
     return { 
-      chartData, 
-      totalValue: totalPortfolioValue,
-      cashPercentage
+      chartData: data, 
+      totalValue: calculatedTotalValue,
+      cashPercentage: cashPct
     };
   }, [portfolio]);
 
-  // Pie chart colors
-  const COLORS = [
-    '#3b82f6', // blue
-    '#10b981', // green
-    '#8b5cf6', // purple
-    '#f59e0b', // amber
-    '#ef4444', // red
-    '#ec4899', // pink
-    '#6366f1', // indigo
-    '#14b8a6', // teal
-    '#f97316', // orange
-    '#84cc16', // lime
-    '#06b6d4', // cyan
-    '#a855f7', // violet
-  ];
-
-  // Cash color is always gray
-  const getCellColor = (entry: any, index: number) => {
-    return entry.name === 'Cash' ? '#9ca3af' : COLORS[index % COLORS.length];
-  };
-
-  // Custom tooltip for the pie chart
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white dark:bg-gray-800 p-3 border border-gray-200 dark:border-gray-700 shadow-md rounded">
-          <p className="font-medium">{data.name}</p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Value: ${data.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-          </p>
-          <p className="text-sm text-gray-600 dark:text-gray-400">
-            Allocation: {((data.value / totalValue) * 100).toFixed(2)}%
-          </p>
-          {data.name !== 'Cash' && (
-            <>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Quantity: {data.quantity.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 8 })}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Price: ${data.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
-              </p>
-              <p className={`text-sm ${data.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                P&L: ${data.pnl.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 
-                ({data.pnlPercentage >= 0 ? '+' : ''}{data.pnlPercentage.toFixed(2)}%)
-              </p>
-            </>
-          )}
-        </div>
-      );
+  // Handle clicking on a chart slice
+  const handlePieClick = (data: any) => {
+    if (onAssetSelect && data.id !== 'CASH') {
+      onAssetSelect(data.id);
     }
-    return null;
   };
-
-  // Custom legend that includes percentage allocation
-  const renderCustomizedLegend = (props: any) => {
-    const { payload } = props;
-    
-    return (
-      <ul className="text-xs space-y-1 mt-2">
-        {payload.map((entry: any, index: number) => {
-          const percentage = ((entry.payload.value / totalValue) * 100).toFixed(1);
-          return (
-            <li key={`item-${index}`} className="flex items-center justify-between">
-              <div className="flex items-center">
-                <div
-                  className="w-3 h-3 mr-1"
-                  style={{ backgroundColor: entry.color }}
-                />
-                <span className="truncate max-w-[100px]">{entry.value}</span>
-              </div>
-              <span>{percentage}%</span>
-            </li>
-          );
-        })}
-      </ul>
-    );
-  };
-
+  
   if (isLoading) {
     return (
-      <div className="dashboard-widget col-span-1">
-        <h2 className="text-lg font-semibold mb-3">Asset Allocation</h2>
-        <div className="animate-pulse h-64 bg-gray-200 dark:bg-gray-700 rounded"></div>
+      <div>
+        <h2>Asset Allocation</h2>
+        <div className="h-[300px] flex items-center justify-center">
+          <div className="h-full w-full bg-gray-200 animate-pulse" />
+        </div>
       </div>
     );
   }
-
-  if (!portfolio || !chartData || chartData.length === 0) {
+  
+  if (!portfolio || chartData.length === 0) {
     return (
-      <div className="dashboard-widget col-span-1">
-        <h2 className="text-lg font-semibold mb-3">Asset Allocation</h2>
-        <div className="text-gray-500 dark:text-gray-400 text-center py-24">
-          No assets in portfolio
+      <div>
+        <h2>Asset Allocation</h2>
+        <div className="h-[300px] flex items-center justify-center">
+          <p className="text-muted-foreground">No portfolio data available</p>
         </div>
       </div>
     );
   }
-
-  return (
-    <div className="dashboard-widget col-span-1">
-      <h2 className="text-lg font-semibold mb-3">Asset Allocation</h2>
-      
-      <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={chartData}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              outerRadius={80}
-              innerRadius={40}
-              paddingAngle={2}
-              dataKey="value"
-            >
-              {chartData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={getCellColor(entry, index)} />
-              ))}
-            </Pie>
-            <Tooltip content={<CustomTooltip />} />
-            <Legend content={renderCustomizedLegend} />
-          </PieChart>
-        </ResponsiveContainer>
-      </div>
-      
-      {/* Summary statistics */}
-      <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded">
-          <div className="text-gray-500 dark:text-gray-400">Total Value</div>
-          <div className="font-medium">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded">
-          <div className="text-gray-500 dark:text-gray-400">Cash Allocation</div>
-          <div className="font-medium">{cashPercentage.toFixed(1)}%</div>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded">
-          <div className="text-gray-500 dark:text-gray-400">Assets</div>
-          <div className="font-medium">{chartData.length - (cashPercentage > 0 ? 1 : 0)}</div>
-        </div>
-        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded">
-          <div className="text-gray-500 dark:text-gray-400">Diversification</div>
-          <div className="font-medium">
-            {chartData.length <= 1 ? 'None' : 
-             chartData.length <= 3 ? 'Low' : 
-             chartData.length <= 6 ? 'Medium' : 'High'}
+  
+  // If @nivo/pie is not available, use a simple fallback
+  if (!ResponsivePie) {
+    return (
+      <div>
+        <h2>Asset Allocation</h2>
+        <div className="h-[300px] flex flex-col items-center justify-center">
+          <p className="text-muted-foreground mb-4">Asset Allocation Chart</p>
+          <div className="grid grid-cols-2 gap-2 w-full">
+            {chartData.map((asset) => (
+              <div 
+                key={asset.id}
+                className="flex items-center p-2 rounded border cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800"
+                onClick={() => asset.id !== 'CASH' && onAssetSelect && onAssetSelect(asset.id)}
+              >
+                <div 
+                  className="w-4 h-4 mr-2 rounded-full" 
+                  style={{ backgroundColor: asset.color }}
+                />
+                <div className="flex-1">
+                  <div className="font-medium">{asset.label}</div>
+                  <div className="text-xs text-muted-foreground">{asset.value}%</div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
+        <div className="mt-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            Total Portfolio Value: ${totalValue.toLocaleString(undefined, {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Cash: {cashPercentage.toFixed(2)}%
+          </p>
+          {onAssetSelect && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Click on an asset to select it for analysis
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div>
+      <h2>Asset Allocation</h2>
+      <div className="h-[300px]">
+        <ResponsivePie
+          data={chartData}
+          margin={{ top: 20, right: 20, bottom: 20, left: 20 }}
+          innerRadius={0.5}
+          padAngle={0.7}
+          cornerRadius={3}
+          activeOuterRadiusOffset={8}
+          colors={{ datum: 'data.color' }}
+          borderWidth={1}
+          borderColor={{ from: 'color', modifiers: [['darker', 0.2]] }}
+          arcLinkLabelsSkipAngle={10}
+          arcLinkLabelsTextColor="#888888"
+          arcLinkLabelsThickness={2}
+          arcLinkLabelsColor={{ from: 'color' }}
+          arcLabelsSkipAngle={10}
+          arcLabelsTextColor={{ from: 'color', modifiers: [['darker', 2]] }}
+          onClick={handlePieClick}
+          tooltip={({ datum }: { datum: any }) => (
+            <div
+              style={{
+                background: 'white',
+                padding: '9px 12px',
+                border: '1px solid #ccc',
+                borderRadius: '4px',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center' }}>
+                <span
+                  style={{
+                    display: 'block',
+                    width: '12px',
+                    height: '12px',
+                    background: datum.color,
+                    marginRight: '8px',
+                  }}
+                />
+                <strong>{datum.id}</strong>
+              </div>
+              <div style={{ marginTop: '4px' }}>
+                <div>{`${datum.value}% of portfolio`}</div>
+                <div>{`$${(datum.data as any).rawValue.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}`}</div>
+              </div>
+            </div>
+          )}
+        />
+      </div>
+      <div className="mt-4 text-center">
+        <p className="text-sm text-muted-foreground">
+          Total Portfolio Value: ${totalValue.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })}
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Cash: {cashPercentage.toFixed(2)}%
+        </p>
+        {onAssetSelect && (
+          <p className="text-xs text-muted-foreground mt-2">
+            Click on an asset to select it for analysis
+          </p>
+        )}
       </div>
     </div>
   );
+};
+
+// Helper function to get a consistent color for each asset
+const getColorForAsset = (symbol: string): string => {
+  const colors = [
+    '#2196F3', // Blue
+    '#4CAF50', // Green
+    '#FFC107', // Amber
+    '#9C27B0', // Purple
+    '#F44336', // Red
+    '#00BCD4', // Cyan
+    '#FF9800', // Orange
+    '#795548', // Brown
+    '#607D8B', // Blue Grey
+    '#E91E63', // Pink
+    '#3F51B5', // Indigo
+    '#CDDC39', // Lime
+  ];
+  
+  // Simple hash function to get a consistent index for each symbol
+  let hash = 0;
+  for (let i = 0; i < symbol.length; i++) {
+    hash = symbol.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  const index = Math.abs(hash) % colors.length;
+  return colors[index];
 };
 
 export default AssetAllocationChart;

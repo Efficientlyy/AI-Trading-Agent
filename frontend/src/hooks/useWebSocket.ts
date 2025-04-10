@@ -1,29 +1,53 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { WebSocketMessage, WebSocketUpdate } from '../types';
+import { WebSocketMessage, WebSocketUpdate, TopicType } from '../types';
 
 const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000/ws/updates';
-
-type TopicType = 'portfolio' | 'sentiment' | 'performance';
 
 interface WebSocketHookResult {
   data: WebSocketUpdate;
   status: 'connecting' | 'connected' | 'disconnected';
+  error: string | null;
   subscribe: (topic: TopicType) => void;
   unsubscribe: (topic: TopicType) => void;
 }
 
 // Mock data for development mode
-const MOCK_DATA: Record<TopicType, any> = {
+const MOCK_DATA: Record<string, any> = {
   portfolio: {
     total_value: 45678.92,
     cash: 12345.67,
     positions: {
-      'BTC': { quantity: 0.5, value: 22500.00 },
-      'ETH': { quantity: 3.2, value: 9600.00 },
-      'SOL': { quantity: 25, value: 1250.00 }
-    }
+      'BTC': { 
+        symbol: 'BTC',
+        quantity: 0.5, 
+        entry_price: 42000,
+        current_price: 45000,
+        market_value: 22500.00,
+        unrealized_pnl: 1500,
+        realized_pnl: 0
+      },
+      'ETH': { 
+        symbol: 'ETH',
+        quantity: 3.2, 
+        entry_price: 2800,
+        current_price: 3000,
+        market_value: 9600.00,
+        unrealized_pnl: 640,
+        realized_pnl: 0
+      },
+      'SOL': { 
+        symbol: 'SOL',
+        quantity: 25, 
+        entry_price: 45,
+        current_price: 50,
+        market_value: 1250.00,
+        unrealized_pnl: 125,
+        realized_pnl: 0
+      }
+    },
+    daily_pnl: 1250.75
   },
-  sentiment: {
+  sentiment_signal: {
     'BTC/USD': { signal: 'buy', strength: 0.8 },
     'ETH/USD': { signal: 'hold', strength: 0.5 },
     'SOL/USD': { signal: 'sell', strength: -0.7 }
@@ -31,13 +55,17 @@ const MOCK_DATA: Record<TopicType, any> = {
   performance: {
     total_return: 12.5,
     sharpe_ratio: 1.8,
-    max_drawdown: -5.2
+    max_drawdown: -5.2,
+    win_rate: 0.65,
+    profit_factor: 1.75,
+    avg_trade: 125.5
   }
 };
 
 export const useWebSocket = (initialTopics: TopicType[] = []): WebSocketHookResult => {
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [data, setData] = useState<WebSocketUpdate>({});
+  const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const topicsRef = useRef<Set<TopicType>>(new Set(initialTopics));
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -60,7 +88,7 @@ export const useWebSocket = (initialTopics: TopicType[] = []): WebSocketHookResu
       // Update the correct property based on the topic
       if (topic === 'portfolio') {
         newData.portfolio = topicData;
-      } else if (topic === 'sentiment') {
+      } else if (topic === 'sentiment_signal') {
         newData.sentiment_signal = topicData;
       } else if (topic === 'performance') {
         newData.performance = topicData;
@@ -73,6 +101,7 @@ export const useWebSocket = (initialTopics: TopicType[] = []): WebSocketHookResu
   // Subscribe to a topic
   const subscribe = useCallback((topic: TopicType) => {
     topicsRef.current.add(topic);
+    setError(null); // Clear any previous errors
     
     // In development mode, immediately update with mock data
     if (process.env.NODE_ENV === 'development') {
@@ -141,6 +170,7 @@ export const useWebSocket = (initialTopics: TopicType[] = []): WebSocketHookResu
       const ws = new WebSocket(WS_URL);
       wsRef.current = ws;
       setStatus('connecting');
+      setError(null); // Clear any previous errors
 
       // Store a copy of the topics ref for the cleanup function
       const currentTopics = Array.from(topicsRef.current);
@@ -162,12 +192,13 @@ export const useWebSocket = (initialTopics: TopicType[] = []): WebSocketHookResu
           // Assume the message contains topic data in a format like { topic: data }
           Object.entries(message).forEach(([topicKey, topicData]) => {
             const topic = topicKey as TopicType;
-            if (topic === 'portfolio' || topic === 'sentiment' || topic === 'performance') {
+            if (topic === 'portfolio' || topic === 'sentiment_signal' || topic === 'performance') {
               updateDataForTopic(topic, topicData);
             }
           });
         } catch (error) {
           console.error('Failed to parse WebSocket message:', error);
+          setError('Failed to parse WebSocket message');
         }
       };
 
@@ -184,6 +215,7 @@ export const useWebSocket = (initialTopics: TopicType[] = []): WebSocketHookResu
           }, 3000);
         } else {
           console.log(`Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Using mock data instead.`);
+          setError('Failed to connect to WebSocket server. Using mock data instead.');
           // Fall back to mock data after max reconnect attempts
           currentTopics.forEach((topic: TopicType) => {
             if (MOCK_DATA[topic]) {
@@ -196,6 +228,7 @@ export const useWebSocket = (initialTopics: TopicType[] = []): WebSocketHookResu
 
       ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        setError('WebSocket connection error');
         ws.close();
       };
 
@@ -238,5 +271,5 @@ export const useWebSocket = (initialTopics: TopicType[] = []): WebSocketHookResu
     }
   }, [status, subscribe, initialTopics]);
 
-  return { data, status, subscribe, unsubscribe };
+  return { data, status, error, subscribe, unsubscribe };
 };

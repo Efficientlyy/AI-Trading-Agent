@@ -2,28 +2,26 @@ import React, { useMemo } from 'react';
 import { SentimentSignal } from '../../types';
 import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from '@heroicons/react/24/solid';
 
-interface SentimentSummaryProps {
+export interface SentimentSummaryProps {
   sentimentData: Record<string, SentimentSignal> | null;
   isLoading: boolean;
+  onSymbolSelect?: (symbol: string) => void;
+  selectedSymbol?: string;
 }
 
-const SentimentSummary: React.FC<SentimentSummaryProps> = ({ sentimentData, isLoading }) => {
+const SentimentSummary: React.FC<SentimentSummaryProps> = ({ sentimentData, isLoading, onSymbolSelect, selectedSymbol }) => {
   const sentimentAnalysis = useMemo(() => {
     if (!sentimentData) return { buyCount: 0, sellCount: 0, holdCount: 0, signals: [] };
 
     const signals = Object.entries(sentimentData).map(([symbol, data]) => ({
       symbol,
       signal: data.signal,
-      strength: data.strength
+      strength: data.strength,
     }));
 
-    // Sort by strength (descending) and then by symbol
-    signals.sort((a, b) => {
-      if (b.strength !== a.strength) return b.strength - a.strength;
-      return a.symbol.localeCompare(b.symbol);
-    });
+    // Sort by absolute strength (strongest signals first)
+    signals.sort((a, b) => Math.abs(b.strength) - Math.abs(a.strength));
 
-    // Count signals by type
     const buyCount = signals.filter(s => s.signal === 'buy').length;
     const sellCount = signals.filter(s => s.signal === 'sell').length;
     const holdCount = signals.filter(s => s.signal === 'hold').length;
@@ -111,14 +109,22 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ sentimentData, isLo
     }
   };
 
+  // Handle symbol click
+  const handleSymbolClick = (symbol: string) => {
+    if (onSymbolSelect) {
+      onSymbolSelect(symbol);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="dashboard-widget col-span-1">
         <h2 className="text-lg font-semibold mb-3">Market Sentiment</h2>
         <div className="animate-pulse space-y-2">
-          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          <div className="h-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          <div className="h-36 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
+          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
         </div>
       </div>
     );
@@ -130,91 +136,71 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ sentimentData, isLo
     <div className="dashboard-widget col-span-1">
       <h2 className="text-lg font-semibold mb-3">Market Sentiment</h2>
       
-      {!sentimentData || Object.keys(sentimentData).length === 0 ? (
-        <div className="text-gray-500 dark:text-gray-400 text-center py-24">
+      {/* Sentiment Summary */}
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-center">
+          <div className="text-green-600 dark:text-green-400 text-lg font-bold">{sentimentAnalysis.buyCount}</div>
+          <div className="text-xs text-green-800 dark:text-green-300">Bullish</div>
+        </div>
+        <div className="bg-gray-50 dark:bg-gray-800 p-2 rounded text-center">
+          <div className="text-gray-600 dark:text-gray-400 text-lg font-bold">{sentimentAnalysis.holdCount}</div>
+          <div className="text-xs text-gray-800 dark:text-gray-300">Neutral</div>
+        </div>
+        <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded text-center">
+          <div className="text-red-600 dark:text-red-400 text-lg font-bold">{sentimentAnalysis.sellCount}</div>
+          <div className="text-xs text-red-800 dark:text-red-300">Bearish</div>
+        </div>
+      </div>
+      
+      {/* Overall Sentiment */}
+      <div className={`${sentimentDisplay.bgColor} ${sentimentDisplay.textColor} p-3 rounded-md mb-4 text-center`}>
+        <h3 className="font-medium">Overall Market Sentiment</h3>
+        <p className="text-xl font-bold">{sentimentDisplay.label}</p>
+      </div>
+      
+      {/* Top Signals */}
+      <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Top Signals</h3>
+      {sentimentAnalysis.signals.length === 0 ? (
+        <div className="text-gray-500 dark:text-gray-400 text-center py-4">
           No sentiment data available
         </div>
       ) : (
-        <>
-          {/* Overall Sentiment */}
-          <div className={`${sentimentDisplay.bgColor} ${sentimentDisplay.textColor} p-3 rounded-md mb-4 text-center`}>
-            <h3 className="font-medium">Overall Market Sentiment</h3>
-            <p className="text-xl font-bold">{sentimentDisplay.label}</p>
-          </div>
-          
-          {/* Signal Distribution */}
-          <div className="mb-4">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Signal Distribution</h3>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-green-100 dark:bg-green-900 p-2 rounded">
-                <div className="text-green-600 dark:text-green-400 font-medium">Buy</div>
-                <div className="text-lg font-bold">{sentimentAnalysis.buyCount}</div>
+        <div className="space-y-2">
+          {sentimentAnalysis.signals.slice(0, 5).map((signal) => {
+            const display = getSignalDisplay(signal.signal, signal.strength);
+            return (
+              <div 
+                key={signal.symbol}
+                className={`p-2 rounded border ${
+                  selectedSymbol === signal.symbol 
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                    : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
+                } cursor-pointer transition-colors`}
+                onClick={() => handleSymbolClick(signal.symbol)}
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">{signal.symbol}</span>
+                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs ${display.bgColor} ${display.textColor}`}>
+                    {display.icon}
+                    <span className="ml-1">{display.label}</span>
+                  </span>
+                </div>
+                <div className="flex justify-between items-center mt-1 text-sm">
+                  <span className="text-gray-600 dark:text-gray-400">
+                    Strength: {signal.strength.toFixed(2)}
+                  </span>
+                </div>
               </div>
-              <div className="bg-gray-100 dark:bg-gray-800 p-2 rounded">
-                <div className="text-gray-600 dark:text-gray-400 font-medium">Hold</div>
-                <div className="text-lg font-bold">{sentimentAnalysis.holdCount}</div>
-              </div>
-              <div className="bg-red-100 dark:bg-red-900 p-2 rounded">
-                <div className="text-red-600 dark:text-red-400 font-medium">Sell</div>
-                <div className="text-lg font-bold">{sentimentAnalysis.sellCount}</div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Signal List */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Top Signals</h3>
-            <div className="max-h-64 overflow-y-auto pr-1">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-800">
-                  <tr>
-                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Symbol
-                    </th>
-                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Signal
-                    </th>
-                    <th scope="col" className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Strength
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                  {sentimentAnalysis.signals.map((item) => {
-                    const display = getSignalDisplay(item.signal, item.strength);
-                    return (
-                      <tr key={item.symbol}>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm font-medium">
-                          {item.symbol}
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs ${display.bgColor} ${display.textColor}`}>
-                            {display.icon}
-                            <span className="ml-1">{display.label}</span>
-                          </span>
-                        </td>
-                        <td className="px-3 py-2 whitespace-nowrap text-sm">
-                          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                            <div 
-                              className={`h-2 rounded-full ${
-                                item.signal === 'buy' 
-                                  ? 'bg-green-500' 
-                                  : item.signal === 'sell' 
-                                    ? 'bg-red-500' 
-                                    : 'bg-gray-500'
-                              }`}
-                              style={{ width: `${item.strength * 100}%` }}
-                            ></div>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </>
+            );
+          })}
+        </div>
+      )}
+      
+      {/* Info text */}
+      {onSymbolSelect && (
+        <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 text-center">
+          Click on a symbol to analyze it
+        </div>
       )}
     </div>
   );

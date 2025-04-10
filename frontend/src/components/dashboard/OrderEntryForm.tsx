@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Portfolio } from '../../types';
 
-interface OrderEntryFormProps {
+export interface OrderEntryFormProps {
   portfolio: Portfolio | null;
   availableSymbols: string[];
+  selectedSymbol?: string;
+  onSymbolChange?: (symbol: string) => void;
   onSubmitOrder: (order: {
     symbol: string;
     side: 'buy' | 'sell';
@@ -18,10 +20,12 @@ interface OrderEntryFormProps {
 const OrderEntryForm: React.FC<OrderEntryFormProps> = ({
   portfolio,
   availableSymbols,
+  selectedSymbol,
+  onSymbolChange,
   onSubmitOrder
 }) => {
   // Form state
-  const [symbol, setSymbol] = useState<string>('');
+  const [symbol, setSymbol] = useState<string>(selectedSymbol || (availableSymbols.length > 0 ? availableSymbols[0] : ''));
   const [side, setSide] = useState<'buy' | 'sell'>('buy');
   const [orderType, setOrderType] = useState<'market' | 'limit' | 'stop' | 'stop_limit'>('market');
   const [quantity, setQuantity] = useState<string>('');
@@ -173,7 +177,12 @@ const OrderEntryForm: React.FC<OrderEntryFormProps> = ({
             <select
               id="symbol"
               value={symbol}
-              onChange={(e) => setSymbol(e.target.value)}
+              onChange={(e) => {
+                setSymbol(e.target.value);
+                if (onSymbolChange) {
+                  onSymbolChange(e.target.value);
+                }
+              }}
               className={`block w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-800 shadow-sm focus:border-primary focus:ring-primary sm:text-sm ${errors.symbol ? 'border-red-500' : ''}`}
             >
               <option value="">Select a symbol</option>
