@@ -201,30 +201,44 @@ This modular, test-driven approach ensures incremental, reliable progress on the
 
 **Tasks:**
 
-1. **Design Integration Test Plan**
-   - Define test scenarios using mock sentiment and market data.
-   - Specify expected signals, orders, and portfolio changes.
-
-2. **Prepare Test Fixtures**
-   - Create mock sentiment datasets with known patterns.
-   - Generate or select static market price data.
-   - Initialize portfolio states and configurations.
-
-3. **Implement Integration Tests**
-   - Test feature generation correctness.
-   - Verify signal generation logic.
-   - Confirm order creation and risk management.
-   - Simulate order fills and portfolio updates.
-   - Run full pipeline simulations over time windows.
-
-4. **Run and Debug**
-   - Execute tests, analyze failures.
-   - Fix issues in sentiment service or trading engine as needed.
-   - Iterate until all tests pass.
-
-5. **Document Results**
-   - Summarize test coverage and outcomes.
-   - Update usage and developer docs accordingly.
+1.  **Create Integration Test File (`tests/integration/test_sentiment_pipeline_integration.py`):**
+    *   Set up standard imports (`pytest`, backtester components, mock providers, models, `pandas`, `numpy`, `datetime`).
+    *   Define reusable `pytest` fixtures for default dates, symbols, mock data providers, and a basic `MultiAssetBacktester` instance.
+2.  **Test Scenario 1: Basic Positive Sentiment -> Long Position:**
+    *   **Goal:** Verify positive sentiment triggers a buy order.
+    *   **Setup:** Mock market data (stable price), mock sentiment (consistently above buy threshold), initial cash.
+    *   **Verification:** Assert BUY order generated, final portfolio has positive quantity.
+3.  **Test Scenario 2: Basic Negative Sentiment -> Close Position:**
+    *   **Goal:** Verify negative sentiment triggers a sell order to flatten an existing position.
+    *   **Setup:** Mock market data, mock sentiment (consistently below sell threshold), initial *long* position.
+    *   **Verification:** Assert SELL order generated, final portfolio quantity is zero.
+4.  **Test Scenario 3: Sentiment Reversal Handling (Positive -> Negative):**
+    *   **Goal:** Ensure correct position flip.
+    *   **Setup:** Mock market data, mock sentiment reversing from positive to negative, initial cash.
+    *   **Verification:** Assert BUY order then SELL order, final position flat/short.
+5.  **Test Scenario 4: Neutral Sentiment Ignored:**
+    *   **Goal:** Verify sentiment between thresholds doesn't trigger trades.
+    *   **Setup:** Mock market data, mock sentiment (between thresholds), initial cash.
+    *   **Verification:** Assert no trades during neutral period, portfolio unchanged.
+6.  **Test Scenario 5: Missing Sentiment Data Handling:**
+    *   **Goal:** Check graceful handling of data gaps.
+    *   **Setup:** Mock market data, mock sentiment with deliberate gaps.
+    *   **Verification:** Assert no exceptions, portfolio state stable during gap.
+7.  **Test Scenario 6: Multi-Asset Integration:**
+    *   **Goal:** Test different sentiment signals across multiple assets.
+    *   **Setup:** Mock market data (2-3 assets), mock sentiment (e.g., Asset A positive, B negative, C neutral), initial cash.
+    *   **Verification:** Use `MultiAssetBacktester` with `equal_weight_allocation`, assert final positions match sentiment signals (long A, flat/short B, flat C).
+8.  **(Optional) Test Scenario 7: Sentiment-Weighted Allocation:**
+    *   **Goal:** Verify sentiment-based allocation weights shift correctly.
+    *   **Setup:** Similar to Scenario 6, designed to cause allocation changes.
+    *   **Verification:** Use `MultiAssetBacktester` with `sentiment_weighted_allocation`, analyze `allocation_history`, assert weights correlate with sentiment scores.
+9.  **Run and Debug:**
+    *   Execute test suite (`pytest tests/integration/test_sentiment_pipeline_integration.py`).
+    *   Debug failures using backtester outputs, logs, or debugger. Fix underlying issues.
+10. **Documentation & Cleanup:**
+    *   Add docstrings to test file/functions.
+    *   Update [PLAN.md](cci:7://file:///c:/Users/vp199/Documents/Projects/GitHub/AI-Trading-Agent/docs/PLAN.md:0:0-0:0) to mark Phase 3.1 as complete upon success.
+    *   Update relevant documentation based on findings.
 
 **Expected Outcomes:**
 

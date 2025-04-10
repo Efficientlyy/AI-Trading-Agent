@@ -341,7 +341,7 @@ fn update_position_market_price(position: &mut Position, market_price: f64) {
 
 /// Run a backtest with the given data and configuration
 #[pyfunction]
-fn run_backtest_rs(
+pub fn run_backtest_rs(
     py: Python<'_>,
     data: HashMap<String, Vec<OHLCVBar>>,
     orders: Vec<Order>,

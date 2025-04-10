@@ -6,7 +6,7 @@ use numpy::{PyArray1, PyArray2, PyReadonlyArray1, IntoPyArray};
 use ndarray::{Array1, Array2};
 
 // Import backtesting module
-mod backtesting;
+pub mod backtesting;
 
 /// Calculate Simple Moving Average (SMA) using the ta-rs library.
 ///
