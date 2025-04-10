@@ -41,18 +41,43 @@ export interface Portfolio {
   margin_multiplier?: number;
 }
 
+// Order related types
+export enum OrderType {
+  MARKET = 'MARKET',
+  LIMIT = 'LIMIT',
+  STOP = 'STOP',
+  STOP_LIMIT = 'STOP_LIMIT'
+}
+
+export enum OrderSide {
+  BUY = 'BUY',
+  SELL = 'SELL'
+}
+
+export enum OrderStatus {
+  NEW = 'NEW',
+  PARTIALLY_FILLED = 'PARTIALLY_FILLED',
+  FILLED = 'FILLED',
+  CANCELED = 'CANCELED',
+  REJECTED = 'REJECTED',
+  EXPIRED = 'EXPIRED'
+}
+
 export interface Order {
   id: string;
   symbol: string;
-  side: 'buy' | 'sell';
-  order_type: 'market' | 'limit' | 'stop' | 'stop_limit';
+  type: OrderType;
+  side: OrderSide;
   quantity: number;
   price?: number;
-  stop_price?: number;
-  status: 'pending' | 'filled' | 'partially_filled' | 'canceled' | 'rejected';
-  filled_quantity: number;
-  created_at: string;
-  updated_at: string;
+  stopPrice?: number;
+  limitPrice?: number;
+  status: OrderStatus;
+  filledQuantity?: number;
+  createdAt: Date;
+  updatedAt: Date;
+  clientOrderId: string;
+  timeInForce: string;
 }
 
 export interface Trade {
@@ -124,6 +149,14 @@ export interface Strategy {
   parameters: Record<string, any>;
   created_at: string;
   updated_at: string;
+}
+
+export interface StrategyConfig {
+  id: string;
+  name: string;
+  type: 'technical' | 'sentiment' | 'combined';
+  parameters: Record<string, any>;
+  description: string;
 }
 
 // Asset types
