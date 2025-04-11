@@ -1,0 +1,9 @@
+backtesting
+common
+data_acquisition
+data_processing
+examples
+rust_integration
+sentiment_analysis
+strategies
+trading_engine

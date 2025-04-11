@@ -1,0 +1,8 @@
+{
+    "final_capital": 11500.0,
+    "metrics": {
+        "total_return": 0.15,
+        "sharpe_ratio": 1.2,
+        "max_drawdown": 0.05
+    }
+}

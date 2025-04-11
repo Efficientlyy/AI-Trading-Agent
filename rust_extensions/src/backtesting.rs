@@ -1,8 +1,5 @@
-use pyo3::prelude::*;
-use pyo3::types::{PyDict, PyList};
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
-use numpy::{PyArray1, PyArray2, IntoPyArray};
 use ndarray::{Array1, Array2};
 
 /// Order side enum (Buy or Sell)
@@ -340,13 +337,11 @@ fn update_position_market_price(position: &mut Position, market_price: f64) {
 }
 
 /// Run a backtest with the given data and configuration
-#[pyfunction]
-pub fn run_backtest_rs(
-    py: Python<'_>,
+pub fn run_backtest(
     data: HashMap<String, Vec<OHLCVBar>>,
     orders: Vec<Order>,
     config: BacktestConfig,
-) -> PyResult<Py<PyDict>> {
+) -> BacktestResult {
     // Initialize portfolio
     let mut portfolio = Portfolio {
         cash: config.initial_capital,
@@ -354,207 +349,148 @@ pub fn run_backtest_rs(
         positions: HashMap::new(),
     };
     
-    // Initialize result containers
-    let mut portfolio_history: Vec<PortfolioSnapshot> = Vec::new();
-    let mut trade_history: Vec<Trade> = Vec::new();
-    let mut order_history: Vec<Order> = orders.clone();
+    // Initialize result tracking
+    let mut portfolio_history = Vec::new();
+    let mut trade_history = Vec::new();
+    let mut order_history = Vec::new();
     
-    // Get reference symbol for iteration (assuming all data has same timestamps)
-    let reference_symbol = data.keys().next().ok_or_else(|| {
-        PyErr::new::<pyo3::exceptions::PyValueError, _>("No data provided for backtesting")
-    })?;
+    // Sort orders by timestamp
+    let mut sorted_orders = orders.clone();
+    sorted_orders.sort_by_key(|o| o.created_at);
     
-    let reference_data = &data[reference_symbol];
+    // Get all unique timestamps from all symbols
+    let mut all_timestamps = Vec::new();
+    for (_, bars) in &data {
+        for bar in bars {
+            if !all_timestamps.contains(&bar.timestamp) {
+                all_timestamps.push(bar.timestamp);
+            }
+        }
+    }
     
-    // Main backtesting loop
-    for (i, reference_bar) in reference_data.iter().enumerate() {
-        let current_timestamp = reference_bar.timestamp;
+    // Sort timestamps
+    all_timestamps.sort();
+    
+    // Create a map of timestamp -> bar for each symbol for efficient lookup
+    let mut timestamp_to_bar: HashMap<String, HashMap<i64, OHLCVBar>> = HashMap::new();
+    for (symbol, bars) in &data {
+        let mut symbol_map = HashMap::new();
+        for bar in bars {
+            symbol_map.insert(bar.timestamp, bar.clone());
+        }
+        timestamp_to_bar.insert(symbol.clone(), symbol_map);
+    }
+    
+    // Process each timestamp
+    let mut active_orders = Vec::new();
+    
+    for &timestamp in &all_timestamps {
+        // Add new orders that were created before or at this timestamp
+        while !sorted_orders.is_empty() && sorted_orders[0].created_at <= timestamp {
+            let mut order = sorted_orders.remove(0);
+            order.status = OrderStatus::Submitted;
+            active_orders.push(order);
+        }
         
-        // Process orders for this timestamp
-        for order in order_history.iter_mut() {
-            // Skip already filled or canceled orders
-            if order.status == OrderStatus::Filled || order.status == OrderStatus::Canceled {
+        // Process active orders
+        let mut remaining_orders = Vec::new();
+        for order in active_orders.drain(..) {
+            let symbol = order.symbol.clone();
+            
+            // Skip if we don't have data for this symbol at this timestamp
+            if !timestamp_to_bar.contains_key(&symbol) || !timestamp_to_bar[&symbol].contains_key(&timestamp) {
+                remaining_orders.push(order);
                 continue;
             }
             
-            // Get current bar for the order's symbol
-            if let Some(bars) = data.get(&order.symbol) {
-                if i < bars.len() {
-                    let current_bar = &bars[i];
-                    
-                    // Calculate execution price
-                    if let Some(executed_price) = calculate_execution_price(order, current_bar) {
-                        // Apply commission and slippage
-                        let effective_price = apply_transaction_costs(
-                            order, 
-                            executed_price, 
-                            config.commission_rate, 
-                            config.slippage
-                        );
-                        
-                        // Create fill
-                        let mut fill_qty = order.quantity;
-                        if !config.enable_fractional {
-                            fill_qty = fill_qty.floor(); // Round down to nearest integer
-                        }
-                        
-                        // Add fill to order
-                        order.fills.push(Fill {
-                            quantity: fill_qty,
-                            price: effective_price,
-                            timestamp: current_timestamp,
-                        });
-                        
-                        // Create trade record
-                        let trade = Trade {
-                            trade_id: format!("t-{}-{}", order.order_id, order.fills.len()),
-                            order_id: order.order_id.clone(),
-                            symbol: order.symbol.clone(),
-                            side: order.side,
-                            quantity: fill_qty,
-                            price: effective_price,
-                            timestamp: current_timestamp,
-                        };
-                        
-                        // Update portfolio with the trade
-                        update_portfolio_from_trade(&mut portfolio, &trade);
-                        
-                        // Record trade
-                        trade_history.push(trade);
-                        
-                        // Update order status
-                        order.status = OrderStatus::Filled;
-                    }
-                }
+            // Get current bar
+            let bar = timestamp_to_bar[&symbol][&timestamp].clone();
+            
+            // Calculate execution price
+            if let Some(execution_price) = calculate_execution_price(&order, &bar) {
+                // Apply transaction costs
+                let execution_price = apply_transaction_costs(
+                    &order, execution_price, config.commission_rate, config.slippage
+                );
+                
+                // Create fill
+                let fill = Fill {
+                    quantity: order.quantity,
+                    price: execution_price,
+                    timestamp,
+                };
+                
+                let mut order = order.clone();
+                order.fills.push(fill);
+                order.status = OrderStatus::Filled;
+                
+                // Create trade
+                let trade_id = format!("trade_{}", trade_history.len());
+                let trade = Trade {
+                    trade_id,
+                    order_id: order.order_id.clone(),
+                    symbol: order.symbol.clone(),
+                    side: order.side,
+                    quantity: order.quantity,
+                    price: execution_price,
+                    timestamp,
+                };
+                
+                // Update portfolio
+                update_portfolio_from_trade(&mut portfolio, &trade);
+                
+                // Add to trade history
+                trade_history.push(trade);
+                
+                // Add to order history
+                order_history.push(order);
+            } else {
+                // Order not executed, keep it active
+                remaining_orders.push(order);
             }
         }
+        
+        // Update active orders
+        active_orders = remaining_orders;
         
         // Update market prices for all positions
         for (symbol, position) in portfolio.positions.iter_mut() {
-            if let Some(bars) = data.get(symbol) {
-                if i < bars.len() {
-                    let current_price = bars[i].close;
-                    update_position_market_price(position, current_price);
-                }
+            if timestamp_to_bar.contains_key(symbol) && timestamp_to_bar[symbol].contains_key(&timestamp) {
+                let bar = &timestamp_to_bar[symbol][&timestamp];
+                update_position_market_price(position, bar.close);
             }
         }
         
-        // Update portfolio total value
+        // Update portfolio value
         update_portfolio_value(&mut portfolio);
         
-        // Record portfolio snapshot
+        // Create portfolio snapshot
         let snapshot = PortfolioSnapshot {
-            timestamp: current_timestamp,
+            timestamp,
             cash: portfolio.cash,
             total_value: portfolio.total_value,
             positions: portfolio.positions.clone(),
         };
         
+        // Add to portfolio history
         portfolio_history.push(snapshot);
     }
     
+    // Add all orders to history
+    order_history.extend(sorted_orders);  // Unprocessed orders
+    order_history.extend(active_orders);  // Active but unfilled orders
+    
     // Calculate performance metrics
-    let metrics = calculate_performance_metrics(&portfolio_history, &trade_history, config.initial_capital);
+    let metrics = calculate_performance_metrics(
+        &portfolio_history, &trade_history, config.initial_capital
+    );
     
-    // Create Python dictionary for results
-    let result_dict = PyDict::new(py);
-    
-    // Convert portfolio history to Python list
-    let py_portfolio_history = PyList::empty(py);
-    for snapshot in portfolio_history {
-        let py_snapshot = PyDict::new(py);
-        py_snapshot.set_item("timestamp", snapshot.timestamp)?;
-        py_snapshot.set_item("cash", snapshot.cash)?;
-        py_snapshot.set_item("total_value", snapshot.total_value)?;
-        
-        let py_positions = PyDict::new(py);
-        for (symbol, position) in snapshot.positions {
-            let py_position = PyDict::new(py);
-            py_position.set_item("quantity", position.quantity)?;
-            py_position.set_item("entry_price", position.entry_price)?;
-            py_position.set_item("market_price", position.market_price)?;
-            py_position.set_item("unrealized_pnl", position.unrealized_pnl)?;
-            py_position.set_item("realized_pnl", position.realized_pnl)?;
-            
-            py_positions.set_item(symbol, py_position)?;
-        }
-        
-        py_snapshot.set_item("positions", py_positions)?;
-        py_portfolio_history.append(py_snapshot)?;
+    BacktestResult {
+        portfolio_history,
+        trade_history,
+        order_history,
+        metrics,
     }
-    
-    // Convert trade history to Python list
-    let py_trade_history = PyList::empty(py);
-    for trade in trade_history {
-        let py_trade = PyDict::new(py);
-        py_trade.set_item("trade_id", trade.trade_id)?;
-        py_trade.set_item("order_id", trade.order_id)?;
-        py_trade.set_item("symbol", trade.symbol)?;
-        py_trade.set_item("side", format!("{:?}", trade.side))?;
-        py_trade.set_item("quantity", trade.quantity)?;
-        py_trade.set_item("price", trade.price)?;
-        py_trade.set_item("timestamp", trade.timestamp)?;
-        
-        py_trade_history.append(py_trade)?;
-    }
-    
-    // Convert order history to Python list
-    let py_order_history = PyList::empty(py);
-    for order in order_history {
-        let py_order = PyDict::new(py);
-        py_order.set_item("order_id", order.order_id)?;
-        py_order.set_item("symbol", order.symbol)?;
-        py_order.set_item("side", format!("{:?}", order.side))?;
-        py_order.set_item("order_type", format!("{:?}", order.order_type))?;
-        py_order.set_item("quantity", order.quantity)?;
-        py_order.set_item("status", format!("{:?}", order.status))?;
-        py_order.set_item("created_at", order.created_at)?;
-        
-        if let Some(limit_price) = order.limit_price {
-            py_order.set_item("limit_price", limit_price)?;
-        }
-        
-        if let Some(stop_price) = order.stop_price {
-            py_order.set_item("stop_price", stop_price)?;
-        }
-        
-        let py_fills = PyList::empty(py);
-        for fill in order.fills {
-            let py_fill = PyDict::new(py);
-            py_fill.set_item("quantity", fill.quantity)?;
-            py_fill.set_item("price", fill.price)?;
-            py_fill.set_item("timestamp", fill.timestamp)?;
-            
-            py_fills.append(py_fill)?;
-        }
-        
-        py_order.set_item("fills", py_fills)?;
-        py_order_history.append(py_order)?;
-    }
-    
-    // Convert metrics to Python dict
-    let py_metrics = PyDict::new(py);
-    py_metrics.set_item("total_return", metrics.total_return)?;
-    py_metrics.set_item("annualized_return", metrics.annualized_return)?;
-    py_metrics.set_item("volatility", metrics.volatility)?;
-    py_metrics.set_item("sharpe_ratio", metrics.sharpe_ratio)?;
-    py_metrics.set_item("sortino_ratio", metrics.sortino_ratio)?;
-    py_metrics.set_item("max_drawdown", metrics.max_drawdown)?;
-    py_metrics.set_item("max_drawdown_duration", metrics.max_drawdown_duration)?;
-    py_metrics.set_item("total_trades", metrics.total_trades)?;
-    py_metrics.set_item("win_rate", metrics.win_rate)?;
-    py_metrics.set_item("profit_factor", metrics.profit_factor)?;
-    py_metrics.set_item("avg_profit_per_trade", metrics.avg_profit_per_trade)?;
-    py_metrics.set_item("avg_loss_per_trade", metrics.avg_loss_per_trade)?;
-    py_metrics.set_item("avg_profit_loss_ratio", metrics.avg_profit_loss_ratio)?;
-    
-    // Add everything to result dict
-    result_dict.set_item("portfolio_history", py_portfolio_history)?;
-    result_dict.set_item("trade_history", py_trade_history)?;
-    result_dict.set_item("order_history", py_order_history)?;
-    result_dict.set_item("metrics", py_metrics)?;
-    
-    Ok(result_dict.into())
 }
 
 /// Calculate performance metrics from backtest results

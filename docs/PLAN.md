@@ -252,6 +252,79 @@ This modular, test-driven approach ensures incremental, reliable progress on the
 - **Dependencies:** Core trading engine and sentiment modules implemented
 - **Next:** Implement integration tests and iterate
 
+## Phase 3.2: Sentiment Analysis Integration
+
+**Goal:** Integrate a sentiment analysis pipeline to generate trading signals for the backtesting engine.
+
+**Detailed Steps:**
+
+1.  **Create Sentiment Analysis Module Structure:**
+    *   Create directory: `ai_trading_agent/sentiment_analysis/`
+    *   Add initial files: `__init__.py`, `analyzer.py`, `utils.py` (optional).
+
+2.  **Implement Core Sentiment Analyzer (`analyzer.py`):**
+    *   Input: Raw text.
+    *   Processing: Basic text cleaning, use VADER/TextBlob for initial sentiment scoring (-1 to 1).
+    *   Output: Sentiment score.
+    *   Dependencies: Add `vaderSentiment` or `textblob` to project dependencies.
+
+3.  **Develop Data Connector (Placeholder):**
+    *   Goal: Load text data with timestamps and symbols.
+    *   Initial Approach: Create a function/script to read sample data from a CSV (`timestamp`, `text`, `symbol`). Generate sample CSV for testing.
+
+4.  **Generate Trading Signals from Sentiment (`signal_generator.py`):**
+    *   Goal: Convert sentiment scores to trading signals (Buy=1, Sell=-1, Hold=0).
+    *   Functionality: Average sentiment over a period, apply thresholds.
+    *   Output: Time-aligned signals (1, -1, 0).
+
+5.  **Integrate into Backtesting Test (`test_backtesting.py`):**
+    *   Replace synthetic signal generation with the new pipeline:
+        *   Load sample text data via connector.
+        *   Analyze text with `SentimentAnalyzer`.
+        *   Generate signals with `SignalGenerator`.
+    *   Ensure signals align with OHLCV timestamps.
+    *   Use generated signals to create orders.
+
+## Phase 3.3: Agent Architecture Refactoring
+
+**Goal:** Refactor the system into a more modular and scalable trading agent architecture to better integrate existing components (backtesting, sentiment analysis) and facilitate future development (multiple strategies, risk management, live trading).
+
+**Proposed High-Level Architecture:**
+
+1.  **Data Manager:**
+    *   **Responsibility:** Central hub for all data sources. Fetches, cleans, stores, and provides market data (OHLCV, order book, news, sentiment, alternative data), potentially from live feeds or historical databases. Handles time synchronization across different data types.
+    *   **Integration:** Manages data loading (like `load_sentiment_data_from_csv`) and provides aligned data streams (e.g., OHLCV + Sentiment) to the Strategy Manager.
+
+2.  **Strategy Manager:**
+    *   **Responsibility:** Contains one or more trading strategies. Receives data from the Data Manager, applies strategy logic, and generates trading *signals* (e.g., "BUY AAPL", "SELL GOOG", "HOLD MSFT").
+    *   **Integration:** Hosts strategies like the `SentimentStrategy` (using `SentimentAnalyzer` and `SentimentSignalGenerator`). Will manage combining signals if multiple strategies are active.
+
+3.  **Portfolio Manager:**
+    *   **Responsibility:** Takes trading *signals*. Considers current portfolio state, risk constraints (from Risk Manager), and position sizing rules. Translates signals into concrete *order* requests.
+    *   **Integration:** Enhances `generate_orders_from_ohlcv_signals` logic, incorporating risk and capital management. Uses existing `PortfolioManager` foundations.
+
+4.  **Risk Manager:**
+    *   **Responsibility:** Monitors overall portfolio risk (VaR, drawdown, exposure). Provides constraints to the Portfolio Manager and can override/halt trading.
+    *   **Integration:** Interacts primarily with the Portfolio Manager.
+
+5.  **Execution Handler:**
+    *   **Responsibility:** Takes *order* requests and simulates/executes them against the market (backtesting or live). Handles fills, slippage, commissions. Returns execution results.
+    *   **Integration:** Leverages existing `ExecutionHandler` and `SimulatedExchange` for backtesting. `run_backtest` function's role evolves.
+
+6.  **Orchestrator / Main Event Loop:**
+    *   **Responsibility:** Drives the process, manages time/events, coordinates component interaction.
+    *   **Integration:** Replaces the main loop in `test_backtesting.py` with a more robust event-driven or time-driven loop.
+
+**Implementation Steps:**
+
+1.  Define interfaces for each component (`DataManager`, `Strategy`, `PortfolioManager`, `RiskManager`, `ExecutionHandler`, `Orchestrator`).
+2.  Refactor existing code into the new component structure (starting with `DataManager`).
+3.  Implement the `Orchestrator` to manage the flow.
+4.  Develop a configuration system for the new architecture.
+5.  Update tests to reflect the new structure.
+
+---
+
 ## Phase 4: Genetic Algorithm Optimizer
 - Implement parameter optimization framework
   - Fitness function definition

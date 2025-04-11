@@ -1,18 +1,37 @@
 [build-system]
-requires = ["maturin>=1.8,<2.0"]
-build-backend = "maturin"
+requires = ["setuptools>=42", "setuptools-rust>=0.12", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "ai_trading_agent_rs"
 version = "0.1.0"
 requires-python = ">=3.11"
+dependencies = [
+    "vaderSentiment",
+    "pandas"
+]
 classifiers = [
     "Programming Language :: Rust",
     "Programming Language :: Python :: Implementation :: CPython",
     "Programming Language :: Python :: 3",
 ]
 
-[tool.maturin]
-features = ["pyo3/extension-module"]
-module-name = "ai_trading_agent.rust_extensions"
-manifest-path = "rust_extensions/Cargo.toml"
+[tool.setuptools.packages.find]
+where = ["ai_trading_agent"]
+
+[tool.setuptools_rust]
+rust-extensions = [
+    {path = "rust_extensions", binding = "pyo3", features = ["extension-module"]}
+]
+
+[tool.poetry.dependencies]
+python = ">=3.11"
+numpy = "^1.26.4"
+matplotlib = "^3.8.4"
+plotly = "^5.22.0"
+pandas = "^2.2.2"  
+vaderSentiment = "^3.3.2" 
+
+# Specify the package location
+[tool.poetry.packages]
+include = ["ai_trading_agent"]

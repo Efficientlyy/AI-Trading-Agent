@@ -1,0 +1,6 @@
+setup.py
+src/rust_test_extension.egg-info/PKG-INFO
+src/rust_test_extension.egg-info/SOURCES.txt
+src/rust_test_extension.egg-info/dependency_links.txt
+src/rust_test_extension.egg-info/not-zip-safe
+src/rust_test_extension.egg-info/top_level.txt

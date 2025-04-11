@@ -1,0 +1,1 @@
+C:\Users\vp199\Documents\Projects\GitHub\AI-Trading-Agent\rust_simple_extension\target\release\rust_simple_extension.dll: C:\Users\vp199\Documents\Projects\GitHub\AI-Trading-Agent\rust_simple_extension\src\lib.rs
