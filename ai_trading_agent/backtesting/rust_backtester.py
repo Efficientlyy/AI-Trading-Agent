@@ -7,13 +7,15 @@ for improved performance.
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Union, Callable, Any, Tuple
+from typing import Dict, List, Optional, Any, Union
 from datetime import datetime
 import time
 from dataclasses import dataclass, field
 
-from src.trading_engine.models import Order, Trade, Position, Portfolio, OrderSide, OrderType, OrderStatus
-from src.common import logger
+# Correct the imports - separate models and enums
+from ..trading_engine.models import Order, Trade, Position, Portfolio
+from ..trading_engine.enums import OrderSide, OrderType, OrderStatus
+from ..common import logger
 
 # Import Rust extension
 try:
@@ -176,7 +178,7 @@ class RustBacktester:
         
         return rust_orders
     
-    def _convert_rust_results_to_python(self, rust_results: Dict[str, Any]) -> Tuple[List[Dict[str, Any]], List[Trade], List[Order], Dict[str, Any]]:
+    def _convert_rust_results_to_python(self, rust_results: Dict[str, Any]) -> tuple:
         """
         Convert Rust results back to Python objects.
         
@@ -291,7 +293,7 @@ class RustBacktester:
         
         return portfolio_history, trade_history, order_history, metrics
     
-    def run(self, strategy_fn: Callable[[Dict[str, pd.DataFrame], Portfolio, int], List[Order]]) -> Dict[str, Any]:
+    def run(self, strategy_fn: callable) -> Dict[str, Any]:
         """
         Run the backtest using the Rust implementation.
         

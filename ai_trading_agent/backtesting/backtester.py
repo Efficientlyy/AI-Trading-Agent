@@ -6,15 +6,16 @@ This module provides the core backtesting functionality.
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Union, Callable, Any, Tuple
+from typing import Dict, List, Optional, Any, Union, Callable, Tuple
 from datetime import datetime
 import time
 from dataclasses import dataclass, field
 
-from src.trading_engine.models import Order, Trade, Position, Portfolio
-from src.trading_engine.order_manager import OrderManager
-from src.common import logger
+from ..trading_engine.models import Order, Trade, Position, Portfolio
+from ..trading_engine.order_manager import OrderManager
+from ..common import logger
 from .performance_metrics import calculate_metrics, PerformanceMetrics
+from ..trading_engine.enums import OrderType, OrderSide
 
 
 class Backtester:
@@ -241,8 +242,6 @@ class Backtester:
         # - Stop buy: Execute at stop price if high >= stop price
         # - Stop sell: Execute at stop price if low <= stop price
         
-        from src.trading_engine.models import OrderType, OrderSide
-        
         if order.type == OrderType.MARKET:
             return bar['open']
         
@@ -266,8 +265,6 @@ class Backtester:
         Returns:
             float: Effective price after transaction costs
         """
-        from src.trading_engine.models import OrderSide
-        
         if executed_price is None:
             return None
         

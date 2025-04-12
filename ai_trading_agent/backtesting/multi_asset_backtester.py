@@ -12,11 +12,13 @@ from typing import Dict, List, Optional, Union, Callable, Any, Tuple
 from datetime import datetime
 import time
 from dataclasses import dataclass, field
+from collections import defaultdict
 import os
 
-from src.trading_engine.models import Order, Trade, Position, Portfolio, OrderSide, OrderType
-from src.trading_engine.order_manager import OrderManager
-from src.common import logger
+from ..trading_engine.models import Order, Trade, Position, Portfolio
+from ..trading_engine.enums import OrderSide, OrderType
+from ..trading_engine.order_manager import OrderManager
+from ..common import logger
 from .performance_metrics import calculate_metrics, PerformanceMetrics, calculate_asset_metrics, calculate_portfolio_diversification
 from .portfolio_risk import PortfolioRiskManager
 from .backtester import Backtester
@@ -295,7 +297,7 @@ class MultiAssetBacktester(Backtester):
     
     def _generate_rebalance_orders(self, timestamp: pd.Timestamp, bar_idx: int) -> List[Order]:
         """Generate orders to rebalance the portfolio to target allocations."""
-        from src.trading_engine.models import OrderSide, OrderType
+        from ..trading_engine.enums import OrderSide, OrderType
         
         rebalance_signals = self.risk_manager.generate_rebalance_signals(
             current_allocations=self.current_allocations,
@@ -341,7 +343,7 @@ class MultiAssetBacktester(Backtester):
     
     def _check_risk_limits(self, order: Order, bar_idx: int) -> bool:
         """Check if an order passes portfolio risk limits."""
-        from src.trading_engine.models import OrderSide
+        from ..trading_engine.enums import OrderSide
         
         current_prices = self._get_current_prices(bar_idx)
         if order.symbol not in current_prices:
@@ -505,6 +507,31 @@ class MultiAssetBacktester(Backtester):
         
         return output_dir
     
+    def align_data_dates(self) -> None:
+        """Align data to a common date range."""
+        # Find common date range
+        all_dates = []
+        for symbol, df in self.data.items():
+            if 'timestamp' in df.columns:
+                dates = df['timestamp'].tolist()
+            else:
+                dates = df.index.tolist()
+            all_dates.append(set(dates))
+        
+        if not all_dates:
+            raise ValueError("No data provided")
+            
+        # Find intersection of all date sets
+        common_dates = set.intersection(*all_dates)
+        
+        if not common_dates:
+            raise ValueError("No common dates found across all symbols")
+            
+        # Sort dates
+        self.common_dates = sorted(list(common_dates))
+        
+        logger.info(f"Aligned data to {len(self.common_dates)} common dates")
+
     def _create_summary_report(self, metrics: PerformanceMetrics, asset_metrics: Dict[str, Dict[str, float]], output_path: str) -> None:
         """
         Create an HTML summary report.
@@ -668,28 +695,3 @@ class MultiAssetBacktester(Backtester):
             """
         
         return rows
-    
-    def align_data_dates(self) -> None:
-        """Align data to a common date range."""
-        # Find common date range
-        all_dates = []
-        for symbol, df in self.data.items():
-            if 'timestamp' in df.columns:
-                dates = df['timestamp'].tolist()
-            else:
-                dates = df.index.tolist()
-            all_dates.append(set(dates))
-        
-        if not all_dates:
-            raise ValueError("No data provided")
-            
-        # Find intersection of all date sets
-        common_dates = set.intersection(*all_dates)
-        
-        if not common_dates:
-            raise ValueError("No common dates found across all symbols")
-            
-        # Sort dates
-        self.common_dates = sorted(list(common_dates))
-        
-        logger.info(f"Aligned data to {len(self.common_dates)} common dates")

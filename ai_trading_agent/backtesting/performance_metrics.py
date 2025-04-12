@@ -279,8 +279,8 @@ def process_trade_history(trade_history: List) -> pd.DataFrame:
     # Calculate P&L for each trade (simplified)
     # Note: This is a simplified approach. For accurate P&L calculation,
     # we would need to match buys and sells for each symbol
-    from src.trading_engine.models import OrderSide
-    
+    from ..trading_engine.enums import OrderSide
+
     # Convert side to numeric for calculations
     trade_df['side_value'] = trade_df['side'].apply(lambda x: 1 if x == OrderSide.BUY else -1)
     
@@ -358,7 +358,12 @@ def calculate_omega_ratio(returns: pd.Series, threshold: float = 0) -> float:
     
     # Calculate Omega ratio
     omega = expected_gain / expected_loss if expected_loss != 0 else float('inf')
+    return omega
+    return omega
     
+    return omega
+
+
 def calculate_asset_metrics(portfolio_history: List[Dict[str, Any]]) -> Dict[str, Dict[str, float]]:
     """
     Calculate asset-level returns and drawdowns.
@@ -414,4 +419,3 @@ def calculate_portfolio_diversification(correlation_matrix: Dict[str, Dict[str, 
     avg_corr = sum(corrs) / len(corrs)
     diversification_score = 1 - avg_corr
     return diversification_score
-    return omega
