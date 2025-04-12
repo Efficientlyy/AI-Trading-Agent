@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 import yaml
 from dotenv import load_dotenv
-from src.common.logging_config import logger # Use relative import
+from .logging_config import logger # Use relative import
 
 # Load environment variables from .env file
 load_dotenv()
@@ -59,7 +59,7 @@ class ConfigLoader:
             with open(self.config_path, 'r') as config_file:
                 self.config = yaml.safe_load(config_file)
             # Pass the loaded config to the logger setup
-            from src.common.logging_config import setup_logging # Re-import to use the loaded config
+            from .logging_config import setup_logging # Re-import to use the loaded config
             setup_logging(self.config)
             logger.info("Configuration loaded successfully")
             return self.config

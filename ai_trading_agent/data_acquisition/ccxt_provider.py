@@ -12,7 +12,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime, timezone
 
 from .base_provider import BaseDataProvider
-from src.common import logger, get_config_value
+from ..common import logger, get_config_value
 
 # CCXT uses milliseconds for timestamps
 def datetime_to_milliseconds(dt: pd.Timestamp) -> int:

@@ -7,10 +7,10 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import pandas as pd
 import asyncio
 
-from src.data_acquisition.data_service import DataService
-from src.data_acquisition.mock_provider import MockDataProvider
-from src.data_acquisition.ccxt_provider import CcxtProvider
-from src.data_acquisition.base_provider import BaseDataProvider
+from ai_trading_agent.data_acquisition.data_service import DataService
+from ai_trading_agent.data_acquisition.mock_provider import MockDataProvider
+from ai_trading_agent.data_acquisition.ccxt_provider import CcxtProvider
+from ai_trading_agent.data_acquisition.base_provider import BaseDataProvider
 
 # Use pytest-asyncio for async tests
 # pytestmark = pytest.mark.asyncio  # Removed global asyncio mark
@@ -49,9 +49,9 @@ def invalid_config():
 # --- Test Initialization --- 
 
 # Patch get_config instead of load_config
-@patch('src.data_acquisition.data_service.get_config_value')
-@patch('src.data_acquisition.data_service.get_config') 
-@patch('src.data_acquisition.data_service.MockDataProvider')
+@patch('ai_trading_agent.data_acquisition.data_service.get_config_value')
+@patch('ai_trading_agent.data_acquisition.data_service.get_config') 
+@patch('ai_trading_agent.data_acquisition.data_service.MockDataProvider')
 def test_data_service_init_mock(mock_MockDataProvider, mock_get_config, mock_get_config_value, mock_config):
     """Test DataService initialization with mock provider."""
     # Write debug info to a file
@@ -87,9 +87,9 @@ def test_data_service_init_mock(mock_MockDataProvider, mock_get_config, mock_get
             f.write(f"Assertion failed: {e}\n")
             raise
 
-@patch('src.data_acquisition.data_service.get_config_value')
-@patch('src.data_acquisition.data_service.get_config') 
-@patch('src.data_acquisition.data_service.CcxtProvider')
+@patch('ai_trading_agent.data_acquisition.data_service.get_config_value')
+@patch('ai_trading_agent.data_acquisition.data_service.get_config') 
+@patch('ai_trading_agent.data_acquisition.data_service.CcxtProvider')
 def test_data_service_init_ccxt(mock_CcxtProvider, mock_get_config, mock_get_config_value, ccxt_config):
     """Test DataService initialization with ccxt provider."""
     mock_get_config.return_value = ccxt_config
@@ -106,8 +106,8 @@ def test_data_service_init_ccxt(mock_CcxtProvider, mock_get_config, mock_get_con
     mock_get_config.assert_called_once()
     mock_get_config_value.assert_called_once_with('data_sources', {})
 
-@patch('src.data_acquisition.data_service.get_config_value')
-@patch('src.data_acquisition.data_service.get_config') 
+@patch('ai_trading_agent.data_acquisition.data_service.get_config_value')
+@patch('ai_trading_agent.data_acquisition.data_service.get_config') 
 def test_data_service_init_invalid_provider(mock_get_config, mock_get_config_value, invalid_config):
     """Test DataService initialization with an unknown provider name."""
     mock_get_config.return_value = invalid_config
@@ -117,8 +117,8 @@ def test_data_service_init_invalid_provider(mock_get_config, mock_get_config_val
     with pytest.raises(ValueError, match="Unsupported data provider:"): 
         DataService()
 
-@patch('src.data_acquisition.data_service.get_config_value')
-@patch('src.data_acquisition.data_service.get_config') 
+@patch('ai_trading_agent.data_acquisition.data_service.get_config_value')
+@patch('ai_trading_agent.data_acquisition.data_service.get_config') 
 def test_data_service_init_missing_config_section(mock_get_config, mock_get_config_value):
     """Test DataService initialization when provider config section is missing."""
     config_missing_mock = {
@@ -130,7 +130,7 @@ def test_data_service_init_missing_config_section(mock_get_config, mock_get_conf
     mock_get_config.return_value = config_missing_mock
     mock_get_config_value.return_value = config_missing_mock['data_sources']
     # Expect it to initialize with an empty config for the provider
-    with patch('src.data_acquisition.data_service.MockDataProvider') as mock_MockDataProvider:
+    with patch('ai_trading_agent.data_acquisition.data_service.MockDataProvider') as mock_MockDataProvider:
         # Setup the mock provider instance with the provider_name attribute
         mock_provider_instance = MagicMock(spec=MockDataProvider)
         mock_provider_instance.provider_name = 'mock'
@@ -146,9 +146,9 @@ def test_data_service_init_missing_config_section(mock_get_config, mock_get_conf
 
 
 
-@patch('src.data_acquisition.data_service.get_config_value')
-@patch('src.data_acquisition.data_service.get_config') 
-@patch('src.data_acquisition.data_service.MockDataProvider')
+@patch('ai_trading_agent.data_acquisition.data_service.get_config_value')
+@patch('ai_trading_agent.data_acquisition.data_service.get_config') 
+@patch('ai_trading_agent.data_acquisition.data_service.MockDataProvider')
 @pytest.mark.asyncio
 async def test_data_service_delegation(mock_MockDataProvider, mock_get_config, mock_get_config_value, mock_config):
     """Test that DataService correctly delegates calls to the active provider."""
@@ -202,9 +202,9 @@ async def test_data_service_delegation(mock_MockDataProvider, mock_get_config, m
          mock_provider_instance.close.assert_awaited_once()
 
 
-@patch('src.data_acquisition.data_service.get_config_value')
-@patch('src.data_acquisition.data_service.get_config') 
-@patch('src.data_acquisition.data_service.CcxtProvider') # Still patching CcxtProvider here? Let's assume we want to test the *logic* of close with a non-async provider, even if config points elsewhere.
+@patch('ai_trading_agent.data_acquisition.data_service.get_config_value')
+@patch('ai_trading_agent.data_acquisition.data_service.get_config') 
+@patch('ai_trading_agent.data_acquisition.data_service.CcxtProvider') # Still patching CcxtProvider here? Let's assume we want to test the *logic* of close with a non-async provider, even if config points elsewhere.
 @pytest.mark.asyncio
 async def test_data_service_close_no_provider_close(mock_CcxtProvider, mock_get_config, mock_get_config_value, mock_config):
     """Test DataService close method when provider has no close method."""

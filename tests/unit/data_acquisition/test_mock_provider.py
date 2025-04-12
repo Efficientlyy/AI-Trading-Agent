@@ -6,7 +6,7 @@ import pytest
 import pandas as pd
 from datetime import timedelta, timezone
 
-from src.data_acquisition.mock_provider import MockDataProvider
+from ai_trading_agent.data_acquisition.mock_provider import MockDataProvider
 
 # Use pytest-asyncio for async tests
 pytestmark = pytest.mark.asyncio

@@ -9,7 +9,7 @@ from datetime import timezone
 from unittest.mock import patch, AsyncMock, MagicMock
 import ccxt.async_support as ccxt
 
-from src.data_acquisition.ccxt_provider import CcxtProvider, datetime_to_milliseconds
+from ai_trading_agent.data_acquisition.ccxt_provider import CcxtProvider, datetime_to_milliseconds
 
 # Use pytest-asyncio for async tests
 pytestmark = pytest.mark.asyncio

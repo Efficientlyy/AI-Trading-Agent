@@ -8,7 +8,7 @@ from typing import List, Dict, Any, Optional
 from datetime import timedelta
 
 from .base_provider import BaseDataProvider
-from src.common import logger
+from ..common import logger
 
 class MockDataProvider(BaseDataProvider):
     """

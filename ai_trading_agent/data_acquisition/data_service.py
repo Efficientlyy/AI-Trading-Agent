@@ -10,7 +10,7 @@ import pandas as pd
 import asyncio
 import inspect
 
-from src.common import get_config, get_config_value, logger
+from ..common import get_config, get_config_value, logger
 from .base_provider import BaseDataProvider
 from .mock_provider import MockDataProvider
 # Import other providers as they are created
