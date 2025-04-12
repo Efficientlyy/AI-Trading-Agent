@@ -399,7 +399,7 @@ def run_backtest(
     order_history.extend(active_orders)  # Active but unfilled orders
     
     # Calculate performance metrics
-    metrics = calculate_performance_metrics(
+    metrics = calculate_metrics(
         portfolio_history, trade_history, config.initial_capital
     )
     

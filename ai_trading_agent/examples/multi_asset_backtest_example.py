@@ -7,29 +7,28 @@ to test a sentiment-based trading strategy across multiple assets.
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import os
-import sys
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Any
 from datetime import datetime, timedelta
 
 # Add parent directory to path to import modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.backtesting.multi_asset_backtester import MultiAssetBacktester
-from src.backtesting.asset_allocation import (
+# Correct the imports - separate models and enums
+from ..trading_engine.models import Order, Portfolio
+from ..trading_engine.enums import OrderSide, OrderType
+from ..backtesting.multi_asset_backtester import MultiAssetBacktester
+from ..backtesting.asset_allocation import (
     equal_weight_allocation,
     minimum_variance_allocation,
     sentiment_weighted_allocation,
     momentum_allocation
 )
-from src.backtesting.diversification_analysis import (
+from ..backtesting.diversification_analysis import (
     analyze_diversification_benefits,
     plot_efficient_frontier,
     plot_risk_contributions,
     plot_correlation_impact
 )
-from src.trading_engine.models import Order, OrderSide, OrderType, Portfolio
 
 
 def generate_mock_data(
