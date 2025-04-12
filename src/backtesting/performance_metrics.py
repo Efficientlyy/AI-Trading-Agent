@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import math
+import logging
 from typing import List, Dict, Any
 
 
@@ -50,6 +51,7 @@ def calculate_performance_metrics(portfolio_history: pd.DataFrame, risk_free_rat
 
     # --- Sharpe Ratio ---
     excess_return = annualized_return - risk_free_rate
+    logging.debug(f"Sharpe Calc: Ann. Return={annualized_return:.6f}, Risk Free={risk_free_rate:.6f}, Excess Return={excess_return:.6f}, Ann. Volatility={annualized_volatility:.6f}")
     sharpe_ratio = excess_return / annualized_volatility if annualized_volatility > 0 else 0.0
 
     # --- Max Drawdown ---
