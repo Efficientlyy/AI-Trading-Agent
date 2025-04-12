@@ -1,1 +1,1 @@
-import src.common.nltk_patch
+from ai_trading_agent.common import nltk_patch

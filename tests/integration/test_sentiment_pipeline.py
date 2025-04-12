@@ -3,11 +3,11 @@ Integration test for sentiment-driven trading pipeline.
 """
 
 import pytest
-from src.sentiment_analysis.manager import SentimentManager
-from src.trading_engine.models import Order, Portfolio
-from src.trading_engine.order_manager import OrderManager
-from src.trading_engine.execution_handler import ExecutionHandler
-from src.trading_engine.enums import OrderSide, OrderType
+from ai_trading_agent.sentiment_analysis.manager import SentimentManager
+from ai_trading_agent.trading_engine.models import Order, Portfolio
+from ai_trading_agent.trading_engine.order_manager import OrderManager
+from ai_trading_agent.trading_engine.execution_handler import ExecutionHandler
+from ai_trading_agent.trading_engine.enums import OrderSide, OrderType
 
 @pytest.mark.asyncio
 async def test_sentiment_to_trade_pipeline():

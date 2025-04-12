@@ -4,12 +4,11 @@ import numpy as np
 from datetime import datetime, timedelta
 
 # Project specific imports (adjust paths if needed)
-from src.backtesting.multi_asset_backtester import MultiAssetBacktester
-from src.data_acquisition.mock_provider import MockDataProvider
-from src.sentiment_analysis.mock_provider import MockSentimentProvider # Assuming this exists
-from src.strategies.base_strategy import BaseStrategy # Or the specific sentiment strategy function
-from src.trading_engine.models import Portfolio, Order, Trade, Position # Add Position import
-from src.backtesting.asset_allocation import equal_weight_allocation # Example allocation
+from ai_trading_agent.data_acquisition.mock_provider import MockDataProvider
+from ai_trading_agent.sentiment_analysis.mock_provider import MockSentimentProvider # Assuming this exists
+from ai_trading_agent.strategies.base_strategy import BaseStrategy # Or the specific sentiment strategy function
+from ai_trading_agent.trading_engine.models import Portfolio, Order, Trade, Position # Add Position import
+from ai_trading_agent.backtesting.asset_allocation import equal_weight_allocation # Example allocation
 
 # Constants
 SYMBOLS = ['ASSET_A', 'ASSET_B']

@@ -12,11 +12,11 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List, Any
 
-from src.trading_engine.portfolio_manager import PortfolioManager
-from src.trading_engine.execution_handler import ExecutionHandler, SimulatedExchange
-from src.trading_engine.order_manager import OrderManager
-from src.trading_engine.models import Order, Trade, Position, Portfolio
-from src.trading_engine.enums import OrderSide, OrderType, OrderStatus, PositionSide
+from ai_trading_agent.trading_engine.portfolio_manager import PortfolioManager
+from ai_trading_agent.trading_engine.execution_handler import ExecutionHandler, SimulatedExchange
+from ai_trading_agent.trading_engine.order_manager import OrderManager
+from ai_trading_agent.trading_engine.models import Order, Trade, Position, Portfolio
+from ai_trading_agent.trading_engine.enums import OrderSide, OrderType, OrderStatus, PositionSide
 
 
 class TestTradingEngineIntegration:
