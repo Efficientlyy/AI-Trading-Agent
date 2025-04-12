@@ -1,0 +1,124 @@
+{
+  "MovingAverageCrossover": {
+    "type": "MovingAverageCrossover",
+    "config": {
+      "name": "MA Crossover",
+      "fast_period": 10,
+      "slow_period": 50,
+      "threshold": 0.0,
+      "position_size_pct": 0.1
+    }
+  },
+  "OptimizedMAC": {
+    "type": "MovingAverageCrossover",
+    "config": {
+      "name": "Optimized MA Crossover",
+      "fast_period": 12,
+      "slow_period": 40,
+      "threshold": 0.015,
+      "position_size_pct": 0.15
+    }
+  },
+  "RSIStrategy": {
+    "type": "RSIStrategy",
+    "config": {
+      "name": "RSI Strategy",
+      "rsi_period": 14,
+      "overbought_threshold": 70,
+      "oversold_threshold": 30,
+      "position_size_pct": 0.1,
+      "exit_rsi": 50
+    }
+  },
+  "SentimentStrategy": {
+    "type": "SentimentStrategy",
+    "config": {
+      "name": "Sentiment Strategy",
+      "sentiment_threshold": 0.3,
+      "position_size_pct": 0.1,
+      "exit_threshold": 0.1,
+      "lookback_period": 3
+    }
+  },
+  "BollingerBandsStrategy": {
+    "type": "BollingerBandsStrategy",
+    "config": {
+      "name": "Bollinger Bands",
+      "bb_period": 20,
+      "bb_std_dev": 2.0,
+      "position_size_pct": 0.1,
+      "exit_pct": 0.05
+    }
+  },
+  "MultiStrategyEnsemble": {
+    "type": "MultiStrategyEnsemble",
+    "config": {
+      "name": "Strategy Ensemble",
+      "strategies": [
+        {
+          "type": "MovingAverageCrossover",
+          "weight": 0.4,
+          "config": {
+            "fast_period": 12,
+            "slow_period": 40,
+            "threshold": 0.01
+          }
+        },
+        {
+          "type": "RSIStrategy",
+          "weight": 0.3,
+          "config": {
+            "rsi_period": 14,
+            "overbought_threshold": 70,
+            "oversold_threshold": 30
+          }
+        },
+        {
+          "type": "SentimentStrategy",
+          "weight": 0.3,
+          "config": {
+            "sentiment_threshold": 0.3,
+            "exit_threshold": 0.1
+          }
+        }
+      ],
+      "position_size_pct": 0.1,
+      "min_agreement": 0.5
+    }
+  },
+  "ConservativeStrategy": {
+    "type": "MovingAverageCrossover",
+    "config": {
+      "name": "Conservative Strategy",
+      "fast_period": 20,
+      "slow_period": 100,
+      "threshold": 0.02,
+      "position_size_pct": 0.05,
+      "risk_management": {
+        "stop_loss_pct": 0.05,
+        "take_profit_pct": 0.1,
+        "max_position_size": 0.1,
+        "max_portfolio_risk_pct": 0.02,
+        "use_trailing_stop": true
+      }
+    }
+  },
+  "AggressiveStrategy": {
+    "type": "RSIStrategy",
+    "config": {
+      "name": "Aggressive Strategy",
+      "rsi_period": 7,
+      "overbought_threshold": 80,
+      "oversold_threshold": 20,
+      "position_size_pct": 0.2,
+      "exit_rsi": 50,
+      "risk_management": {
+        "stop_loss_pct": 0.1,
+        "take_profit_pct": 0.2,
+        "max_position_size": 0.3,
+        "max_portfolio_risk_pct": 0.05,
+        "use_trailing_stop": false
+      }
+    }
+  }
+}

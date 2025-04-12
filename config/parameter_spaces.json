@@ -1,0 +1,154 @@
+{
+  "moving_average_crossover": {
+    "fast_period": {
+      "type": "discrete",
+      "values": [5, 6, 7, 8, 9, 10, 12, 15, 20, 25, 30]
+    },
+    "slow_period": {
+      "type": "discrete",
+      "values": [20, 25, 30, 35, 40, 50, 60, 75, 100, 150, 200]
+    },
+    "threshold": {
+      "type": "continuous",
+      "min": 0.0,
+      "max": 0.05,
+      "step": 0.005
+    },
+    "position_size_pct": {
+      "type": "continuous",
+      "min": 0.05,
+      "max": 0.5,
+      "step": 0.05
+    }
+  },
+  "rsi_strategy": {
+    "rsi_period": {
+      "type": "discrete",
+      "values": [7, 9, 11, 14, 21, 28]
+    },
+    "overbought_threshold": {
+      "type": "discrete",
+      "values": [65, 70, 75, 80, 85]
+    },
+    "oversold_threshold": {
+      "type": "discrete",
+      "values": [15, 20, 25, 30, 35]
+    },
+    "position_size_pct": {
+      "type": "continuous",
+      "min": 0.05,
+      "max": 0.5,
+      "step": 0.05
+    },
+    "exit_rsi": {
+      "type": "discrete",
+      "values": [40, 45, 50, 55, 60]
+    }
+  },
+  "sentiment_strategy": {
+    "sentiment_threshold": {
+      "type": "continuous",
+      "min": 0.1,
+      "max": 0.5,
+      "step": 0.05
+    },
+    "position_size_pct": {
+      "type": "continuous",
+      "min": 0.05,
+      "max": 0.3,
+      "step": 0.05
+    },
+    "exit_threshold": {
+      "type": "continuous",
+      "min": 0.0,
+      "max": 0.2,
+      "step": 0.05
+    },
+    "lookback_period": {
+      "type": "discrete",
+      "values": [1, 2, 3, 5, 7, 10, 14]
+    }
+  },
+  "bollinger_bands": {
+    "bb_period": {
+      "type": "discrete",
+      "values": [10, 15, 20, 25, 30]
+    },
+    "bb_std_dev": {
+      "type": "continuous",
+      "min": 1.5,
+      "max": 3.0,
+      "step": 0.1
+    },
+    "position_size_pct": {
+      "type": "continuous",
+      "min": 0.05,
+      "max": 0.3,
+      "step": 0.05
+    },
+    "exit_pct": {
+      "type": "continuous",
+      "min": 0.01,
+      "max": 0.1,
+      "step": 0.01
+    }
+  },
+  "multi_asset_portfolio": {
+    "max_positions": {
+      "type": "discrete",
+      "values": [3, 4, 5, 6, 8, 10]
+    },
+    "max_correlation": {
+      "type": "continuous",
+      "min": 0.3,
+      "max": 0.8,
+      "step": 0.05
+    },
+    "risk_per_trade": {
+      "type": "continuous",
+      "min": 0.005,
+      "max": 0.03,
+      "step": 0.005
+    },
+    "max_drawdown_exit": {
+      "type": "continuous",
+      "min": 0.05,
+      "max": 0.2,
+      "step": 0.01
+    },
+    "rebalance_frequency": {
+      "type": "categorical",
+      "values": ["daily", "weekly", "monthly"]
+    }
+  },
+  "risk_management": {
+    "stop_loss_pct": {
+      "type": "continuous",
+      "min": 0.01,
+      "max": 0.1,
+      "step": 0.01
+    },
+    "take_profit_pct": {
+      "type": "continuous",
+      "min": 0.02,
+      "max": 0.2,
+      "step": 0.02
+    },
+    "max_position_size": {
+      "type": "continuous",
+      "min": 0.1,
+      "max": 0.5,
+      "step": 0.05
+    },
+    "max_portfolio_risk_pct": {
+      "type": "continuous",
+      "min": 0.01,
+      "max": 0.1,
+      "step": 0.01
+    },
+    "use_trailing_stop": {
+      "type": "boolean",
+      "values": [true, false]
+    }
+  }
+}
