@@ -5,7 +5,7 @@ Functions and classes for feature engineering based on market data and indicator
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from src.common import logger
+from ..common import logger
 from .indicators import calculate_sma, calculate_ema, calculate_rsi, calculate_macd
 
 def add_lagged_features(df: pd.DataFrame, columns: list, lags: list) -> pd.DataFrame:

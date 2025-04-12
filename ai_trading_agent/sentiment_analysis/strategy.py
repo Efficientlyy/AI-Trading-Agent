@@ -1,6 +1,6 @@
 from typing import Dict, List, Any, Optional
 import pandas as pd
-from src.trading_engine.models import Order
+from ..trading_engine.models import Order
 from src.strategies.base_strategy import BaseStrategy
 
 class SentimentStrategy(BaseStrategy):

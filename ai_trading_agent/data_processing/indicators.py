@@ -7,7 +7,7 @@ When available, it uses Rust-accelerated implementations for better performance.
 
 import pandas as pd
 import numpy as np
-from src.common import logger
+from ..common import logger
 
 # Try to import Rust-accelerated implementations
 try:

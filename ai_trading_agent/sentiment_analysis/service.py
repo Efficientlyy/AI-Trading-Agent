@@ -15,7 +15,7 @@ from src.sentiment_analysis.data_collection import SentimentCollectionService
 from src.sentiment_analysis.nlp_processing import NLPPipeline
 from src.sentiment_analysis.strategy import DummySentimentStrategy
 from src.sentiment_analysis.time_series import SentimentTimeSeriesAnalyzer
-from src.trading_engine.models import Order
+from ..trading_engine.models import Order
 
 logger = logging.getLogger(__name__)
 

@@ -6,7 +6,7 @@ and extracting entities from text content related to financial assets.
 """
 
 # Patch NLTK to fix punkt_tab bug
-import src.common.nltk_patch
+from ..common import nltk_patch
 
 import logging
 from typing import Dict, List, Any, Optional, Tuple, Set
