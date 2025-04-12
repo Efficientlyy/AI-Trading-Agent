@@ -15,11 +15,11 @@ import sys
 # Add project root to path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from src.data_acquisition.mock_provider import MockDataProvider
+from ai_trading_agent.data_acquisition.mock_provider import MockDataProvider
 from src.strategies.ma_crossover_strategy import MACrossoverStrategy
 from src.backtesting.backtester import Backtester
-from src.trading_engine.enums import OrderSide
-from src.common import logger
+from ai_trading_agent.trading_engine.enums import OrderSide
+from ai_trading_agent.common import logger
 
 # Check if Rust backtester is available
 try:

@@ -1,0 +1,298 @@
+#!/usr/bin/env python
+# scripts/run_backtest.py
+
+# Set up error logging to a file first thing
+import sys
+import os
+import traceback
+
+# Create a log file for errors
+error_log_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backtest_error.log")
+error_log = open(error_log_path, "w")
+error_log.write("Starting run_backtest.py error logging\n\n")
+
+try:
+    # Standard imports
+    import logging
+    import argparse
+    from datetime import datetime, timedelta
+    import json
+
+    # Add project root to Python path
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(script_dir)
+    sys.path.insert(0, project_root)
+    error_log.write(f"Added project root to sys.path: {project_root}\n")
+    error_log.write(f"Full sys.path: {sys.path}\n\n")
+
+    # Import agent components
+    try:
+        error_log.write("Attempting to import ai_trading_agent.common.logging_config...\n")
+        from ai_trading_agent.common.logging_config import setup_logging
+        error_log.write("Successfully imported logging_config\n")
+        
+        # Setup logging
+        setup_logging()
+        error_log.write("Logging setup complete\n")
+    except Exception as e:
+        error_log.write(f"ERROR importing logging_config: {e}\n")
+        error_log.write("Traceback:\n")
+        traceback.print_exc(file=error_log)
+        error_log.write("\n")
+        raise
+
+    try:
+        error_log.write("Attempting to import trading_engine components...\n")
+        # First import enums
+        error_log.write("Importing enums...\n")
+        from ai_trading_agent.trading_engine.enums import OrderSide, OrderType, OrderStatus
+        error_log.write("Successfully imported enums\n")
+        
+        # Then import models
+        error_log.write("Importing models...\n")
+        from ai_trading_agent.trading_engine.models import Order, Trade
+        error_log.write("Successfully imported models\n")
+        
+        # Then import portfolio_manager
+        error_log.write("Importing portfolio_manager...\n")
+        from ai_trading_agent.trading_engine.portfolio_manager import PortfolioManager
+        error_log.write("Successfully imported portfolio_manager\n")
+    except Exception as e:
+        error_log.write(f"ERROR importing trading_engine components: {e}\n")
+        error_log.write("Traceback:\n")
+        traceback.print_exc(file=error_log)
+        error_log.write("\n")
+        raise
+
+    try:
+        error_log.write("Attempting to import agent components...\n")
+        from ai_trading_agent.agent.data_manager import SimpleDataManager
+        from ai_trading_agent.agent.strategy import SimpleStrategyManager, SentimentStrategy
+        from ai_trading_agent.agent.risk_manager import SimpleRiskManager
+        from ai_trading_agent.agent.execution_handler import SimulatedExecutionHandler
+        from ai_trading_agent.agent.orchestrator import BacktestOrchestrator
+        error_log.write("Successfully imported all agent components\n")
+    except Exception as e:
+        error_log.write(f"ERROR importing agent components: {e}\n")
+        error_log.write("Traceback:\n")
+        traceback.print_exc(file=error_log)
+        error_log.write("\n")
+        raise
+
+    # --- Configuration ---
+    LOG_LEVEL = logging.DEBUG # INFO, DEBUG
+    INITIAL_CASH = 100000.0
+    SYMBOLS = ['AAPL', 'MSFT'] # Example symbols
+    START_DATE = '2023-01-01'
+    END_DATE = '2024-12-31'
+    TIME_FRAME = '1d' # Example: 1 day
+    DATA_DIR = os.path.join(project_root, 'data') # Directory for generated/loaded data
+    SENTIMENT_FILE = os.path.join(DATA_DIR, 'synthetic_sentiment.csv')
+
+    # --- Logging Setup ---
+    log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    logging.basicConfig(level=LOG_LEVEL, format=log_format) 
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]: # Iterate over a copy
+        root_logger.removeHandler(handler) # Remove default handlers
+        handler.close() # Close the handler
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setFormatter(logging.Formatter(log_format))
+    root_logger.addHandler(stdout_handler)
+    logger = logging.getLogger(__name__) 
+
+    # --- Main Backtest Function ---
+    def run_sentiment_backtest():
+        logger.info("--- Starting Sentiment Strategy Backtest ---")
+
+        # 1. Data Manager Configuration and Initialization
+        #    Generate synthetic data for this example
+        data_manager_config = {
+            'data_dir': DATA_DIR,
+            'symbols': SYMBOLS,
+            'start_date': START_DATE,
+            'end_date': END_DATE,
+            'timeframe': TIME_FRAME  # Explicitly add timeframe
+        }
+        data_manager = SimpleDataManager(config=data_manager_config)
+
+        # Define the expected timeframe
+        expected_timeframe = data_manager_config.get('timeframe', '1d') # Use the config value
+
+        # Generate synthetic data if it doesn't exist
+        ohlcv_data_missing = False
+        for symbol in SYMBOLS:
+            ohlcv_file_path = os.path.join(DATA_DIR, f"{symbol}_ohlcv_{expected_timeframe}.csv")
+            if not os.path.exists(ohlcv_file_path):
+                logger.info(f"OHLCV data missing for {symbol}. Will generate for all symbols.")
+                ohlcv_data_missing = True
+                break # No need to check further if one is missing
+            else:
+                logger.info(f"Found existing OHLCV data for {symbol}: {ohlcv_file_path}")
+
+        if ohlcv_data_missing:
+            logger.info(f"Generating synthetic OHLCV data for {SYMBOLS} ({expected_timeframe})...")
+            data_manager.generate_synthetic_ohlcv(symbols=SYMBOLS, start_date=START_DATE, end_date=END_DATE, timeframe=expected_timeframe)
+
+        sentiment_file_path = os.path.join(DATA_DIR, 'synthetic_sentiment.csv') # Assuming fixed name for sentiment
+        if not os.path.exists(sentiment_file_path):
+            logger.info("Generating synthetic sentiment data...")
+            data_manager.generate_synthetic_sentiment(symbols=SYMBOLS, start_date=START_DATE, end_date=END_DATE, timeframe=expected_timeframe)
+        else:
+            logger.info(f"Found existing sentiment data: {sentiment_file_path}")
+
+        # Re-initialize data manager *after* potential generation to load files
+        logger.info("Reloading data manager after generation check...")
+        data_manager = SimpleDataManager(config=data_manager_config)
+
+        # 2. Strategy Manager Configuration and Initialization
+        sentiment_strategy_config = {
+            'sentiment_file': sentiment_file_path, 
+            'signal_threshold': 0.5, # Example threshold (adjust as needed)
+            'stop_loss_pct': 0.05, # 5% stop loss
+            'take_profit_pct': 0.10 # 10% take profit
+            # 'buy_threshold': 0.1, # Original keys, uncomment/adjust if needed
+            # 'sell_threshold': -0.1,
+            # 'sentiment_source': 'sentiment_score' 
+        }
+        # Instantiate the specific strategy (assuming name and config structure)
+        sentiment_strategy = SentimentStrategy(name="SentimentVader", config=sentiment_strategy_config) 
+        # Instantiate the strategy manager 
+        strategy_manager = SimpleStrategyManager(strategies=[sentiment_strategy]) # Pass strategy list directly
+        logger.info("Strategy Manager initialized and Sentiment Strategy added.")
+
+        # 3. Portfolio Manager Configuration and Initialization
+        portfolio_specific_config = {
+            'allocation_fraction_per_trade': 0.10 # Example: Allocate 10% of portfolio value per trade
+        }
+        portfolio_manager = PortfolioManager(initial_capital=INITIAL_CASH)
+        logger.info(f"Portfolio Manager initialized with initial cash: {INITIAL_CASH:.2f}")
+
+        # 4. Risk Manager Configuration and Initialization
+        risk_manager_config = {
+             'max_position_size': 100,
+             'stop_loss_pct': 0.05
+        }
+        risk_manager = SimpleRiskManager(config=risk_manager_config)
+        logger.info("Risk Manager initialized.")
+
+        # 5. Execution Handler Configuration and Initialization
+        # !! Must be initialized AFTER portfolio_manager !!
+        execution_handler_config = {
+            'commission_per_trade': 0.0, # Example: No commission
+            'slippage_model': 'percentage', # Example: Percentage-based slippage
+            'percentage_slippage': 0.0005 # Example: 0.05%
+        }
+        execution_handler = SimulatedExecutionHandler(
+            portfolio_manager=portfolio_manager, # Pass the created portfolio_manager
+            config=execution_handler_config
+        )
+        logger.info("Execution Handler initialized.")
+
+        # 6. Orchestrator Configuration and Initialization
+        orchestrator_config = {
+            'start_date': START_DATE,
+            'end_date': END_DATE,
+            'symbols': SYMBOLS,
+            'data_types': ['ohlcv', 'sentiment'], # Specify data types needed
+            'timeframe': TIME_FRAME
+        }
+        orchestrator = BacktestOrchestrator(
+            data_manager=data_manager,
+            strategy_manager=strategy_manager,
+            portfolio_manager=portfolio_manager,
+            risk_manager=risk_manager,
+            execution_handler=execution_handler,
+            config=orchestrator_config
+        )
+
+        # 7. Run the backtest
+        logger.info("Running backtest orchestrator...")
+        try:
+            results = orchestrator.run()
+            logger.info("Backtest finished successfully.")
+        except Exception as e:
+            tb_str = traceback.format_exc()
+            logger.error(f"An error occurred during the backtest run: {e}\nTraceback:\n{tb_str}")
+            results = None
+
+        # --- Save Results to JSON --- 
+        if results:
+            try:
+                results_file = os.path.join(DATA_DIR, 'backtest_results.json')
+                # Convert non-serializable items (like timestamps) if necessary
+                # For now, attempt direct saving. Handle errors if they occur.
+                # A more robust solution might involve a custom JSON encoder.
+                with open(results_file, 'w') as f:
+                    json.dump(results, f, indent=4, default=str) # Use default=str for basic types
+                logger.info(f"Full backtest results saved to {results_file}")
+            except TypeError as e:
+                logger.error(f"Could not serialize results to JSON: {e}. Skipping JSON save.")
+                # Consider implementing a custom encoder here if needed
+            except Exception as e:
+                logger.error(f"Error saving results to JSON: {e}")
+
+        # 8. Display Results
+        if results:
+            logger.info("--- Backtest Results ---")
+            logger.info(f"Initial Cash: {INITIAL_CASH:.2f}")
+
+            perf_metrics = results.get('performance_metrics')
+
+            if perf_metrics:
+                if 'error' in perf_metrics:
+                    logger.error(f"Performance metrics calculation failed: {perf_metrics['error']}")
+                else:
+                    logger.info("Performance Metrics:")
+                    for key, value in perf_metrics.items():
+                        if isinstance(value, (int, float)):
+                             # Format percentages and ratios nicely
+                             if 'pct' in key:
+                                 logger.info(f"  {key.replace('_', ' ').title()}: {value:.2f}%")
+                             elif key == 'sharpe_ratio':
+                                 logger.info(f"  {key.replace('_', ' ').title()}: {value:.4f}")
+                             else:
+                                  logger.info(f"  {key.replace('_', ' ').title()}: {value:.2f}")
+                        else:
+                            logger.info(f"  {key.replace('_', ' ').title()}: {value}")
+
+                    # Log total orders/fills separately as they are not strictly 'performance'
+                    logger.info(f"Operational Metrics:")
+                    logger.info(f"  Total Orders Generated: {len(results.get('orders_generated', []))}")
+                    logger.info(f"  Total Fills Executed: {len(results.get('fills_executed', []))}")
+
+            else:
+                logger.warning("Performance metrics not found in results.")
+                # Fallback to basic info if metrics are missing but history exists
+                if results.get('portfolio_history'):
+                     final_value = results['portfolio_history'][-1]['value']
+                     logger.info(f"Final Portfolio Value (from history): {final_value:.2f}")
+                     logger.info(f"Total Orders Generated: {len(results.get('orders_generated', []))}")
+                     logger.info(f"Total Fills Executed: {len(results.get('fills_executed', []))}")
+
+            # Optionally, save portfolio history to CSV
+            if results.get('portfolio_history'):
+                history_df = pd.DataFrame(results['portfolio_history'])
+                history_df.set_index('timestamp', inplace=True)
+                history_file = os.path.join(DATA_DIR, 'backtest_portfolio_history.csv')
+                history_df.to_csv(history_file)
+                logger.info(f"Portfolio history saved to {history_file}")
+            else:
+                 logger.warning("Portfolio history not found in results.")
+        else:
+            logger.error("Backtest did not produce results.")
+
+        logger.info("--- Sentiment Strategy Backtest Finished ---")
+
+
+    if __name__ == "__main__":
+        run_sentiment_backtest()
+
+except Exception as e:
+    error_log.write(f"FATAL ERROR: {e}\n")
+    error_log.write("Traceback:\n")
+    traceback.print_exc(file=error_log)
+    print(f"An error occurred. Check {error_log_path} for details.")
+    sys.exit(1)
+finally:
+    error_log.close()

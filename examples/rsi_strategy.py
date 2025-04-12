@@ -16,9 +16,9 @@ import os
 # Add the project root to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.data_acquisition.mock_provider import MockDataProvider
-from src.data_processing.indicators import calculate_rsi
-from src.trading_engine.models import Order, OrderType, OrderSide
+from ai_trading_agent.data_acquisition.mock_provider import MockDataProvider
+from ai_trading_agent.data_processing.indicators import calculate_rsi
+from ai_trading_agent.trading_engine.models import Order, OrderType, OrderSide
 
 # Create a mock data provider for testing
 data_provider = MockDataProvider()
