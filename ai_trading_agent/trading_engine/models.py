@@ -10,11 +10,11 @@ from datetime import datetime, timezone
 import uuid
 import logging
 
-# Import enums from the enums module
-from src.trading_engine.enums import OrderSide, OrderType, OrderStatus, PositionSide
+# Import enums from the enums module using absolute import instead of relative
+from ai_trading_agent.trading_engine.enums import OrderSide, OrderType, OrderStatus, PositionSide
 
 # --- Helper Functions ---
-from src.common.time_utils import to_utc_naive
+from ..common.time_utils import to_utc_naive
 
 def utcnow() -> datetime:
     """Return naive UTC timestamp."""
@@ -341,6 +341,83 @@ class Trade(BaseModel):
         super().__init__(**data)
 
 
+class Fill(BaseModel):
+    """
+    Represents a fill (execution) of an order.
+    
+    A Fill records the details of a specific execution event, which may be a partial
+    or complete fill of an order. It includes information about the quantity filled,
+    the price at which it was filled, and any associated costs.
+    
+    Attributes:
+        fill_id: Unique identifier for the fill
+        order_id: ID of the order that was filled
+        symbol: Trading pair symbol (e.g., "BTC/USDT")
+        side: Buy or sell
+        quantity: Quantity filled in this execution
+        price: Price at which the fill occurred
+        timestamp: When the fill occurred
+        commission: Optional commission amount
+        commission_asset: Optional asset in which commission was paid
+        exchange_order_id: Optional exchange order ID
+    """
+    fill_id: str = Field(default_factory=lambda: f"fill_{uuid.uuid4()}")
+    order_id: str
+    symbol: str
+    side: OrderSide
+    quantity: float = Field(gt=0)  # Fill quantity must be positive
+    price: float = Field(gt=0)  # Fill price must be positive
+    timestamp: datetime = Field(default_factory=utcnow)
+    commission: Optional[float] = None
+    commission_asset: Optional[str] = None
+    exchange_order_id: Optional[str] = None
+    
+    model_config = {
+        "populate_by_name": True,
+        "extra": "ignore",
+    }
+    
+    def __init__(self, **data):
+        # Convert string literals to enum values
+        if 'side' in data and isinstance(data['side'], str):
+            try:
+                data['side'] = OrderSide[data['side']]
+            except KeyError:
+                # Try case-insensitive match
+                for enum_val in OrderSide:
+                    if enum_val.name.lower() == data['side'].lower():
+                        data['side'] = enum_val
+                        break
+        
+        super().__init__(**data)
+    
+    @property
+    def value(self) -> float:
+        """
+        Calculate the total value of this fill.
+        
+        Returns:
+            The quantity * price
+        """
+        return self.quantity * self.price
+    
+    @property
+    def net_value(self) -> float:
+        """
+        Calculate the net value of this fill after commission.
+        
+        Returns:
+            The value minus commission (if commission is in the same asset)
+        """
+        if self.commission is None or self.commission_asset != self.symbol:
+            return self.value
+        
+        if self.side == OrderSide.BUY:
+            return self.value - self.commission
+        else:  # SELL
+            return self.value - self.commission
+
+
 class Position(BaseModel):
     """
     Represents a current position in a trading symbol.
@@ -575,11 +652,11 @@ class Portfolio(BaseModel):
         4. Adds the trade to history
         
         Args:
-            trade: The executed trade
+            trade: The Trade object representing the fill.
             current_market_prices: Dictionary of current market prices keyed by symbol
         """
         # Ensure trade timestamp is a Python datetime object
-        from src.common.time_utils import to_utc_naive
+        from ..common.time_utils import to_utc_naive
         try:
             trade_copy = trade.model_copy()
             trade_copy.timestamp = to_utc_naive(trade.timestamp)

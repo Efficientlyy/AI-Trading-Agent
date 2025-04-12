@@ -7,9 +7,9 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-from src.trading_engine.portfolio_manager import PortfolioManager
-from src.trading_engine.models import Order, Trade, Position, Portfolio
-from src.trading_engine.enums import OrderSide, OrderType, OrderStatus, PositionSide
+from ai_trading_agent.trading_engine.portfolio_manager import PortfolioManager
+from ai_trading_agent.trading_engine.models import Order, Trade, Position, Portfolio
+from ai_trading_agent.trading_engine.enums import OrderSide, OrderType, OrderStatus, PositionSide
 
 
 class TestPortfolioManager:

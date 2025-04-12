@@ -15,9 +15,9 @@ import numpy as np
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-from src.trading_engine.execution_handler import SimulatedExchange
-from src.trading_engine.models import Order, Trade
-from src.trading_engine.enums import OrderSide, OrderType, OrderStatus
+from ai_trading_agent.trading_engine.execution_handler import SimulatedExchange
+from ai_trading_agent.trading_engine.models import Order, Trade
+from ai_trading_agent.trading_engine.enums import OrderSide, OrderType, OrderStatus
 
 
 class TestSimulatedExchangeFeatures:

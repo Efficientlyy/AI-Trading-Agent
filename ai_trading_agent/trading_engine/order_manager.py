@@ -9,9 +9,10 @@ Responsibilities:
 """
 
 from typing import Dict, Optional, Literal
-from .models import Order, Trade, Portfolio, OrderStatus
-from src.common import logger
-from src.trading_engine.exceptions import OrderValidationError, TradingEngineError
+from .models import Order, Trade, Portfolio
+from .enums import OrderStatus
+from ..common import logger
+from .exceptions import OrderValidationError, TradingEngineError
 
 class OrderManager:
     """Handles order creation, tracking, and updates."""

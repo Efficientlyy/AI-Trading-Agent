@@ -8,10 +8,10 @@ import pandas as pd
 from datetime import datetime
 
 # Fix imports to not reference 'src' directly
-from src.data_acquisition.data_service import DataService
+from ..data_acquisition.data_service import DataService
 from .order_manager import OrderManager
 from .models import Order, Trade, Portfolio
-from src.common import logger
+from ..common import logger
 
 class BaseTradingAgent(ABC):
     """Abstract Base Class for trading agent implementations."""

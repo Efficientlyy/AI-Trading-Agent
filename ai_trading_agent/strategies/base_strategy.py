@@ -7,14 +7,14 @@ for all trading strategies.
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Union, Any, Tuple
+from typing import Dict, List, Optional, Any, Union, Tuple
 from abc import ABC, abstractmethod
 import uuid
 from datetime import datetime
 
-from src.trading_engine.models import Order, Trade, Position, Portfolio
-from src.trading_engine.enums import OrderSide, OrderType, OrderStatus, PositionSide
-from src.common import logger
+from ..trading_engine.models import Order, Trade, Position, Portfolio
+from ..trading_engine.enums import OrderSide, OrderType, OrderStatus, PositionSide
+from ..common import logger
 
 
 class BaseStrategy(ABC):
