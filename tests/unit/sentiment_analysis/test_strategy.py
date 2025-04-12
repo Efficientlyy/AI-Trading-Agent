@@ -7,8 +7,8 @@ import numpy as np
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
-from src.sentiment_analysis.strategy import SentimentStrategy
-from src.trading_engine.models import Order, OrderType, OrderSide
+from ai_trading_agent.sentiment_analysis.strategy import SentimentStrategy
+from ai_trading_agent.trading_engine.models import Order, OrderType, OrderSide
 
 
 class TestSentimentStrategy:

@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 import os
 from unittest.mock import patch, MagicMock
 
-from src.sentiment_analysis.service import SentimentAnalysisService
-from src.trading_engine.models import Order
+from ai_trading_agent.sentiment_analysis.service import SentimentAnalysisService
+from ai_trading_agent.trading_engine.models import Order
 
 
 class TestSentimentAnalysisService:
@@ -45,8 +45,8 @@ class TestSentimentAnalysisService:
         assert hasattr(service, 'strategy')
         assert service.sentiment_cache == {}
     
-    @patch('src.sentiment_analysis.data_collection.SentimentCollectionService.collect_all')
-    @patch('src.sentiment_analysis.nlp_processing.NLPPipeline.process_dataframe')
+    @patch('ai_trading_agent.sentiment_analysis.data_collection.SentimentCollectionService.collect_all')
+    @patch('ai_trading_agent.sentiment_analysis.nlp_processing.NLPPipeline.process_dataframe')
     def test_collect_sentiment_data(self, mock_process_dataframe, mock_collect_all):
         """Test collection of sentiment data."""
         # Setup mock returns
@@ -91,7 +91,7 @@ class TestSentimentAnalysisService:
         assert cache_key in service.sentiment_cache
         assert service.sentiment_cache[cache_key]['data'] is mock_sentiment_data
     
-    @patch('src.sentiment_analysis.data_collection.SentimentCollectionService.collect_all')
+    @patch('ai_trading_agent.sentiment_analysis.data_collection.SentimentCollectionService.collect_all')
     def test_collect_sentiment_data_cache(self, mock_collect_all):
         """Test that sentiment data is cached and reused."""
         # Setup mock returns
@@ -133,9 +133,9 @@ class TestSentimentAnalysisService:
         result3 = service.collect_sentiment_data(symbols, start_date, end_date, force_refresh=True)
         assert mock_collect_all.call_count == 2
     
-    @patch('src.sentiment_analysis.service.SentimentAnalysisService.collect_sentiment_data')
-    @patch('src.sentiment_analysis.strategy.SentimentStrategy.preprocess_data')
-    @patch('src.sentiment_analysis.strategy.SentimentStrategy.generate_signals')
+    @patch('ai_trading_agent.sentiment_analysis.service.SentimentAnalysisService.collect_sentiment_data')
+    @patch('ai_trading_agent.sentiment_analysis.strategy.SentimentStrategy.preprocess_data')
+    @patch('ai_trading_agent.sentiment_analysis.strategy.SentimentStrategy.generate_signals')
     def test_generate_trading_signals(self, mock_generate_signals, mock_preprocess_data, mock_collect_sentiment_data):
         """Test generation of trading signals."""
         # Setup mock returns
@@ -199,7 +199,7 @@ class TestSentimentAnalysisService:
         # Check that the result is the expected DataFrame
         assert result is mock_signals
     
-    @patch('src.sentiment_analysis.strategy.SentimentStrategy.generate_orders')
+    @patch('ai_trading_agent.sentiment_analysis.strategy.SentimentStrategy.generate_orders')
     def test_generate_orders(self, mock_generate_orders):
         """Test generation of orders from signals."""
         # Setup mock returns
@@ -235,7 +235,7 @@ class TestSentimentAnalysisService:
         # Check that the result is the expected list of orders
         assert result is mock_orders
     
-    @patch('src.sentiment_analysis.strategy.SentimentStrategy.update_trade_history')
+    @patch('ai_trading_agent.sentiment_analysis.strategy.SentimentStrategy.update_trade_history')
     def test_update_trade_history(self, mock_update_trade_history):
         """Test updating trade history."""
         config = {
@@ -253,7 +253,7 @@ class TestSentimentAnalysisService:
         # Check that the update_trade_history method was called with the correct parameters
         mock_update_trade_history.assert_called_once_with(trade_result)
     
-    @patch('src.sentiment_analysis.service.SentimentAnalysisService.collect_sentiment_data')
+    @patch('ai_trading_agent.sentiment_analysis.service.SentimentAnalysisService.collect_sentiment_data')
     def test_get_sentiment_summary(self, mock_collect_sentiment_data):
         """Test getting a summary of sentiment data."""
         # Setup mock returns
