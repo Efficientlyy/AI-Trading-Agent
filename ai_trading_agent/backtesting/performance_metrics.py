@@ -42,12 +42,35 @@ class PerformanceMetrics:
     # Additional metrics
     calmar_ratio: float
     omega_ratio: float
+
+    # Advanced risk metrics
+    value_at_risk: float
+    conditional_value_at_risk: float
     
     # Raw data
     equity_curve: pd.Series
     drawdown_curve: pd.Series
     trade_summary: pd.DataFrame
 
+
+def calculate_var(returns: pd.Series, alpha: float = 0.05) -> float:
+    """
+    Calculate Value at Risk (VaR) at the specified alpha level.
+    VaR is the maximum expected loss at a given confidence level.
+    """
+    if returns.empty:
+        return 0.0
+    return np.percentile(returns, 100 * alpha)
+
+def calculate_cvar(returns: pd.Series, alpha: float = 0.05) -> float:
+    """
+    Calculate Conditional Value at Risk (CVaR, Expected Shortfall) at the specified alpha level.
+    CVaR is the expected loss given that the loss is beyond the VaR threshold.
+    """
+    if returns.empty:
+        return 0.0
+    var = calculate_var(returns, alpha)
+    return returns[returns <= var].mean()
 
 def calculate_metrics(
     portfolio_history: List[Dict[str, Any]],
@@ -101,6 +124,10 @@ def calculate_metrics(
     
     # Calculate risk metrics
     volatility = returns.std() * np.sqrt(estimated_annual_periods)
+
+    # Advanced risk metrics: VaR and CVaR (using daily returns)
+    value_at_risk = calculate_var(returns, alpha=0.05)
+    conditional_value_at_risk = calculate_cvar(returns, alpha=0.05)
     
     # Sharpe ratio
     excess_return = annualized_return - risk_free_rate
@@ -166,7 +193,7 @@ def calculate_metrics(
     threshold = 0  # Can be set to risk-free rate or target return
     omega_ratio = calculate_omega_ratio(returns, threshold)
     
-    return PerformanceMetrics(
+    metrics = PerformanceMetrics(
         total_return=total_return,
         annualized_return=annualized_return,
         daily_returns=returns,
@@ -185,10 +212,13 @@ def calculate_metrics(
         time_in_market=time_in_market,
         calmar_ratio=calmar_ratio,
         omega_ratio=omega_ratio,
+        value_at_risk=value_at_risk,
+        conditional_value_at_risk=conditional_value_at_risk,
         equity_curve=equity_curve,
         drawdown_curve=drawdown_curve,
         trade_summary=trade_df
     )
+    return metrics
 
 
 def calculate_drawdown(equity_curve: pd.Series) -> pd.Series:

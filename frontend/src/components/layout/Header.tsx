@@ -10,6 +10,7 @@ import {
   IconLogout, 
   IconSettings
 } from '@tabler/icons-react';
+import { useDataSource } from '../../context/DataSourceContext';
 
 interface HeaderProps {
   toggleDarkMode: () => void;
@@ -20,7 +21,8 @@ const Header: React.FC<HeaderProps> = ({ toggleDarkMode, isDarkMode }) => {
   const auth = useAuth() as AuthContextType;
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  
+  const { dataSource, setDataSource } = useDataSource();
+
   const toggleUserMenu = () => {
     setIsUserMenuOpen(!isUserMenuOpen);
     if (isNotificationsOpen) setIsNotificationsOpen(false);
@@ -39,6 +41,20 @@ const Header: React.FC<HeaderProps> = ({ toggleDarkMode, isDarkMode }) => {
         </div>
         
         <div className="flex items-center space-x-4">
+          {/* Data Source Toggle */}
+          <div className="flex items-center space-x-1 bg-gray-100 dark:bg-gray-700 rounded px-2 py-1">
+            <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">Mock</span>
+            <button
+              className={`w-10 h-5 flex items-center bg-gray-300 dark:bg-gray-600 rounded-full p-1 transition-colors duration-200 focus:outline-none ${dataSource === 'real' ? 'bg-green-400 dark:bg-green-600' : ''}`}
+              onClick={() => setDataSource(dataSource === 'mock' ? 'real' : 'mock')}
+              aria-label="Toggle data source"
+            >
+              <span
+                className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200 ${dataSource === 'real' ? 'translate-x-5' : ''}`}
+              />
+            </button>
+            <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">Real</span>
+          </div>
           {/* Theme toggle */}
           <button
             onClick={toggleDarkMode}

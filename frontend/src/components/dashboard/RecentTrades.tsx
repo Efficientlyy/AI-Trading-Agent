@@ -1,14 +1,37 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trade } from '../../types';
+import { useDataSource } from '../../context/DataSourceContext';
+import { tradesApi } from '../../api/trades';
+import { getMockTrades } from '../../api/mockData/mockTrades';
 
-export interface RecentTradesProps {
-  trades: Trade[] | null;
-  isLoading?: boolean;
+interface RecentTradesProps {
   onSymbolSelect?: (symbol: string) => void;
   selectedSymbol?: string;
 }
 
-const RecentTrades: React.FC<RecentTradesProps> = ({ trades, isLoading, onSymbolSelect, selectedSymbol }) => {
+const RecentTrades: React.FC<RecentTradesProps> = ({ onSymbolSelect, selectedSymbol }) => {
+  const { dataSource } = useDataSource();
+  const [trades, setTrades] = useState<Trade[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    const fetchTrades = async () => {
+      try {
+        const data = dataSource === 'mock'
+          ? await getMockTrades()
+          : await tradesApi.getRecentTrades();
+        if (isMounted) setTrades(data.trades);
+      } catch (e) {
+        if (isMounted) setTrades(null);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    fetchTrades();
+    return () => { isMounted = false; };
+  }, [dataSource]);
   if (isLoading) {
     return (
       <div className="dashboard-widget col-span-2">
@@ -26,7 +49,7 @@ const RecentTrades: React.FC<RecentTradesProps> = ({ trades, isLoading, onSymbol
     return (
       <div className="dashboard-widget col-span-2">
         <h2 className="text-lg font-semibold mb-3">Recent Trades</h2>
-        <div className="text-gray-500 dark:text-gray-400 text-center py-10">
+        <div className="text-gray-500 dark:text-gray-400 text-center py-8 text-base font-medium">
           No recent trades
         </div>
       </div>

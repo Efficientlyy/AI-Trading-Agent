@@ -168,107 +168,39 @@ def risk_parity_allocation(
 ) -> Dict[str, float]:
     """
     Risk parity portfolio allocation where each asset contributes equally to portfolio risk.
-    
     Args:
         data: Dictionary mapping symbols to DataFrames with OHLCV data
         bar_idx: Current bar index
-        lookback_period: Number of bars to use for calculating covariance
-        risk_target: Target portfolio volatility
-        
+        lookback_period: Number of bars to use for volatility estimation
+        risk_target: Target portfolio risk (not always used)
     Returns:
         Dictionary mapping symbols to target weights
     """
     symbols = list(data.keys())
     n_assets = len(symbols)
-    
     if n_assets == 0:
         return {}
-        
     if bar_idx < lookback_period:
         return equal_weight_allocation(data, bar_idx)
-    
-    # Extract returns for lookback period
+    # Compute returns for each asset
     returns_data = {}
     for symbol, df in data.items():
         if bar_idx < len(df):
-            # Calculate daily returns
             prices = df.iloc[bar_idx - lookback_period:bar_idx]['close'].values
             returns = np.diff(prices) / prices[:-1]
             returns_data[symbol] = returns
-    
-    # Convert to DataFrame
     returns_df = pd.DataFrame(returns_data)
-    
-    # Handle missing data
     returns_df = returns_df.fillna(0)
-    
-    # If we don't have enough data, fall back to equal weight
     if returns_df.empty or returns_df.shape[0] < 10:
         return equal_weight_allocation(data, bar_idx)
-    
-    # Calculate covariance matrix
-    cov_matrix = returns_df.cov().values
-    
     # Calculate asset volatilities
-    vols = np.sqrt(np.diag(cov_matrix))
-    
-    # Handle zero volatilities
-    vols = np.where(vols == 0, 1e-6, vols)
-    
-    # Initial weights (inverse volatility)
-    weights = 1 / vols
-    weights = weights / np.sum(weights)
-    
-    # Define risk contribution function
-    def risk_contribution(weights):
-        weights = np.array(weights)
-        portfolio_vol = np.sqrt(weights.dot(cov_matrix).dot(weights.T))
-        
-        # Marginal contribution to risk
-        mcr = cov_matrix.dot(weights.T) / portfolio_vol
-        
-        # Risk contribution
-        rc = weights * mcr
-        
-        # We want equal risk contribution
-        target_rc = portfolio_vol / n_assets
-        
-        # Return sum of squared deviations from target
-        return np.sum((rc - target_rc)**2)
-    
-    # Constraints
-    constraints = [
-        {'type': 'eq', 'fun': lambda x: np.sum(x) - 1}  # Weights sum to 1
-    ]
-    
-    # Bounds (0 <= weight <= 1)
-    bounds = tuple((0, 1) for _ in range(n_assets))
-    
-    # Solve optimization problem
-    result = sco.minimize(
-        risk_contribution,
-        weights,
-        method='SLSQP',
-        bounds=bounds,
-        constraints=constraints
-    )
-    
-    # If optimization fails, fall back to equal weight
-    if not result.success:
+    volatilities = returns_df.std()
+    inv_vol = 1.0 / volatilities
+    inv_vol = inv_vol.replace([np.inf, -np.inf], 0)
+    total_inv_vol = inv_vol.sum()
+    if total_inv_vol == 0:
         return equal_weight_allocation(data, bar_idx)
-    
-    # Scale weights to match risk target
-    weights = result.x
-    portfolio_vol = np.sqrt(weights.dot(cov_matrix).dot(weights.T))
-    scaling_factor = risk_target / portfolio_vol
-    weights = weights * scaling_factor
-    
-    # Normalize weights to sum to 1
-    weights = weights / np.sum(weights)
-    
-    # Convert result to dictionary
-    weights = {symbol: weight for symbol, weight in zip(symbols, weights)}
-    
+    weights = {symbol: inv_vol[symbol] / total_inv_vol for symbol in symbols}
     return weights
 
 
@@ -397,4 +329,52 @@ def momentum_allocation(
         if s not in weights:
             weights[s] = 0.0
     
+    return weights
+
+
+def momentum_weight_allocation(
+    data: Dict[str, pd.DataFrame],
+    bar_idx: int,
+    lookback_period: int = 30,
+    top_n: int = None
+) -> Dict[str, float]:
+    """
+    Momentum-based allocation: weights proportional to recent returns.
+    Args:
+        data: Dictionary mapping symbols to DataFrames with OHLCV data
+        bar_idx: Current bar index
+        lookback_period: Number of bars to use for calculating momentum
+        top_n: Number of top performers to include (None = include all)
+    Returns:
+        Dictionary mapping symbols to target weights
+    """
+    symbols = list(data.keys())
+    n_assets = len(symbols)
+    if n_assets == 0:
+        return {}
+    if bar_idx < lookback_period:
+        return equal_weight_allocation(data, bar_idx)
+    momentum_scores = {}
+    for symbol, df in data.items():
+        if bar_idx < len(df) and bar_idx - lookback_period >= 0:
+            start_price = df.iloc[bar_idx - lookback_period]["close"]
+            end_price = df.iloc[bar_idx - 1]["close"]
+            if start_price > 0:
+                momentum = (end_price / start_price) - 1
+                momentum_scores[symbol] = momentum
+    if not momentum_scores:
+        return equal_weight_allocation(data, bar_idx)
+    # Filter to top N performers if specified
+    if top_n is not None and top_n < len(momentum_scores):
+        top_symbols = sorted(momentum_scores.keys(), key=lambda s: momentum_scores[s], reverse=True)[:top_n]
+        momentum_scores = {s: momentum_scores[s] for s in top_symbols}
+    # Handle negative momentum scores
+    min_score = min(momentum_scores.values())
+    if min_score < 0:
+        momentum_scores = {s: score - min_score + 0.01 for s, score in momentum_scores.items()}
+    total_momentum = sum(momentum_scores.values())
+    weights = {symbol: score / total_momentum for symbol, score in momentum_scores.items()}
+    for s in symbols:
+        if s not in weights:
+            weights[s] = 0.0
     return weights

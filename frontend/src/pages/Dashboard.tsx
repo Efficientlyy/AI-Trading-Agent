@@ -344,15 +344,9 @@ const Dashboard: React.FC = () => {
           {/* Left Column - Portfolio and Performance */}
           <div className="col-span-12 lg:col-span-8 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <PortfolioSummary 
-                portfolio={portfolio} 
-                isLoading={status === 'connecting'} 
-              />
+              <PortfolioSummary />
               
-              <PerformanceMetrics 
-                performance={performanceData} 
-                isLoading={status === 'connecting'} 
-              />
+              <PerformanceMetrics />
             </div>
             
             <EquityCurveChart 
@@ -376,36 +370,17 @@ const Dashboard: React.FC = () => {
                 onSubmitOrder={handleSubmitOrder}
               />
               
-              <OrderManagement 
-                symbol={selectedSymbol}
-                activeOrders={activeOrders}
-                onCancelOrder={handleCancelOrder}
-                isLoading={false}
-              />
+              <OrderManagement symbol={selectedSymbol} currentPrice={currentPrice} />
             </div>
             
-            <RecentTrades 
-              trades={recentTrades} 
-              onSymbolSelect={handleSymbolChange}
-              selectedSymbol={selectedSymbol}
-            />
+            <RecentTrades onSymbolSelect={handleSymbolChange} selectedSymbol={selectedSymbol} />
           </div>
           
           {/* Right Column - Asset Allocation and Sentiment */}
           <div className="col-span-12 lg:col-span-4 space-y-6">
-            <AssetAllocationChart 
-              portfolio={portfolio} 
-              isLoading={status === 'connecting'} 
-              onAssetSelect={handleSymbolChange}
-              selectedAsset={selectedSymbol}
-            />
+            <AssetAllocationChart onAssetSelect={handleSymbolChange} selectedAsset={selectedSymbol} />
             
-            <SentimentSummary 
-              sentimentData={sentimentData} 
-              isLoading={status === 'connecting'} 
-              onSymbolSelect={handleSymbolChange}
-              selectedSymbol={selectedSymbol}
-            />
+            <SentimentSummary onSymbolSelect={handleSymbolChange} selectedSymbol={selectedSymbol} />
             
             <TradingStrategy
               symbol={selectedSymbol}

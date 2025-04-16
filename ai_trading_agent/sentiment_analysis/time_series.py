@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict, Union, Optional, Tuple
 
-from src.rust_integration.features import (
+from ai_trading_agent.rust_integration.features import (
     create_lag_features,
     create_diff_features,
     create_pct_change_features,
@@ -350,4 +350,54 @@ class SentimentTimeSeriesAnalyzer:
         # Calculate change in rate of change (acceleration)
         acceleration = create_diff_features(roc, [period])[:, 0]
         
+    def calculate_sentiment_correlation_matrix(
+        self,
+        sentiment_data: pd.DataFrame,
+        asset_column: str = "asset",
+        sentiment_column: str = "compound"
+    ) -> pd.DataFrame:
+        """
+        Calculate the cross-asset sentiment correlation matrix.
+
+        Args:
+            sentiment_data: DataFrame with columns [asset_column, sentiment_column]
+            asset_column: Name of the column with asset/ticker names
+            sentiment_column: Name of the column with sentiment scores
+
+        Returns:
+            DataFrame (assets x assets) with correlation coefficients
+        """
+        if asset_column not in sentiment_data.columns or sentiment_column not in sentiment_data.columns:
+            raise ValueError("Required columns not found in sentiment_data")
+        pivot = sentiment_data.pivot_table(index=sentiment_data.index, columns=asset_column, values=sentiment_column)
+        return pivot.corr()
+
+    def calculate_rolling_sentiment_correlation(
+        self,
+        sentiment_data: pd.DataFrame,
+        asset_column: str = "asset",
+        sentiment_column: str = "compound",
+        window: int = 21
+    ) -> Dict[Tuple[str, str], pd.Series]:
+        """
+        Calculate rolling correlations between all pairs of assets.
+
+        Args:
+            sentiment_data: DataFrame with columns [asset_column, sentiment_column]
+            asset_column: Name of the column with asset/ticker names
+            sentiment_column: Name of the column with sentiment scores
+            window: Rolling window size
+
+        Returns:
+            Dict of (asset1, asset2): pd.Series of rolling correlations
+        """
+        if asset_column not in sentiment_data.columns or sentiment_column not in sentiment_data.columns:
+            raise ValueError("Required columns not found in sentiment_data")
+        pivot = sentiment_data.pivot_table(index=sentiment_data.index, columns=asset_column, values=sentiment_column)
+        assets = pivot.columns
+        rolling_corrs = {}
+        for i, a1 in enumerate(assets):
+            for a2 in assets[i+1:]:
+                rolling_corrs[(a1, a2)] = pivot[a1].rolling(window).corr(pivot[a2])
+        return rolling_corrs
         return pd.Series(acceleration, index=sentiment_data.index)

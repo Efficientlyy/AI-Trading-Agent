@@ -41,12 +41,12 @@ class TestSentimentAnalysisService:
         assert service.config == config
         assert service.output_dir == self.test_output_dir
         assert hasattr(service, 'collection_service')
-        assert hasattr(service, 'nlp_pipeline')
+        assert hasattr(service, 'nlp_processor')
         assert hasattr(service, 'strategy')
         assert service.sentiment_cache == {}
     
     @patch('ai_trading_agent.sentiment_analysis.data_collection.SentimentCollectionService.collect_all')
-    @patch('ai_trading_agent.sentiment_analysis.nlp_processing.NLPPipeline.process_dataframe')
+    @patch('ai_trading_agent.sentiment_analysis.service.SentimentAnalysisService._process_sentiment_data')
     def test_collect_sentiment_data(self, mock_process_dataframe, mock_collect_all):
         """Test collection of sentiment data."""
         # Setup mock returns
@@ -134,9 +134,9 @@ class TestSentimentAnalysisService:
         assert mock_collect_all.call_count == 2
     
     @patch('ai_trading_agent.sentiment_analysis.service.SentimentAnalysisService.collect_sentiment_data')
-    @patch('ai_trading_agent.sentiment_analysis.strategy.SentimentStrategy.preprocess_data')
-    @patch('ai_trading_agent.sentiment_analysis.strategy.SentimentStrategy.generate_signals')
-    def test_generate_trading_signals(self, mock_generate_signals, mock_preprocess_data, mock_collect_sentiment_data):
+    @patch('ai_trading_agent.sentiment_analysis.service.SentimentAnalysisService.generate_features') # Added mock for generate_features
+    @patch('ai_trading_agent.sentiment_analysis.service.DummySentimentStrategy.generate_signals')
+    def test_generate_trading_signals(self, mock_generate_signals, mock_generate_features, mock_collect_sentiment_data):
         """Test generation of trading signals."""
         # Setup mock returns
         mock_sentiment_data = pd.DataFrame({
@@ -153,7 +153,7 @@ class TestSentimentAnalysisService:
             'close': [40000],
             'sentiment_score': [0.5]
         })
-        mock_preprocess_data.return_value = mock_processed_data
+        mock_generate_features.return_value = mock_processed_data # Have mock generate_features return mock_processed_data
         
         mock_signals = pd.DataFrame({
             'timestamp': [datetime.now()],
@@ -191,7 +191,7 @@ class TestSentimentAnalysisService:
         mock_collect_sentiment_data.assert_called_once_with(symbols, start_date, end_date, False)
         
         # Check that the preprocess_data method was called with the correct parameters
-        mock_preprocess_data.assert_called_once_with(market_data, mock_sentiment_data)
+        mock_generate_features.assert_called_once_with(mock_sentiment_data) # Check generate_features was called
         
         # Check that the generate_signals method was called with the correct parameters
         mock_generate_signals.assert_called_once_with(mock_processed_data)
@@ -199,7 +199,7 @@ class TestSentimentAnalysisService:
         # Check that the result is the expected DataFrame
         assert result is mock_signals
     
-    @patch('ai_trading_agent.sentiment_analysis.strategy.SentimentStrategy.generate_orders')
+    @patch('ai_trading_agent.sentiment_analysis.service.DummySentimentStrategy.generate_orders')
     def test_generate_orders(self, mock_generate_orders):
         """Test generation of orders from signals."""
         # Setup mock returns
@@ -235,7 +235,7 @@ class TestSentimentAnalysisService:
         # Check that the result is the expected list of orders
         assert result is mock_orders
     
-    @patch('ai_trading_agent.sentiment_analysis.strategy.SentimentStrategy.update_trade_history')
+    @patch('ai_trading_agent.sentiment_analysis.service.DummySentimentStrategy.update_trade_history')
     def test_update_trade_history(self, mock_update_trade_history):
         """Test updating trade history."""
         config = {

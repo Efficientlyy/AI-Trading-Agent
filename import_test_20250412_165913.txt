@@ -1,0 +1,4 @@
+Testing imports from project root: C:\Users\vp199\Documents\Projects\GitHub\AI-Trading-Agent
+--------------------------------------------------
+
+Testing common modules:

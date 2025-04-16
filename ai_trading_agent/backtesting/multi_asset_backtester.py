@@ -109,6 +109,47 @@ class MultiAssetBacktester(Backtester):
         
         logger.info(f"Initialized multi-asset backtester with {len(self.symbols)} symbols")
     
+    def _initialize_portfolio_state(self):
+        """
+        Ensure portfolio and allocation state are initialized for multi-asset backtesting.
+        """
+        if not hasattr(self, "portfolio") or self.portfolio is None:
+            from ..trading_engine.models import Portfolio
+            self.portfolio = Portfolio(initial_capital=self.initial_capital)
+        if not hasattr(self, "current_allocations"):
+            self.current_allocations = {symbol: 0.0 for symbol in self.symbols}
+        if not hasattr(self, "allocation_history"):
+            self.allocation_history = {symbol: [] for symbol in self.symbols}
+        if not hasattr(self, "allocation_timestamps"):
+            self.allocation_timestamps = []
+
+    def _update_portfolio_state(self, bar_idx):
+        """
+        Update portfolio state and record history for the current bar.
+        """
+        # Update portfolio value with current prices
+        current_prices = self._get_current_prices(bar_idx)
+        self.portfolio.update_total_value(current_prices)
+        # Optionally, add more logic here as needed for your use case
+    
+    def _store_portfolio_snapshot(self, timestamp):
+        """
+        Store a snapshot of the portfolio state at the given timestamp.
+        """
+        # Find the current bar index for this timestamp
+        bar_idx = self.common_dates.index(timestamp)
+        current_prices = self._get_current_prices(bar_idx)
+        snapshot = {
+            'timestamp': timestamp,
+            'cash': self.portfolio.cash,
+            'total_value': self.portfolio.total_value,
+            'positions': {symbol: {
+                'quantity': pos.quantity,
+                'value': pos.quantity * current_prices.get(symbol, 0)
+            } for symbol, pos in self.portfolio.positions.items()}
+        }
+        self.portfolio_history.append(snapshot)
+    
     def run(
         self, 
         strategy_fn: Callable[[Dict[str, pd.DataFrame], Portfolio, int], List[Order]],
@@ -136,12 +177,15 @@ class MultiAssetBacktester(Backtester):
         # Get common date range
         self.align_data_dates()
         
+        # Initialize portfolio state
+        self._initialize_portfolio_state()
+        
         # Main backtest loop
         for bar_idx in range(len(self.common_dates)):
             current_date = self.common_dates[bar_idx]
             
-            # Update portfolio with current prices
-            self._update_portfolio(bar_idx)
+            # Update portfolio state and record history
+            self._update_portfolio_state(bar_idx)
             
             # Store portfolio snapshot
             self._store_portfolio_snapshot(current_date)
@@ -384,6 +428,42 @@ class MultiAssetBacktester(Backtester):
         )
         
         return corr_ok
+    
+    def _process_order(self, order, bar_idx):
+        """
+        Simulate order execution and update the portfolio. Returns a Trade object if executed.
+        """
+        # For now, use the OrderManager to execute the order
+        # You may want to expand this for slippage, partial fills, etc.
+        if not hasattr(self, "order_manager") or self.order_manager is None:
+            self.order_manager = OrderManager(self.portfolio)
+        # Simulate order execution
+        # (Assume order is already created and validated)
+        trade = None
+        if hasattr(self.order_manager, 'execute_order'):
+            # If a custom execute_order exists, use it
+            trade = self.order_manager.execute_order(order, bar_idx)
+        else:
+            # Fallback: manually simulate a fill and process
+            # Assume market order filled at current price
+            symbol = order.symbol
+            current_prices = self._get_current_prices(bar_idx)
+            fill_price = current_prices.get(symbol, order.price)
+            if fill_price is None:
+                return None
+            from ..trading_engine.models import Trade
+            trade = Trade(
+                order_id=order.order_id,
+                symbol=symbol,
+                side=order.side,
+                quantity=order.quantity,
+                price=fill_price,
+                commission=0.0,
+                commission_asset=None
+            )
+            # Process trade in OrderManager
+            self.order_manager.process_trade(trade, current_prices)
+        return trade
     
     def _update_asset_performance(self, bar_idx: int) -> None:
         """Update asset-level performance metrics."""

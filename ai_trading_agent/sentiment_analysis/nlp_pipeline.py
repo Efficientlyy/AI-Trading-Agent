@@ -5,30 +5,56 @@ NLP processing pipeline for sentiment analysis.
 import re
 from typing import Dict, Any, Optional
 
+from .nlp_processing import TextPreprocessor
+from .nlp_processing import EntityExtractor
+
 from textblob import TextBlob  # For initial sentiment scoring, can replace with transformers later
 
 class SentimentNLPProcessor:
     """
     Processes raw text into cleaned text, sentiment scores, and optional entities.
+    Advanced text preprocessing using NLTK-based pipeline and entity extraction for financial terms.
     """
 
-    def clean_text(self, text: str) -> str:
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
-        Clean and normalize raw text.
+        Initialize the NLP processor with optional preprocessing and entity extraction config.
+        """
+        if config is None:
+            config = {
+                "remove_numbers": True,
+                "custom_stop_words": [],
+                "entity_extraction": {}
+            }
+        self.preprocessor = TextPreprocessor(config)
+        self.entity_extractor = EntityExtractor(config.get("entity_extraction", {}))
+
+    def clean_text(self, text: str, remove_stop_words: bool = True, lemmatize: bool = True) -> str:
+        """
+        Clean and normalize raw text using advanced preprocessing.
 
         Args:
             text: Raw input text.
+            remove_stop_words: Whether to remove stop words.
+            lemmatize: Whether to lemmatize words.
 
         Returns:
             Cleaned text.
         """
-        text = text.lower()
-        text = re.sub(r"http\S+", "", text)  # Remove URLs
-        text = re.sub(r"@\w+", "", text)     # Remove mentions
-        text = re.sub(r"#\w+", "", text)     # Remove hashtags
-        text = re.sub(r"[^a-z0-9\s]", "", text)  # Remove special characters
-        text = re.sub(r"\s+", " ", text).strip()
-        return text
+        return self.preprocessor.preprocess(text, remove_stop_words=remove_stop_words, lemmatize=lemmatize)
+
+    def extract_entities(self, text: str) -> Optional[Dict[str, Any]]:
+        """
+        Extract entities from text using the advanced EntityExtractor.
+
+        Args:
+            text: Input text.
+
+        Returns:
+            Dictionary with extracted entities (asset_symbols, financial_terms, prices, cashtags).
+        """
+        return self.entity_extractor.extract_entities(text)
+        return self.entity_extractor.extract_entities(text)
 
     def score_sentiment(self, text: str) -> Dict[str, Any]:
         """

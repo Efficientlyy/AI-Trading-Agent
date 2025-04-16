@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
 
 // Animation types
@@ -37,7 +37,7 @@ export const AnimatedTransition: React.FC<AnimatedTransitionProps> = ({
   show = true,
   unmountOnExit = true
 }) => {
-  const nodeRef = useRef(null);
+  const nodeRef = useRef<HTMLDivElement | null>(null);
   
   // Generate CSS classes based on animation type
   const getClassNames = () => {
@@ -100,7 +100,7 @@ export const AnimatedTransition: React.FC<AnimatedTransitionProps> = ({
   return (
     <CSSTransition
       in={show}
-      nodeRef={nodeRef}
+      nodeRef={nodeRef as React.RefObject<HTMLElement>}
       timeout={duration}
       classNames={classNames}
       unmountOnExit={unmountOnExit}
@@ -199,7 +199,7 @@ export const AnimatedSwitch: React.FC<AnimatedSwitchProps> = ({
           return (
             <CSSTransition
               key={child.key}
-              nodeRef={nodeRef}
+              nodeRef={nodeRef as React.RefObject<HTMLElement>}
               timeout={duration}
               classNames={getClassNames()}
             >
@@ -252,10 +252,4 @@ export function useAnimation(
   };
 }
 
-export default {
-  AnimatedTransition,
-  AnimatedSwitch,
-  useAnimation,
-  AnimationType,
-  AnimationDuration
-};
+

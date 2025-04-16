@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, ScatterChart, Scatter, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Cell } from 'recharts';
 import { BacktestMetrics } from './BacktestingInterface';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, ScatterChart, Scatter, ZAxis, Cell, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts';
 
 export interface OptimizationResult {
   parameters: Record<string, any>;
@@ -522,7 +522,7 @@ const StrategyOptimizer: React.FC<StrategyOptimizerProps> = ({
                             position: 'left' 
                           }}
                         />
-                        <ZAxis type="number" dataKey="size" range={[40, 100]} />
+                    
                         <Tooltip 
                           cursor={{ strokeDasharray: '3 3' }}
                           formatter={(value: any, name: string) => {

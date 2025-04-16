@@ -1,15 +1,38 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect, useState } from 'react';
 import { SentimentSignal } from '../../types';
 import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from '@heroicons/react/24/solid';
+import { useDataSource } from '../../context/DataSourceContext';
+import { sentimentApi } from '../../api/sentiment';
+import { getMockSentimentSummary } from '../../api/mockData/mockSentimentSummary';
 
-export interface SentimentSummaryProps {
-  sentimentData: Record<string, SentimentSignal> | null;
-  isLoading: boolean;
+interface SentimentSummaryProps {
   onSymbolSelect?: (symbol: string) => void;
   selectedSymbol?: string;
 }
 
-const SentimentSummary: React.FC<SentimentSummaryProps> = ({ sentimentData, isLoading, onSymbolSelect, selectedSymbol }) => {
+const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, selectedSymbol }) => {
+  const { dataSource } = useDataSource();
+  const [sentimentData, setSentimentData] = useState<Record<string, SentimentSignal> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    const fetchSentiment = async () => {
+      try {
+        const data = dataSource === 'mock'
+          ? await getMockSentimentSummary()
+          : await sentimentApi.getSentimentSummary();
+        if (isMounted) setSentimentData(data.sentimentData);
+      } catch (e) {
+        if (isMounted) setSentimentData(null);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    fetchSentiment();
+    return () => { isMounted = false; };
+  }, [dataSource]);
   const sentimentAnalysis = useMemo(() => {
     if (!sentimentData) return { buyCount: 0, sellCount: 0, holdCount: 0, signals: [] };
 
@@ -161,7 +184,7 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ sentimentData, isLo
       {/* Top Signals */}
       <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Top Signals</h3>
       {sentimentAnalysis.signals.length === 0 ? (
-        <div className="text-gray-500 dark:text-gray-400 text-center py-4">
+        <div className="text-gray-500 dark:text-gray-400 text-center py-8 text-base font-medium">
           No sentiment data available
         </div>
       ) : (

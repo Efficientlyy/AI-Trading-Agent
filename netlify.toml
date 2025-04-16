@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "frontend/build"
+
+[context.production.environment]
+  NODE_ENV = "production"
+
+[context.deploy-preview.environment]
+  NODE_ENV = "development"

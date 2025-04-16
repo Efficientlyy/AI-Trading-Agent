@@ -35,8 +35,15 @@ class Backtester:
         data: Dict[str, pd.DataFrame],
         initial_capital: float = 10000.0,
         commission_rate: float = 0.001,
+        fixed_commission: float = 0.0,
         slippage: float = 0.0,
+        bid_ask_spread: float = 0.0,
+        slippage_model: str = "fixed",  # "fixed", "random", "volatility", "size"
+        slippage_volatility: float = 0.0,  # For volatility-based slippage
+        slippage_size_factor: float = 0.0,  # For size-based slippage
+        price_impact_factor: float = 0.0,
         enable_fractional: bool = True,
+        execution_delay: int = 0,
     ):
         """
         Initialize the backtester.
@@ -52,8 +59,16 @@ class Backtester:
         self.symbols = list(data.keys())
         self.initial_capital = initial_capital
         self.commission_rate = commission_rate
+        self.fixed_commission = fixed_commission
         self.slippage = slippage
         self.enable_fractional = enable_fractional
+        self.bid_ask_spread = bid_ask_spread
+        self.execution_delay = execution_delay
+        self._delayed_orders = {}  # bar_idx -> list of orders to execute at that bar
+        self.slippage_model = slippage_model
+        self.slippage_volatility = slippage_volatility
+        self.slippage_size_factor = slippage_size_factor
+        self.price_impact_factor = price_impact_factor
         
         # Validate data
         self._validate_data()
@@ -118,6 +133,17 @@ class Backtester:
             # Execute strategy to get new orders
             new_orders = strategy_fn(current_data, self.portfolio, i)
             
+            # If execution_delay > 0, schedule orders for future bar
+            if self.execution_delay > 0:
+                execute_at = i + self.execution_delay
+                if execute_at not in self._delayed_orders:
+                    self._delayed_orders[execute_at] = []
+                self._delayed_orders[execute_at].extend(new_orders)
+                new_orders = []
+            
+            # Add any delayed orders scheduled for this bar
+            if i in self._delayed_orders:
+                new_orders.extend(self._delayed_orders.pop(i))
             # Process new orders
             for order in new_orders:
                 self.order_manager.place_order(order)
@@ -243,7 +269,23 @@ class Backtester:
         # - Stop sell: Execute at stop price if low <= stop price
         
         if order.type == OrderType.MARKET:
-            return bar['open']
+            # Simulate bid/ask spread for market orders
+            price = bar['open']
+            if self.bid_ask_spread > 0:
+                if order.side == OrderSide.BUY:
+                    price = price * (1 + self.bid_ask_spread / 2)
+                else:  # SELL
+                    price = price * (1 - self.bid_ask_spread / 2)
+            # Simulate price impact for large orders
+            if self.price_impact_factor > 0:
+                # Use volume if available, else assume 1
+                bar_volume = bar.get('volume', 1)
+                impact = self.price_impact_factor * (order.quantity / max(bar_volume, 1e-8))
+                if order.side == OrderSide.BUY:
+                    price = price * (1 + impact)
+                else:
+                    price = price * (1 - impact)
+            return price
         
         elif order.type == OrderType.LIMIT:
             if order.side == OrderSide.BUY and bar['low'] <= order.price:
@@ -269,13 +311,42 @@ class Backtester:
             return None
         
         # Apply slippage
-        if order.side == OrderSide.BUY:
-            effective_price = executed_price * (1 + self.slippage)
-        else:  # SELL
-            effective_price = executed_price * (1 - self.slippage)
+        effective_price = executed_price
+        if self.slippage_model == "fixed":
+            if order.side == OrderSide.BUY:
+                effective_price = executed_price * (1 + self.slippage)
+            else:
+                effective_price = executed_price * (1 - self.slippage)
+        elif self.slippage_model == "random":
+            import random
+            slip = random.uniform(-self.slippage, self.slippage)
+            if order.side == OrderSide.BUY:
+                effective_price = executed_price * (1 + abs(slip))
+            else:
+                effective_price = executed_price * (1 - abs(slip))
+        elif self.slippage_model == "volatility":
+            slip = self.slippage_volatility
+            if order.side == OrderSide.BUY:
+                effective_price = executed_price * (1 + slip)
+            else:
+                effective_price = executed_price * (1 - slip)
+        elif self.slippage_model == "size":
+            # Slippage increases with order size relative to bar volume
+            bar_volume = getattr(order, "bar_volume", 1)
+            slip = self.slippage_size_factor * (order.quantity / max(bar_volume, 1e-8))
+            if order.side == OrderSide.BUY:
+                effective_price = executed_price * (1 + slip)
+            else:
+                effective_price = executed_price * (1 - slip)
         
-        # Note: Commission is typically applied to the total value, not the price
-        # We'll handle that in the portfolio update logic
+        # Apply commission (percentage-based and fixed)
+        trade_value = abs(order.quantity * effective_price)
+        commission = trade_value * self.commission_rate + self.fixed_commission
+        # For buys, increase effective price; for sells, decrease
+        if order.side == OrderSide.BUY:
+            effective_price += commission / max(order.quantity, 1e-8)
+        else:
+            effective_price -= commission / max(order.quantity, 1e-8)
         
         return effective_price
     

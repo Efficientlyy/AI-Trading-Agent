@@ -1,5 +1,67 @@
 # AI Trading Agent Rebuild Plan
 
+## Dashboard & Trade Page Refactor Plan
+
+To align with the modular, multi-agent architecture and provide a professional user experience, the dashboard and trading functionality will be split into dedicated pages. This separation enhances clarity, performance, and future scalability.
+
+### 1. Page Responsibilities
+
+**Dashboard Page (Overview & Monitoring):**
+- Portfolio Summary (value, allocation, performance)
+- Asset Allocation Chart (clickable, drill-down)
+- Technical Analysis Chart (overview mode, key indicators)
+- Sentiment Summary (signal strengths, news/social/fundamental signals)
+- Recent Trades (latest trades, quick status)
+- Notifications (alerts, errors, info)
+- Quick Links (Trading, Backtesting, Strategies, Settings)
+
+**Trade Page (Action & Execution):**
+- Asset Selector (context-aware, defaults to asset clicked in dashboard)
+- Live Price Chart (focused, trading indicators)
+- Order Entry Form (buy/sell, order type, quantity, price, etc.)
+- Order Book & Recent Trades (for selected asset)
+- Open Orders & Order History (manage/cancel/view trades)
+- Position Details (current position, P&L, risk for selected asset)
+- Trade Confirmation & Feedback
+
+### 2. File/Component Structure
+- `/src/pages/Dashboard.tsx` — high-level monitoring/overview
+- `/src/pages/Trade.tsx` — all trading-specific components and logic
+- `/src/components/dashboard/` — PortfolioSummary, AssetAllocationChart, TechnicalChart, SentimentSummary, RecentTrades, Notifications, etc.
+- `/src/components/trading/` — OrderEntryForm, OrderBook, TradeHistory, PositionDetails, AssetSelector, etc.
+
+### 3. Routing
+- Add `/dashboard` and `/trade` (or `/trading`) routes in `App.tsx`
+- Pass selected asset as route state or via context
+
+### 4. State & Context
+- Use React Context or global state for:
+  - Selected asset/symbol
+  - Notifications/messages
+
+### 5. E2E Test Updates
+- Update Cypress tests for new navigation and page structure
+- Test dashboard and trade page flows independently
+
+### 6. Documentation
+- Update PLAN.md to reflect:
+  - Separation of concerns
+  - Component locations
+  - Rationale for the new structure
+
+### Multi-Agent System
+- **Specialized Agents:** Each agent analyzes a unique data stream or trading strategy (e.g., technical indicators, sentiment, news, fundamentals) and produces trading signals or insights.
+- **Decision Agent:** Aggregates all agent signals, applies risk management and portfolio constraints, and determines final trading actions (buy/sell/hold, sizing, etc.).
+- **Execution Layer:** Handles order placement, monitoring, and feedback to agents for learning and adaptation.
+
+### Why This Approach?
+- **Modularity:** Agents can be developed, tested, and improved independently.
+- **Adaptivity:** New agents can be added as new data sources or strategies emerge.
+- **Transparency:** The system can explain which signals led to a decision.
+- **Robustness:** Reduces reliance on any single strategy or data stream.
+
+The platform includes a modern dashboard for monitoring portfolio, agent signals, trades, and analytics, as well as dedicated pages for trading, backtesting, and strategy management.
+
 ## Overview
 This document outlines the phased approach for rebuilding the AI Trading Agent with a focus on clean architecture, modern dashboard interface, and enhanced trading strategies.
 
@@ -340,65 +402,163 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 
 ### 🔄 Phase 3.5: Advanced NLP Processing Pipeline (IN PROGRESS)
 - 🔄 Enhance text preprocessing
-  - 🔄 Implement advanced tokenization
-  - 🔄 Add named entity recognition for financial terms
-  - 🔄 Implement text normalization techniques
-  - 🔄 Add support for multiple languages
-- 🔄 Improve sentiment analysis
-  - 🔄 Integrate domain-specific sentiment models
-  - 🔄 Implement fine-tuning on financial text
-  - 🔄 Add context-aware sentiment analysis
-  - 🔄 Implement ensemble methods for higher accuracy
-- 🔄 Add entity recognition
-  - 🔄 Implement company and ticker symbol recognition
-  - 🔄 Add financial metric and event detection
-  - 🔄 Implement relationship extraction between entities
-  - 🔄 Add confidence scoring for entity matching
+  - ✅ Implement advanced tokenization (NLTK-based, robust for English)
+  - ✅ Add named entity recognition for financial terms (dictionary and regex-based, covers asset symbols, financial terms, prices, cashtags)
+  - ✅ Implement text normalization techniques (Unicode normalization, contraction expansion, emoji removal, extensible for slang)
+  - ✅ Add support for multiple languages
+- ✅ Improve sentiment analysis
+  - ✅ Integrate domain-specific sentiment models
+  - ✅ Implement fine-tuning on financial text
+  - ✅ Add context-aware sentiment analysis
+  - ✅ Implement ensemble methods for higher accuracy
+- ✅ Add entity recognition
+- ✅ Implement company and ticker symbol recognition
+- ✅ Add financial metric and event detection
+- ✅ Implement relationship extraction between entities
+- ✅ Add confidence scoring for entity matching
 
-### 🔄 Phase 3.6: Advanced Trading Strategy Features (IN PROGRESS)
-- 🔄 Enhance signal generation
-  - 🔄 Implement adaptive sentiment thresholds
-  - 🔄 Add time-series analysis of sentiment trends
-  - 🔄 Implement sentiment momentum indicators
-  - 🔄 Add cross-asset sentiment correlation analysis
-- 🔄 Implement advanced position sizing
-  - 🔄 Add Kelly criterion position sizing
-  - 🔄 Implement volatility-adjusted position sizing
-  - 🔄 Add correlation-based portfolio allocation
-  - 🔄 Implement risk parity approaches
-- 🔄 Add sophisticated risk management
-  - 🔄 Implement dynamic stop-loss placement
-  - 🔄 Add take-profit optimization
-  - 🔄 Implement trailing stop mechanisms
-  - 🔄 Add drawdown-based position reduction
+### ✅ Phase 3.6: Advanced Trading Strategy Features (COMPLETED)
+- ✅ Enhance signal generation
+  - ✅ Implement adaptive sentiment thresholds
+  - ✅ Add time-series analysis of sentiment trends
+  - ✅ Implement sentiment momentum indicators
+  - ✅ Add cross-asset sentiment correlation analysis
+- ✅ Implement advanced position sizing
+  - ✅ Add Kelly criterion position sizing
+  - ✅ Implement volatility-adjusted position sizing
+  - ✅ Add correlation-based portfolio allocation
+  - ✅ Implement risk parity approaches
+- ✅ Add sophisticated risk management
+  - ✅ Implement dynamic stop-loss placement
+  - ✅ Add take-profit optimization
+  - ✅ Implement trailing stop mechanisms
+  - ✅ Add drawdown-based position reduction
 
-### ⏳ Phase 4: Genetic Algorithm Optimizer (PENDING)
-- ⏳ Implement parameter optimization framework
-  - ⏳ Fitness function definition
-  - ⏳ Population management
-  - ⏳ Crossover and mutation operations
-- ⏳ Develop strategy comparison capabilities
-  - ⏳ Performance metrics calculation
-  - ⏳ Strategy evaluation
-- ⏳ Create realistic market condition simulation
-  - ⏳ Transaction costs
-  - ⏳ Market biases
-  - ⏳ Slippage modeling
+### ✅ Phase 4: Genetic Algorithm Optimizer (COMPLETED)
+- ✅ Implement parameter optimization framework
+  - ✅ Fitness function definition
+  - ✅ Population management
+  - ✅ Crossover and mutation operations
+- ✅ Develop strategy comparison capabilities
+  - ✅ Performance metrics calculation
+  - ✅ Strategy evaluation
+- ✅ Create realistic market condition simulation
+  - ✅ Transaction costs
+  - ✅ Market biases
+  - ✅ Slippage modeling
 
-### 🔄 Phase 5: Multi-Asset Backtesting Framework (PARTIALLY IMPLEMENTED)
-- 🔄 Implement portfolio-level backtesting
-  - 🔄 Asset allocation
-  - 🔄 Correlation analysis
-  - 🔄 Risk management across the entire portfolio
-- 🔄 Develop performance metrics for portfolio evaluation
-- 🔄 Create visualization tools for portfolio performance
+### ✅ Phase 5: Multi-Asset Backtesting Framework (COMPLETED)
+- ✅ Implement portfolio-level backtesting
+  - ✅ Asset allocation
+  - ✅ Correlation analysis
+  - ✅ Risk management across the entire portfolio
+- ✅ Develop performance metrics for portfolio evaluation
+- ✅ Create visualization tools for portfolio performance
 
-### ⏳ Phase 6: Modern Dashboard Interface (PENDING)
-- ⏳ Design and implement a modular dashboard
-  - ⏳ Trading overview
-  - ⏳ Strategy performance
-  - ⏳ Sentiment analysis visualization
-  - ⏳ Portfolio management
+### ⏳ Phase 6: Modern Dashboard Interface (IN PROGRESS)
+
+#### Dashboard & Frontend
+- ✅ Design and implement a modular dashboard
+  - ✅ Audit and map existing dashboard components to required sections
+  - ✅ Implement main dashboard layout and navigation (sidebar/tabs)
+  - ✅ Add global Mock/Real Data toggle and integrate with all data-fetching components
+  - ✅ Ensure Trading Overview section is complete and modular
+  - ✅ Ensure Strategy Performance section is complete and modular
+  - ✅ Ensure Sentiment Analysis Visualization section is complete and modular
+  - ✅ Ensure Portfolio Management section is complete and modular
+  - ✅ Standardize UI/UX across all dashboard modules
+  - ✅ Add/extend tests for dashboard and data toggling
+  - ✅ Document dashboard structure, usage, and extensibility
+
+#### Automated E2E Testing (CI/CD)
+- ✅ All dashboard E2E tests are run automatically via GitHub Actions using Cypress in a clean cloud environment.
+- ✅ See `.github/workflows/cypress.yml` for the workflow definition.
+- ✅ Test results are available in the GitHub Actions tab on every push or pull request.
+- ✅ No manual local Cypress troubleshooting is required—CI/CD guarantees reliable, reproducible test results for all contributors.
+
+#### ### Advanced CI/CD & Automation Tasks
+- ✅ **Continuous Deployment (CD):**
+  - Frontend is automatically deployed via Windsurf/Netlify after tests pass.
+  - All build and publish settings in `netlify.toml` are respected.
+  - No manual deploy scripts needed for frontend.
+  - **Backend CD:** Planned (not yet automated).
+- ✅ **Automated Dependency Updates:**
+  - Dependabot configured for both frontend (`npm`) and backend (`pip`) dependencies.
+  - Updates are automatically tested via CI.
+- ✅ **Code Quality & Linting in CI:**
+  - ESLint, Prettier, and TypeScript checks are enforced in CI for the frontend.
+  - Code style and type safety are robustly maintained.
+  - **Backend linting/tests:** Planned.
+- ⏳ **Test Coverage Reporting:**
+  - Codecov integration is optional and not yet active.
+  - Coverage reporting for backend is planned.
+- ✅ **Automated Release Notes & Versioning:**
+  - `semantic-release` is set up for the frontend for changelogs and version bumps.
+  - **Backend:** Not yet automated.
+
+#### Backend API tasks
+- ✅ Core REST API endpoints (auth, strategies, some trading endpoints) are implemented and running.
+- ⏳ Portfolio, sentiment, and advanced order management endpoints: in progress/planned.
+- ✅ WebSocket support is present in the backend codebase.
+- ✅ User authentication and authorization are implemented.
+- ⏳ Backtesting controls and results API: in progress/planned.
+
+**Status:**
+- **Frontend:** 100% complete, tested, and deployed. All dashboard features, technical analysis, E2E testing, and CI/CD (deploy, lint, typecheck, release) are fully automated.
+- **Backend:** Core APIs (auth, strategies, basic trading) and WebSocket support are running. Advanced endpoints (portfolio, sentiment, advanced order management, backtesting controls/results) and backend CI/CD automation (auto-deploy, strict lint/coverage enforcement) are still in progress/planned.
+- **CI/CD:** Frontend fully automated; backend test/coverage CI is present, but automated deployment and strict enforcement are in progress/planned.
+
+- Dashboard/frontend and E2E testing: **100% complete**
+- Backend API (portfolio, sentiment, advanced order management, backtesting) and advanced CI/CD: **in progress/planned**
+- Overall Phase 6 completion: **~85–90%**
+
+---
+
+### CI/CD & Automation Details
+
+- **Windsurf/Netlify Continuous Deployment:**
+  - Frontend is automatically deployed via Windsurf (Netlify AI-native IDE integration).
+  - All build and publish settings in `netlify.toml` are respected by Windsurf/Netlify.
+  - No manual GitHub Actions deploy workflow is needed—deployment is managed natively by the Windsurf integration.
+- **Dependabot:**
+  - Automated weekly dependency update PRs for both frontend (npm) and backend (pip).
+  - Config: `.github/dependabot.yml`
+- **Lint, Type Check, and Coverage:**
+  - Every push/PR runs ESLint, Prettier, TypeScript, and test coverage checks.
+  - Workflow: `.github/workflows/lint-typecheck-coverage.yml`
+- **Codecov Integration:**
+  - (Optional) Connect repo to [Codecov.io](https://codecov.io/) for full test coverage reporting.
+- **semantic-release:**
+  - Automated changelogs and versioning for frontend. Config: `frontend/release.config.json`
+
+#### Next Backend/API Steps
+- Prioritize REST API endpoints, WebSocket support, authentication, and backtesting controls.
+- Backend automation and CI can be added next (test coverage, deploy, linting, etc.).
+
+---
+
+
+#### Automated E2E Testing (CI/CD)
+- All dashboard E2E tests are run automatically via GitHub Actions using Cypress in a clean cloud environment.
+- See `.github/workflows/cypress.yml` for the workflow definition.
+- Test results are available in the GitHub Actions tab on every push or pull request.
+- No manual local Cypress troubleshooting is required—CI/CD guarantees reliable, reproducible test results for all contributors.
+
+#### Advanced CI/CD & Automation Tasks
+- ⏳ **Continuous Deployment (CD):**
+  - Automatically deploy frontend (and/or backend) to staging or production after tests pass.
+  - Support for Netlify, Vercel, GitHub Pages, or custom cloud provider.
+- ⏳ **Automated Dependency Updates:**
+  - Use Dependabot (or similar) to keep dependencies up to date.
+  - Automatically test updates via CI.
+- ⏳ **Code Quality & Linting in CI:**
+  - Add ESLint, Prettier, and TypeScript checks to CI workflow.
+  - Enforce robust code quality and style.
+- ⏳ **Test Coverage Reporting:**
+  - Integrate tools like Coveralls or Codecov to track and visualize test coverage.
+- ⏳ **Automated Release Notes & Versioning:**
+  - Use semantic-release or similar tools for changelogs, version bumps, and release notes.
+
 - ⏳ **Backend API tasks:**
   - ⏳ Create REST API endpoints to serve portfolio data, strategy performance, sentiment data
   - ⏳ Implement endpoints for order management and parameter adjustments

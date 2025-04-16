@@ -11,13 +11,16 @@ class SentimentSignalGenerator:
     based on a Series of sentiment scores using simple thresholds.
     """
 
-    def __init__(self, buy_threshold: float = 0.1, sell_threshold: float = -0.1):
+    def __init__(self, buy_threshold: float = 0.1, sell_threshold: float = -0.1, adaptive: bool = False, window: int = 20, quantile: float = 0.8):
         """
         Initialize the signal generator with thresholds.
 
         Args:
-            buy_threshold: The sentiment score above which a Buy signal is generated.
-            sell_threshold: The sentiment score below which a Sell signal is generated.
+            buy_threshold: The sentiment score above which a Buy signal is generated (static mode).
+            sell_threshold: The sentiment score below which a Sell signal is generated (static mode).
+            adaptive: If True, use adaptive thresholds based on rolling quantiles.
+            window: Rolling window size for adaptive thresholds.
+            quantile: Quantile for adaptive buy threshold (1-quantile for sell).
         """
         if not isinstance(buy_threshold, (int, float)) or not isinstance(sell_threshold, (int, float)):
             raise TypeError("Thresholds must be numeric.")
@@ -26,6 +29,9 @@ class SentimentSignalGenerator:
 
         self.buy_threshold = buy_threshold
         self.sell_threshold = sell_threshold
+        self.adaptive = adaptive
+        self.window = window
+        self.quantile = quantile
 
     def generate_signals_from_scores(self, sentiment_scores: pd.Series) -> pd.Series:
         """
@@ -53,6 +59,13 @@ class SentimentSignalGenerator:
              return pd.Series(dtype=int)
 
         signals = pd.Series(0, index=sentiment_scores.index, dtype=int)  # Default to Hold (0)
-        signals.loc[sentiment_scores > self.buy_threshold] = 1       # Buy signal
-        signals.loc[sentiment_scores < self.sell_threshold] = -1      # Sell signal
+        if self.adaptive:
+            # Adaptive thresholds: use rolling quantiles
+            rolling_buy = sentiment_scores.rolling(self.window, min_periods=1).quantile(self.quantile)
+            rolling_sell = sentiment_scores.rolling(self.window, min_periods=1).quantile(1 - self.quantile)
+            signals.loc[sentiment_scores > rolling_buy] = 1
+            signals.loc[sentiment_scores < rolling_sell] = -1
+        else:
+            signals.loc[sentiment_scores > self.buy_threshold] = 1       # Buy signal
+            signals.loc[sentiment_scores < self.sell_threshold] = -1      # Sell signal
         return signals

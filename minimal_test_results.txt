@@ -1,0 +1,6 @@
+Testing imports from project root: C:\Users\vp199\Documents\Projects\GitHub\AI-Trading-Agent
+
+Importing trading_engine.enums...
+ERROR: 'charmap' codec can't encode character '\u2713' in position 0: character maps to <undefined>
+Traceback:
+Traceback (most recent call last):

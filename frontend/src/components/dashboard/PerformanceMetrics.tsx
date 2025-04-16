@@ -1,18 +1,38 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useDataSource } from '../../context/DataSourceContext';
+import { performanceApi } from '../../api/performance';
+import { getMockPerformanceMetrics } from '../../api/mockData/mockPerformanceMetrics';
 
-interface PerformanceMetricsProps {
-  performance: {
+const PerformanceMetrics: React.FC = () => {
+  const { dataSource } = useDataSource();
+  const [performance, setPerformance] = useState<{
     total_return: number;
     sharpe_ratio: number;
     max_drawdown: number;
     win_rate?: number;
     profit_factor?: number;
     avg_trade?: number;
-  } | null;
-  isLoading: boolean;
-}
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ performance, isLoading }) => {
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    const fetchPerformance = async () => {
+      try {
+        const data = dataSource === 'mock'
+          ? await getMockPerformanceMetrics()
+          : await performanceApi.getPerformanceMetrics();
+        if (isMounted) setPerformance(data.performance);
+      } catch (e) {
+        if (isMounted) setPerformance(null);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    fetchPerformance();
+    return () => { isMounted = false; };
+  }, [dataSource]);
   if (isLoading) {
     return (
       <div className="dashboard-widget col-span-1">
@@ -31,7 +51,7 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ performance, is
     return (
       <div className="dashboard-widget col-span-1">
         <h2 className="text-lg font-semibold mb-3">Performance Metrics</h2>
-        <div className="text-gray-500 dark:text-gray-400 text-center py-6">
+        <div className="text-gray-500 dark:text-gray-400 text-center py-8 text-base font-medium">
           No performance data available
         </div>
       </div>

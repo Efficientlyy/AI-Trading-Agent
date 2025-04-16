@@ -1,0 +1,7 @@
+# Ignore everything by default
+**/*
+
+# Allow only build output and Netlify config
+!frontend/build/**
+!netlify.toml
+!README.md

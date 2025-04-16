@@ -11,10 +11,10 @@ from datetime import datetime, timedelta
 import os
 import json
 
-from src.sentiment_analysis.data_collection import SentimentCollectionService
-from src.sentiment_analysis.nlp_processing import NLPPipeline
-from src.sentiment_analysis.strategy import DummySentimentStrategy
-from src.sentiment_analysis.time_series import SentimentTimeSeriesAnalyzer
+from ai_trading_agent.sentiment_analysis.data_collection import SentimentCollectionService
+from ai_trading_agent.sentiment_analysis.nlp_processing import NLPPipeline
+from ai_trading_agent.sentiment_analysis.strategy import DummySentimentStrategy
+from ai_trading_agent.sentiment_analysis.time_series import SentimentTimeSeriesAnalyzer
 from ..trading_engine.models import Order
 
 logger = logging.getLogger(__name__)

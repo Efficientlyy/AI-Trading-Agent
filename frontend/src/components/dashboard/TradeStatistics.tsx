@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { 
+import { Cell, 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  ScatterChart, Scatter, ZAxis, PieChart, Pie, Cell
+  ScatterChart, Scatter, PieChart, Pie
 } from 'recharts';
 
 export interface Trade {

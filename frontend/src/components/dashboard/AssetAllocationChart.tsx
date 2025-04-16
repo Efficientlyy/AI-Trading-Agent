@@ -1,24 +1,45 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Portfolio } from '../../types';
+import { useDataSource } from '../../context/DataSourceContext';
+import { portfolioApi } from '../../api/portfolio';
+import { getMockAssetAllocation } from '../../api/mockData/mockAssetAllocation';
 
 // Check if @nivo/pie is installed
-// If not, we'll use a simpler chart implementation
 let ResponsivePie: any;
 try {
   ResponsivePie = require('@nivo/pie').ResponsivePie;
 } catch (e) {
-  // Fallback if @nivo/pie is not installed
   console.warn('Missing @nivo/pie dependency. Using fallback chart.');
 }
 
-export interface AssetAllocationChartProps {
-  portfolio: Portfolio | null;
-  isLoading: boolean;
+interface AssetAllocationChartProps {
   onAssetSelect?: (symbol: string) => void;
   selectedAsset?: string;
 }
 
-const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ portfolio, isLoading, onAssetSelect, selectedAsset }) => {
+const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ onAssetSelect, selectedAsset }) => {
+  const { dataSource } = useDataSource();
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    const fetchPortfolio = async () => {
+      try {
+        const data = dataSource === 'mock'
+          ? await getMockAssetAllocation()
+          : await portfolioApi.getPortfolio();
+        if (isMounted) setPortfolio(data.portfolio);
+      } catch (e) {
+        if (isMounted) setPortfolio(null);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    fetchPortfolio();
+    return () => { isMounted = false; };
+  }, [dataSource]);
   // Generate chart data from portfolio positions
   const { chartData, totalValue, cashPercentage } = useMemo(() => {
     if (!portfolio) {
@@ -94,9 +115,8 @@ const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ portfolio, 
   if (!ResponsivePie) {
     return (
       <div>
-        <h2>Asset Allocation</h2>
+        <h2 className="text-lg font-semibold mb-4">Asset Allocation</h2>
         <div className="h-[300px] flex flex-col items-center justify-center">
-          <p className="text-muted-foreground mb-4">Asset Allocation Chart</p>
           <div className="grid grid-cols-2 gap-2 w-full">
             {chartData.map((asset) => (
               <div 
@@ -110,7 +130,7 @@ const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ portfolio, 
                 />
                 <div className="flex-1">
                   <div className="font-medium">{asset.label}</div>
-                  <div className="text-xs text-muted-foreground">{asset.value}%</div>
+                  <div className="text-gray-500 dark:text-gray-400 text-center py-8 text-base font-medium">{asset.value}%</div>
                 </div>
               </div>
             ))}

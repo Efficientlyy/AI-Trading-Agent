@@ -1,12 +1,32 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Portfolio } from '../../types';
+import { useDataSource } from '../../context/DataSourceContext';
+import { portfolioApi } from '../../api/portfolio';
+import { getMockPortfolio } from '../../api/mockData/mockPortfolio';
 
-interface PortfolioSummaryProps {
-  portfolio: Portfolio | null;
-  isLoading: boolean;
-}
+const PortfolioSummary: React.FC = () => {
+  const { dataSource } = useDataSource();
+  const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ portfolio, isLoading }) => {
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    const fetchPortfolio = async () => {
+      try {
+        const data = dataSource === 'mock'
+          ? await getMockPortfolio()
+          : await portfolioApi.getPortfolio();
+        if (isMounted) setPortfolio(data.portfolio);
+      } catch (e) {
+        if (isMounted) setPortfolio(null);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    fetchPortfolio();
+    return () => { isMounted = false; };
+  }, [dataSource]);
   if (isLoading) {
     return (
       <div className="dashboard-widget col-span-1">
@@ -25,7 +45,7 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({ portfolio, isLoadin
     return (
       <div className="dashboard-widget col-span-1">
         <h2 className="text-lg font-semibold mb-3">Portfolio Summary</h2>
-        <div className="text-gray-500 dark:text-gray-400 text-center py-6">
+        <div className="text-gray-500 dark:text-gray-400 text-center py-8 text-base font-medium">
           No portfolio data available
         </div>
       </div>

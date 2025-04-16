@@ -1,23 +1,23 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Order, OrderStatus, OrderType, OrderSide } from '../../types';
+import { useDataSource } from '../../context/DataSourceContext';
+import { getMockActiveOrders, createMockOrder, cancelMockOrder } from '../../api/mockData/mockOrders';
+import { ordersApi } from '../../api/orders';
 
-export interface OrderManagementProps {
+interface OrderManagementProps {
   symbol: string;
   currentPrice?: number;
-  onCreateOrder?: (order: Partial<Order>) => void;
-  onCancelOrder?: (orderId: string) => void;
-  activeOrders?: Order[];
-  isLoading?: boolean;
 }
 
 const OrderManagement: React.FC<OrderManagementProps> = ({
   symbol,
-  currentPrice = 0,
-  onCreateOrder,
-  onCancelOrder,
-  activeOrders = [],
-  isLoading = false
+  currentPrice = 0
 }) => {
+  const { dataSource } = useDataSource();
+  const [activeOrders, setActiveOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
+
   // State for new order form
   const [newOrder, setNewOrder] = useState<Partial<Order>>({
     symbol,
@@ -29,7 +29,28 @@ const OrderManagement: React.FC<OrderManagementProps> = ({
     limitPrice: currentPrice * 1.05,
     timeInForce: 'GTC'
   });
-  
+
+  // Fetch active orders
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+
+    const fetchOrders = async () => {
+      try {
+        const data = dataSource === 'mock'
+          ? await getMockActiveOrders()
+          : await ordersApi.getActiveOrders();
+        if (isMounted) setActiveOrders(data.orders);
+      } catch (e: any) {
+        if (isMounted) console.log('Failed to fetch orders');
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+    fetchOrders();
+    return () => { isMounted = false; };
+  }, [dataSource]);
+
   // Update new order when symbol or price changes
   React.useEffect(() => {
     if (symbol || currentPrice) {
@@ -42,7 +63,7 @@ const OrderManagement: React.FC<OrderManagementProps> = ({
       }));
     }
   }, [symbol, currentPrice]);
-  
+
   // Handle input changes for new order
   const handleInputChange = (field: keyof Partial<Order>, value: any) => {
     setNewOrder(prev => ({
@@ -50,35 +71,53 @@ const OrderManagement: React.FC<OrderManagementProps> = ({
       [field]: value
     }));
   };
-  
+
+
+
+
   // Handle order submission
-  const handleSubmitOrder = () => {
-    if (onCreateOrder) {
-      onCreateOrder(newOrder);
-      
-      // Reset quantity after submission
-      setNewOrder(prev => ({
-        ...prev,
-        quantity: 1
-      }));
+  const handleSubmitOrder = async () => {
+    setIsLoading(true);
+    try {
+      const data = dataSource === 'mock'
+        ? await createMockOrder(newOrder)
+        : await ordersApi.createOrder(newOrder);
+      setActiveOrders(prev => [data.order, ...prev]);
+      setNewOrder(prev => ({ ...prev, quantity: 1 }));
+    } catch (e: any) {
+      console.log('Failed to create order');
+    } finally {
+      setIsLoading(false);
     }
   };
-  
+
   // Handle order cancellation
-  const handleCancelOrder = (orderId: string) => {
-    if (onCancelOrder) {
-      onCancelOrder(orderId);
+  const handleCancelOrder = async (orderId: string) => {
+    setIsLoading(true);
+    try {
+      if (dataSource === 'mock') {
+        await cancelMockOrder(orderId);
+      } else {
+        await ordersApi.cancelOrder(orderId);
+      }
+      setActiveOrders(prev => prev.map(order =>
+        order.id === orderId ? { ...order, status: OrderStatus.CANCELED } : order
+      ));
+    } catch (e: any) {
+      console.log('Failed to cancel order');
+    } finally {
+      setIsLoading(false);
     }
   };
-  
+
   // Determine if price inputs should be shown based on order type
   const showPriceInput = newOrder.type === OrderType.LIMIT || newOrder.type === OrderType.STOP_LIMIT;
   const showStopPriceInput = newOrder.type === OrderType.STOP || newOrder.type === OrderType.STOP_LIMIT;
   const showLimitPriceInput = newOrder.type === OrderType.STOP_LIMIT;
-  
+
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-4">
-      <h2 className="text-lg font-semibold mb-3">Order Management</h2>
+      <h2 className="text-lg font-semibold mb-4">Order Management</h2>
       
       {/* New Order Form */}
       <div className="mb-6">
@@ -239,7 +278,7 @@ const OrderManagement: React.FC<OrderManagementProps> = ({
             <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-full"></div>
           </div>
         ) : activeOrders.length === 0 ? (
-          <div className="text-center py-4 text-gray-500 dark:text-gray-400 text-sm">
+          <div className="text-gray-500 dark:text-gray-400 text-center py-8 text-base font-medium">
             No active orders
           </div>
         ) : (

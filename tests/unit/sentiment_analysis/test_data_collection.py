@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from unittest.mock import patch, MagicMock
 
-from src.sentiment_analysis.data_collection import (
+from ai_trading_agent.sentiment_analysis.data_collection import (
     BaseSentimentCollector,
     TwitterSentimentCollector,
     RedditSentimentCollector,

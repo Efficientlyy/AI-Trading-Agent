@@ -12,4 +12,12 @@ module.exports = defineConfig({
     screenshotOnRunFailure: true,
     defaultCommandTimeout: 10000,
   },
+  component: {
+    devServer: {
+      framework: 'react',
+      bundler: 'webpack',
+    },
+    supportFile: 'cypress/support/component.js',
+  },
+
 });

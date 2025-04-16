@@ -90,6 +90,7 @@ export interface Trade {
   status: 'pending' | 'filled' | 'partial' | 'cancelled' | 'rejected';
   fee?: number;
   total?: number;
+  realized_pnl?: number;
 }
 
 export interface OrderRequest {
