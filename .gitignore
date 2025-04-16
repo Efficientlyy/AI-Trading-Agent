@@ -61,3 +61,6 @@ simple_import_test.py
 
 # MCP server
 mcp-server-browserbase/
+
+# Test results and artifacts
+test_results/
