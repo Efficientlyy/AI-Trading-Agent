@@ -87,10 +87,11 @@ export interface Trade {
   quantity: number;
   price: number;
   timestamp: number | string;
-  status: 'pending' | 'filled' | 'partial' | 'cancelled' | 'rejected';
+  status: 'pending' | 'filled' | 'partial' | 'cancelled' | 'rejected' | 'completed';
   fee?: number;
   total?: number;
   realized_pnl?: number;
+  value?: number;
 }
 
 export interface OrderRequest {
