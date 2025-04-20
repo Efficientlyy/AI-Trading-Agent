@@ -47,6 +47,10 @@ export const getMockActiveOrders = async (): Promise<{ orders: Order[] }> => {
   return { orders: mockOrders };
 };
 
+export const getMockOrders = async (): Promise<{ orders: Order[] }> => {
+  return { orders: mockOrders };
+};
+
 export const createMockOrder = async (order: Partial<Order>): Promise<{ order: Order }> => {
   const newOrder: Order = {
     ...order,
