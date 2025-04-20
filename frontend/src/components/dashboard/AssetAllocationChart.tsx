@@ -15,14 +15,25 @@ try {
 interface AssetAllocationChartProps {
   onAssetSelect?: (symbol: string) => void;
   selectedAsset?: string;
+  data?: Array<{
+    asset: string;
+    value: number;
+    percentage: number;
+  }>;
 }
 
-const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ onAssetSelect, selectedAsset }) => {
+const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ onAssetSelect, selectedAsset, data: propData }) => {
   const { dataSource } = useDataSource();
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    // If prop data is provided, don't fetch from API
+    if (propData) {
+      setIsLoading(false);
+      return;
+    }
+    
     let isMounted = true;
     setIsLoading(true);
     const fetchPortfolio = async () => {
@@ -39,9 +50,32 @@ const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ onAssetSele
     };
     fetchPortfolio();
     return () => { isMounted = false; };
-  }, [dataSource]);
-  // Generate chart data from portfolio positions
+  }, [dataSource, propData]);
+  // Generate chart data from portfolio positions or prop data
   const { chartData, totalValue, cashPercentage } = useMemo(() => {
+    // If prop data is provided, use that instead of portfolio data
+    if (propData) {
+      let calculatedTotalValue = propData.reduce((sum, item) => sum + item.value, 0);
+      const cashItem = propData.find(item => item.asset === 'Cash');
+      const cashValue = cashItem ? cashItem.value : 0;
+      const cashPct = cashItem ? cashItem.percentage : 0;
+      
+      const data = propData.map(item => ({
+        id: item.asset,
+        label: item.asset,
+        value: parseFloat(item.percentage.toFixed(2)),
+        rawValue: item.value,
+        color: item.asset === 'Cash' ? '#A3A3A3' : getColorForAsset(item.asset),
+      }));
+      
+      return { 
+        chartData: data, 
+        totalValue: calculatedTotalValue,
+        cashPercentage: cashPct
+      };
+    }
+    
+    // Otherwise use portfolio data
     if (!portfolio) {
       return { chartData: [], totalValue: 0, cashPercentage: 0 };
     }
@@ -80,7 +114,7 @@ const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ onAssetSele
       totalValue: calculatedTotalValue,
       cashPercentage: cashPct
     };
-  }, [portfolio]);
+  }, [portfolio, propData]);
 
   // Handle clicking on a chart slice
   const handlePieClick = (data: any) => {

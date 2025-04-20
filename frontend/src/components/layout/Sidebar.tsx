@@ -10,7 +10,13 @@ import {
   IconSettings, 
   IconChartLine,
   IconReportAnalytics,
-  IconBrandOpenai
+  IconBrandOpenai,
+  IconHeartbeat,
+  IconCircuitSwitchClosed,
+  IconFileAnalytics,
+  IconTerminal2,
+  IconAlertTriangle,
+  IconSpeedboat
 } from '@tabler/icons-react';
 
 interface SidebarProps {
@@ -23,11 +29,35 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
   const navItems = [
     { path: '/', label: 'Dashboard', icon: <IconDashboard size={20} /> },
     { path: '/portfolio', label: 'Portfolio', icon: <IconWallet size={20} /> },
-    { path: '/trading', label: 'Trading', icon: <IconChartLine size={20} /> },
+    { path: '/trade', label: 'Trading', icon: <IconChartLine size={20} /> },
     { path: '/strategies', label: 'Strategies', icon: <IconRobot size={20} /> },
-    { path: '/backtesting', label: 'Backtesting', icon: <IconChartBar size={20} /> },
-    { path: '/analytics', label: 'Analytics', icon: <IconReportAnalytics size={20} /> },
-    { path: '/ai-insights', label: 'AI Insights', icon: <IconBrandOpenai size={20} /> },
+    { path: '/backtest', label: 'Backtesting', icon: <IconChartBar size={20} /> },
+    { path: '/sentiment', label: 'Sentiment', icon: <IconReportAnalytics size={20} /> },
+    { 
+      path: '/api-health', 
+      label: 'API Health', 
+      icon: <IconCircuitSwitchClosed size={20} /> 
+    },
+    { 
+      path: '/api-logs', 
+      label: 'API Logs', 
+      icon: <IconTerminal2 size={20} /> 
+    },
+    { 
+      path: '/alerts', 
+      label: 'Alerts', 
+      icon: <IconAlertTriangle size={20} /> 
+    },
+    { 
+      path: '/performance', 
+      label: 'Performance', 
+      icon: <IconSpeedboat size={20} /> 
+    },
+    { 
+      path: '/performance-test', 
+      label: 'Performance Tests', 
+      icon: <IconFileAnalytics size={20} /> 
+    },
     { path: '/settings', label: 'Settings', icon: <IconSettings size={20} /> },
   ];
   

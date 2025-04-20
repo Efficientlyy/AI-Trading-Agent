@@ -10,6 +10,7 @@ import {
   IconLogout, 
   IconSettings
 } from '@tabler/icons-react';
+import AlertsIndicator from '../alerts/AlertsIndicator';
 import { useDataSource } from '../../context/DataSourceContext';
 
 interface HeaderProps {
@@ -55,6 +56,8 @@ const Header: React.FC<HeaderProps> = ({ toggleDarkMode, isDarkMode }) => {
             </button>
             <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">Real</span>
           </div>
+          {/* Alerts indicator */}
+          <AlertsIndicator showCount={true} maxAlerts={5} />
           {/* Theme toggle */}
           <button
             onClick={toggleDarkMode}
