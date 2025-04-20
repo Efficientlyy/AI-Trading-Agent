@@ -147,8 +147,8 @@ jobs:
             exit 1
           fi
 
-  dashboard-test:
-    name: Dashboard Components
+  frontend-test:
+    name: Frontend Components
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -166,7 +166,7 @@ jobs:
           cache-dependency-path: dashboard/package-lock.json
       
       - name: Install dependencies
-        working-directory: ./dashboard
+        working-directory: ./frontend
         run: |
           npm ci
           # Install dev dependencies explicitly
@@ -174,12 +174,12 @@ jobs:
       
       - name: Run linting
         id: lint
-        working-directory: ./dashboard
+        working-directory: ./frontend
         run: npm run lint
       
-      - name: Run component tests
-        id: dashboard_tests
-        working-directory: ./dashboard
+      - name: Run unit and integration tests
+        id: frontend_tests
+        working-directory: ./frontend
         run: |
           # Run tests in parallel with coverage thresholds
           npm test -- \
@@ -188,28 +188,82 @@ jobs:
             --maxWorkers=2 \
             --coverageThreshold='{"global":{"branches":80,"functions":80,"lines":80,"statements":80}}'
       
-      - name: Upload Dashboard coverage to Codecov
+      - name: Upload Frontend coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
-          files: ./dashboard/coverage/lcov.info
-          flags: dashboard
-          name: dashboard-node${{ matrix.node-version }}
+          files: ./frontend/coverage/lcov.info
+          flags: frontend
+          name: frontend-node${{ matrix.node-version }}
           fail_ci_if_error: true
 
       - name: Report status
         if: always()
         run: |
-          if [ "${{ steps.lint.outcome }}" == "success" ] && [ "${{ steps.dashboard_tests.outcome }}" == "success" ]; then
-            echo "Dashboard tests and coverage checks passed"
+          if [ "${{ steps.lint.outcome }}" == "success" ] && [ "${{ steps.frontend_tests.outcome }}" == "success" ]; then
+            echo "Frontend tests and coverage checks passed"
             exit 0
           else
-            echo "Dashboard tests or coverage checks failed"
+            echo "Frontend tests or coverage checks failed"
+            exit 1
+          fi
+
+  e2e-test:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: [frontend-test]
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18.x
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./frontend
+        run: |
+          npm ci
+          # Install Cypress and other E2E dependencies
+          npm install --save-dev cypress @cypress/code-coverage
+      
+      - name: Start frontend server
+        working-directory: ./frontend
+        run: |
+          npm start & # Start in background
+          sleep 10 # Wait for server to start
+      
+      - name: Run Cypress E2E tests
+        id: cypress_tests
+        working-directory: ./frontend
+        run: |
+          npx cypress run --config video=true
+      
+      - name: Upload Cypress screenshots and videos
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: cypress-artifacts
+          path: |
+            frontend/cypress/screenshots
+            frontend/cypress/videos
+          retention-days: 7
+      
+      - name: Report status
+        if: always()
+        run: |
+          if [ "${{ steps.cypress_tests.outcome }}" == "success" ]; then
+            echo "E2E tests passed successfully"
+            exit 0
+          else
+            echo "E2E tests failed"
             exit 1
           fi
 
   coverage-status:
     name: Coverage Status Check
-    needs: [python-test, rust-test, dashboard-test]
+    needs: [python-test, rust-test, frontend-test, e2e-test]
     runs-on: ubuntu-latest
     if: always()
     steps:
@@ -231,7 +285,8 @@ jobs:
         run: |
           if [ "${{ needs.python-test.result }}" == "success" ] && \
              [ "${{ needs.rust-test.result }}" == "success" ] && \
-             [ "${{ needs.dashboard-test.result }}" == "success" ] && \
+             [ "${{ needs.frontend-test.result }}" == "success" ] && \
+             [ "${{ needs.e2e-test.result }}" == "success" ] && \
              [ "${{ steps.coverage_check.outcome }}" == "success" ]; then
             echo " All components passed tests and met coverage thresholds"
             exit 0
