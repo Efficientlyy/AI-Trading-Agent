@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { useWebSocket } from '../../hooks/useWebSocket';
+import { useRenderLogger } from '../../hooks/useRenderLogger';
 import { Link } from 'react-router-dom';
 import { Portfolio } from '../../types';
 import { useDataSource } from '../../context/DataSourceContext';
@@ -26,13 +28,24 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // WebSocket for live portfolio updates
+  const { data: wsData, status: wsStatus } = useWebSocket(['portfolio']);
+
   useEffect(() => {
-    // If props are provided, don't fetch from API
+    // If props are provided, don't fetch from API or WebSocket
     if (propsTotalValue !== undefined) {
       setIsLoading(false);
       return;
     }
-    
+
+    // If WebSocket is connected and has portfolio data, use it
+    if (wsStatus === 'connected' && wsData && wsData.portfolio) {
+      setPortfolio(wsData.portfolio);
+      setIsLoading(false);
+      return;
+    }
+
+    // Otherwise, fallback to API/mock
     let isMounted = true;
     setIsLoading(true);
     const fetchPortfolio = async () => {
@@ -49,8 +62,9 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
     };
     fetchPortfolio();
     return () => { isMounted = false; };
-  }, [dataSource, propsTotalValue]);
-  // Determine whether to use props or API data
+  }, [dataSource, propsTotalValue, wsData, wsStatus]);
+
+  // Determine whether to use props or API/WebSocket data
   const usePropsData = propsTotalValue !== undefined;
   
   // Loading state
@@ -127,10 +141,10 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
       
       {/* Total Value */}
       <div className="mb-6">
-        <h3 className="text-2xl font-bold">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+        <h3 className="text-2xl font-bold">{typeof totalValue === 'number' && !isNaN(totalValue) ? `$${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</h3>
         <div className={`text-sm ${totalPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-          {totalPnl >= 0 ? '▲' : '▼'} ${Math.abs(totalPnl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} 
-          ({totalPnlPercentage.toFixed(2)}%) {timeframe === '1d' ? 'Today' : timeframe === '1w' ? 'This Week' : timeframe === '1m' ? 'This Month' : 'All Time'}
+          {typeof totalPnl === 'number' && !isNaN(totalPnl) ? (totalPnl >= 0 ? '▲' : '▼') : ''} {typeof totalPnl === 'number' && !isNaN(totalPnl) ? `$${Math.abs(totalPnl).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
+          ({typeof totalPnlPercentage === 'number' && !isNaN(totalPnlPercentage) ? totalPnlPercentage.toFixed(2) : '—'}%) {timeframe === '1d' ? 'Today' : timeframe === '1w' ? 'This Week' : timeframe === '1m' ? 'This Month' : 'All Time'}
         </div>
       </div>
       
@@ -139,15 +153,15 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
         <div className="flex justify-between">
           <span className="text-gray-600 dark:text-gray-400">Cash</span>
           <div className="flex flex-col items-end">
-            <span className="font-medium">${availableCash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">{((availableCash / totalValue) * 100).toFixed(1)}%</span>
+            <span className="font-medium">{typeof availableCash === 'number' && !isNaN(availableCash) ? `$${availableCash.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{typeof availableCash === 'number' && typeof totalValue === 'number' && totalValue !== 0 ? ((availableCash / totalValue) * 100).toFixed(1) : '—'}%</span>
           </div>
         </div>
         <div className="flex justify-between">
           <span className="text-gray-600 dark:text-gray-400">Positions</span>
           <div className="flex flex-col items-end">
-            <span className="font-medium">${positionsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-            <span className="text-xs text-gray-500 dark:text-gray-400">{((positionsValue / totalValue) * 100).toFixed(1)}%</span>
+            <span className="font-medium">{typeof positionsValue === 'number' && !isNaN(positionsValue) ? `$${positionsValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}</span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">{typeof positionsValue === 'number' && typeof totalValue === 'number' && totalValue !== 0 ? ((positionsValue / totalValue) * 100).toFixed(1) : '—'}%</span>
           </div>
         </div>
       </div>
@@ -166,9 +180,7 @@ const PortfolioSummary: React.FC<PortfolioSummaryProps> = ({
       <div className="flex justify-between">
         <span className="text-gray-600 dark:text-gray-400">Buying Power</span>
         <span className="font-medium">
-          ${(!usePropsData && portfolio 
-            ? (portfolio.cash * (portfolio.margin_multiplier || 1)) 
-            : availableCash * 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          {(!usePropsData && portfolio && typeof portfolio.cash === 'number' ? `$${(portfolio.cash * (portfolio.margin_multiplier || 1)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : (typeof availableCash === 'number' ? `$${(availableCash * 2).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'))}
         </span>
       </div>
       

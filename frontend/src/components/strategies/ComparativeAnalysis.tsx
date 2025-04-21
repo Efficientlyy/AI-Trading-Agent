@@ -147,7 +147,7 @@ const ComparativeAnalysis: React.FC = () => {
                   <tr key={k}>
                     <td className="px-4 py-2 border-b font-medium">{METRIC_LABELS[k]}</td>
                     {selectedIds.map(id => (
-                      <td key={id} className="px-4 py-2 border-b text-center">{metrics[id] && metrics[id][k] !== undefined ? metrics[id][k].toFixed(4) : '-'}</td>
+                      <td key={id} className="px-4 py-2 border-b text-center">{metrics[id]?.[k] !== undefined ? metrics[id]?.[k]?.toFixed(4) : '-'}</td>
                     ))}
                   </tr>
                 ))}

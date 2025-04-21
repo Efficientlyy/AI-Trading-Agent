@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useRenderLogger } from '../../hooks/useRenderLogger';
 import { Portfolio } from '../../types';
 import { useDataSource } from '../../context/DataSourceContext';
 import { portfolioApi } from '../../api/portfolio';
@@ -23,6 +24,7 @@ interface AssetAllocationChartProps {
 }
 
 const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ onAssetSelect, selectedAsset, data: propData }) => {
+  useRenderLogger('AssetAllocationChart', { selectedAsset, propData });
   const { dataSource } = useDataSource();
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [isLoading, setIsLoading] = useState(true);

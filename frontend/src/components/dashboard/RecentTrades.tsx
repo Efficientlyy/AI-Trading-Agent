@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trade } from '../../types/index';
+import { useWebSocket } from '../../hooks/useWebSocket';
 
 interface RecentTradesProps {
   trades: Trade[];
@@ -9,7 +10,18 @@ interface RecentTradesProps {
 }
 
 const RecentTrades: React.FC<RecentTradesProps> = ({ trades, symbol, maxCount = 10, onTradeSymbolSelect }) => {
-  const filtered = symbol ? trades.filter(t => t.symbol === symbol) : trades;
+  const { data: wsData, status: wsStatus } = useWebSocket(['recent_trades']);
+  const [liveTrades, setLiveTrades] = useState<Trade[]>([]);
+
+  useEffect(() => {
+    if (wsStatus === 'connected' && wsData && wsData.recent_trades) {
+      setLiveTrades(wsData.recent_trades);
+    } else {
+      setLiveTrades(trades);
+    }
+  }, [wsData, wsStatus, trades]);
+
+  const filtered = symbol ? liveTrades.filter(t => t.symbol === symbol) : liveTrades;
   const shown = filtered.slice(0, maxCount);
 
   return (

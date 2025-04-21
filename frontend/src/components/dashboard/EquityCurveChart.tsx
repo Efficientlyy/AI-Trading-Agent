@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { useRenderLogger } from '../../hooks/useRenderLogger';
 import {
   LineChart,
   Line,
@@ -33,6 +34,8 @@ const EquityCurveChart: React.FC<EquityCurveChartProps> = ({
   benchmarkName = 'S&P 500',
   onTimeframeChange,
 }) => {
+  useRenderLogger('EquityCurveChart', { data, isLoading });
+
   // Timeframe selector buttons - memoized to prevent unnecessary recreations
   const timeframeOptions = useMemo(() => [
     { value: 'day', label: '1D' },

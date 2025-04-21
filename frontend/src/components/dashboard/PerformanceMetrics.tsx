@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
+import { useRenderLogger } from '../../hooks/useRenderLogger';
 import { useDataSource } from '../../context/DataSourceContext';
 import { performanceApi } from '../../api/performance';
 import { getMockPerformanceMetrics } from '../../api/mockData/mockPerformanceMetrics';
 
 const PerformanceMetrics: React.FC = () => {
+  useRenderLogger('PerformanceMetrics');
   const { dataSource } = useDataSource();
   const [performance, setPerformance] = useState<{
     total_return: number;

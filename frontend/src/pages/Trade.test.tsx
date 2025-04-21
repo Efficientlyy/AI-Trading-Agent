@@ -3,7 +3,7 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import Trade from './Trade';
 import { SelectedAssetProvider } from '../context/SelectedAssetContext';
-import * as portfolioApi from '../api/portfolio';
+import { portfolioApi } from '../api/portfolio';
 import * as marketApi from '../api/market';
 import * as tradesApi from '../api/trades';
 

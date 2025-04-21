@@ -1,0 +1,17 @@
+// This file is automatically run before your tests
+// It can be used to set up your test environment
+
+// Mock react-router-dom directly
+jest.mock('react-router-dom', () => {
+  // Get the actual module from node_modules
+  const originalModule = jest.requireActual('../node_modules/react-router-dom');
+  
+  // Return all exports from the original module
+  return {
+    ...originalModule,
+    // You can override specific components if needed
+    MemoryRouter: originalModule.MemoryRouter || function MockMemoryRouter(props) { 
+      return props.children || null;
+    }
+  };
+});

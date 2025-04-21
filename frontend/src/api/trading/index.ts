@@ -54,12 +54,24 @@ export const createTradingApi = (exchange?: ExchangeName): TradingApi => {
     case 'binance':
       baseApi = binanceTradingApi(tradingMode, exchangeConfig);
       break;
-    case 'coinbase':
-      baseApi = coinbaseTradingApi(tradingMode, exchangeConfig);
+    case 'coinbase': {
+      // Ensure passphrase is present
+      const coinbaseConfig = {
+        ...exchangeConfig,
+        passphrase: (exchangeConfig as any).passphrase || process.env.REACT_APP_COINBASE_PASSPHRASE || 'test-passphrase',
+      };
+      baseApi = coinbaseTradingApi(tradingMode, coinbaseConfig);
       break;
-    case 'alpaca':
-      baseApi = alpacaTradingApi(tradingMode, exchangeConfig);
+    }
+    case 'alpaca': {
+      // Ensure paperTrading is present
+      const alpacaConfig = {
+        ...exchangeConfig,
+        paperTrading: typeof (exchangeConfig as any).paperTrading === 'boolean' ? (exchangeConfig as any).paperTrading : true,
+      };
+      baseApi = alpacaTradingApi(tradingMode, alpacaConfig);
       break;
+    }
     default:
       throw new Error(`Unsupported exchange: ${selectedExchange}`);
   }

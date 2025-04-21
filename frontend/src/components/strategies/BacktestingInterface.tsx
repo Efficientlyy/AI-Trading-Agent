@@ -123,12 +123,12 @@ const BacktestingInterface: React.FC = () => {
       {result && (
         <div className="mt-8">
           <h3 className="text-lg font-semibold mb-2">Backtest Result</h3>
-          <div className="mb-2">Total Return: <b>{(result.metrics.total_return * 100).toFixed(2)}%</b></div>
-          <div className="mb-2">Sharpe Ratio: <b>{result.metrics.sharpe_ratio}</b></div>
-          <div className="mb-2">Max Drawdown: <b>{(result.metrics.max_drawdown * 100).toFixed(2)}%</b></div>
-          <div className="mb-2">Win Rate: <b>{(result.metrics.win_rate * 100).toFixed(2)}%</b></div>
-          <div className="mb-2">Profit Factor: <b>{result.metrics.profit_factor}</b></div>
-          <div className="mb-2">Avg Trade: <b>{result.metrics.avg_trade}</b></div>
+          <div className="mb-2">Total Return: <b>{result.metrics?.total_return !== undefined ? result.metrics.total_return.toFixed(4) : '-'}%</b></div>
+          <div className="mb-2">Sharpe Ratio: <b>{result.metrics?.sharpe_ratio !== undefined ? result.metrics.sharpe_ratio : '-'}</b></div>
+          <div className="mb-2">Max Drawdown: <b>{result.metrics?.max_drawdown !== undefined ? (result.metrics.max_drawdown * 100).toFixed(2) : '-'}%</b></div>
+          <div className="mb-2">Win Rate: <b>{result.metrics?.win_rate !== undefined ? ((result.metrics.win_rate ?? 0) * 100).toFixed(2) : '-'}%</b></div>
+          <div className="mb-2">Profit Factor: <b>{result.metrics?.profit_factor !== undefined ? result.metrics.profit_factor : '-'}</b></div>
+          <div className="mb-2">Avg Trade: <b>{result.metrics?.avg_trade !== undefined ? result.metrics.avg_trade : '-'}</b></div>
           {/* Add more metrics or charts as needed */}
         </div>
       )}

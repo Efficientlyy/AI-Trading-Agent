@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useRenderLogger } from '../hooks/useRenderLogger';
 import { Link } from 'react-router-dom';
 import { useSelectedAsset } from '../context/SelectedAssetContext';
 import AssetAllocationChart from '../components/dashboard/AssetAllocationChart';
@@ -25,6 +26,7 @@ interface PortfolioData {
 }
 
 const Portfolio: React.FC = () => {
+  useRenderLogger('Portfolio');
   const { symbol: selectedSymbol, setSymbol: setSelectedSymbol } = useSelectedAsset();
   const [portfolioData, setPortfolioData] = useState<PortfolioData | null>(null);
   const [isLoading, setIsLoading] = useState(true);

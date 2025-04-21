@@ -1,4 +1,5 @@
 import React, { useMemo, useEffect, useState } from 'react';
+import { useRenderLogger } from '../../hooks/useRenderLogger';
 import { SentimentSignal } from '../../types';
 import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from '@heroicons/react/24/solid';
 import { useDataSource } from '../../context/DataSourceContext';
@@ -11,6 +12,7 @@ interface SentimentSummaryProps {
 }
 
 const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, selectedSymbol }) => {
+  useRenderLogger('SentimentSummary', { selectedSymbol });
   const { dataSource } = useDataSource();
   const [sentimentData, setSentimentData] = useState<Record<string, SentimentSignal> | null>(null);
   const [isLoading, setIsLoading] = useState(true);

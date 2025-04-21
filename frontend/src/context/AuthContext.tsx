@@ -3,7 +3,7 @@ import axios from 'axios';
 import { AuthState, AuthContextType } from '../types';
 
 // API URL from environment variables
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
 // Create context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,7 +32,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   }, []);
 
-  // Initialize auth state from localStorage
+  // Initialize auth state from localStorage (runs only once on mount to prevent infinite update loop)
   useEffect(() => {
     const initializeAuth = async () => {
       const token = localStorage.getItem('token');
@@ -61,11 +61,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         // In production, validate token with backend
-        const response = await axios.get(`${API_URL}/auth/validate`, {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        });
+        // Use /auth/me to validate token and get user info
+        const response = await axios.get(`${API_URL}/auth/me`, { headers: { Authorization: `Bearer ${token}` } });
         
         setAuthState({
           user: response.data.user,
@@ -238,8 +235,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setAuthState(prev => ({ ...prev, error: null }));
   }, []);
 
+  const contextValue = React.useMemo(() => ({
+    authState,
+    login,
+    register,
+    logout,
+    clearError
+  }), [authState, login, register, logout, clearError]);
+
   return (
-    <AuthContext.Provider value={{ authState, login, register, logout, clearError }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

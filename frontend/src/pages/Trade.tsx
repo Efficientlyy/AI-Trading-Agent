@@ -1,4 +1,5 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo, memo } from "react";
+import { useRenderLogger } from '../hooks/useRenderLogger';
 import AssetSelector from "../components/trading/AssetSelector";
 import { useSelectedAsset } from '../context/SelectedAssetContext';
 import OrderBook from "../components/trading/OrderBook";
@@ -22,6 +23,7 @@ const Toast: React.FC<{ message: string; type: 'success' | 'error'; onClose: () 
 );
 
 const Trade: React.FC = () => {
+  useRenderLogger('Trade');
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
   const [availableSymbols, setAvailableSymbols] = useState<string[]>([]);
   const { symbol: selectedSymbol, setSymbol: setSelectedSymbol } = useSelectedAsset();
@@ -174,7 +176,7 @@ const Trade: React.FC = () => {
       </section>
       {/* Open Orders & Order History */}
       <section className="mb-4">
-        <OrderManagement symbol={selectedSymbol} />
+        <OrderManagement symbol={selectedSymbol} portfolio={portfolio} />
       </section>
       {/* Position Details */}
       <section className="mb-4">

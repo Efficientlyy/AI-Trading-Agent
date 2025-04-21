@@ -1,4 +1,5 @@
 import React from 'react';
+import '@testing-library/jest-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import Portfolio from './Portfolio';
@@ -18,13 +19,14 @@ jest.mock('../api/trading', () => ({
       positions: {
         'BTC/USD': { symbol: 'BTC/USD', quantity: 0.5, entryPrice: 45000, currentPrice: 48000, marketValue: 24000, unrealizedPnl: 1500 },
         'ETH/USD': { symbol: 'ETH/USD', quantity: 5, entryPrice: 3200, currentPrice: 3500, marketValue: 17500, unrealizedPnl: 1500 },
-        'SOL/USD': { symbol: 'SOL/USD', quantity: 20, entryPrice: 120, currentPrice: 110, marketValue: 2200, unrealizedPnl: -200 } }
+        'SOL/USD': { symbol: 'SOL/USD', quantity: 20, entryPrice: 120, currentPrice: 110, marketValue: 2200, unrealizedPnl: -200 }
+      }
     })),
     getRecentTrades: jest.fn().mockImplementation(() => Promise.resolve([
       { id: 'trade-1', symbol: 'BTC/USD', side: 'buy', quantity: 0.1, price: 48000, timestamp: new Date().toISOString() },
       { id: 'trade-2', symbol: 'ETH/USD', side: 'sell', quantity: 1, price: 3500, timestamp: new Date().toISOString() }
     ])
-  })
+  });
 }));
 
 // Mock React hooks

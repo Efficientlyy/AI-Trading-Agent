@@ -77,9 +77,7 @@ const mockAssets = [
 
 // Mock API services
 jest.mock('../../api/services/tradingService', () => ({
-  placeOrder: jest.fn().mockImplementation((order) => {
-    return Promise.resolve(mockOrderResponse);
-  }),
+  placeOrder: jest.fn().mockImplementation((order) => Promise.resolve(mockOrderResponse)),
   getMarketData: jest.fn().mockImplementation((symbol) => {
     return Promise.resolve(mockMarketData[symbol] || mockMarketData['BTC-USD']);
   }),
@@ -113,10 +111,10 @@ jest.mock('../../api/utils/circuitBreakerExecutor', () => ({
   executeWithCircuitBreaker: jest.fn().mockImplementation((exchange, method, fn) => {
     // Properly handle the function call with the correct parameters
     if (typeof fn === 'function') {
-      return Promise.resolve(fn();
+      return Promise.resolve(fn());
     } else if (typeof method === 'function') {
       // Handle case where only two parameters are passed (method is actually the function)
-      return Promise.resolve(method();
+      return Promise.resolve(method());
     }
     return Promise.resolve({});
   }),

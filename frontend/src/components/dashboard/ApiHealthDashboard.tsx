@@ -83,7 +83,7 @@ const ApiHealthDashboard: React.FC<ApiHealthDashboardProps> = ({
   };
 
   // Get reliability trend icon
-  const getReliabilityIcon = (trend: string): JSX.Element => {
+  const getReliabilityIcon = (trend: string): React.JSX.Element => {
     switch (trend) {
       case 'improving':
         return <span className="text-green-500">↑</span>;

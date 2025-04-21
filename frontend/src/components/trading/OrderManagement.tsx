@@ -1,89 +1,63 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Order, OrderStatus, OrderType, OrderSide } from '../../types';
 import { useDataSource } from '../../context/DataSourceContext';
 import { getMockActiveOrders, createMockOrder, cancelMockOrder } from '../../api/mockData/mockOrders';
 import { ordersApi } from '../../api/orders';
+import OrderEntryForm from './OrderEntryForm';
 
 interface OrderManagementProps {
   symbol: string;
   currentPrice?: number;
+  portfolio?: any; // Accept portfolio as a prop (should be Portfolio type)
 }
 
 const OrderManagement: React.FC<OrderManagementProps> = ({
   symbol,
-  currentPrice = 0
+  currentPrice = 0,
+  portfolio = null
 }) => {
   const { dataSource } = useDataSource();
   const [activeOrders, setActiveOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
 
-  // State for new order form
-  const [newOrder, setNewOrder] = useState<Partial<Order>>({
-    symbol,
-    type: OrderType.MARKET,
-    side: OrderSide.BUY,
-    quantity: 1,
-    price: currentPrice,
-    stopPrice: currentPrice * 0.95,
-    limitPrice: currentPrice * 1.05,
-    timeInForce: 'GTC'
-  });
+  // Remove local newOrder state and use OrderEntryForm instead
 
   // Fetch active orders
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
-
-    const fetchOrders = async () => {
-      try {
-        const data = dataSource === 'mock'
-          ? await getMockActiveOrders()
-          : await ordersApi.getActiveOrders();
-        if (isMounted) setActiveOrders(data.orders);
-      } catch (e: any) {
-        if (isMounted) console.log('Failed to fetch orders');
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-    fetchOrders();
-    return () => { isMounted = false; };
-  }, [dataSource]);
-
-  // Update new order when symbol or price changes
-  React.useEffect(() => {
-    if (symbol || currentPrice) {
-      setNewOrder(prev => ({
-        ...prev,
-        symbol,
-        price: currentPrice,
-        stopPrice: currentPrice * 0.95,
-        limitPrice: currentPrice * 1.05
-      }));
-    }
-  }, [symbol, currentPrice]);
-
-  // Handle input changes for new order
-  const handleInputChange = (field: keyof Partial<Order>, value: any) => {
-    setNewOrder(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-
-
-
-  // Handle order submission
-  const handleSubmitOrder = async () => {
+  const fetchOrders = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = dataSource === 'mock'
-        ? await createMockOrder(newOrder)
-        : await ordersApi.createOrder(newOrder);
+        ? await getMockActiveOrders()
+        : await ordersApi.getActiveOrders();
+      setActiveOrders(data.orders);
+    } catch (e: any) {
+      console.log('Failed to fetch orders');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dataSource]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  // Removed legacy setNewOrder effect (handled by OrderEntryForm)
+
+  // Removed legacy handleInputChange (no longer needed with OrderEntryForm)
+
+
+
+
+  // Handle order submission from OrderEntryForm
+  const handleSubmitOrder = async (order: any) => {
+    setIsLoading(true);
+    try {
+      const data = dataSource === 'mock'
+        ? await createMockOrder(order)
+        : await ordersApi.createOrder(order);
       setActiveOrders(prev => [data.order, ...prev]);
-      setNewOrder(prev => ({ ...prev, quantity: 1 }));
+      fetchOrders(); // Refresh order list
     } catch (e: any) {
       console.log('Failed to create order');
     } finally {
@@ -110,162 +84,20 @@ const OrderManagement: React.FC<OrderManagementProps> = ({
     }
   };
 
-  // Determine if price inputs should be shown based on order type
-  const showPriceInput = newOrder.type === OrderType.LIMIT || newOrder.type === OrderType.STOP_LIMIT;
-  const showStopPriceInput = newOrder.type === OrderType.STOP || newOrder.type === OrderType.STOP_LIMIT;
-  const showLimitPriceInput = newOrder.type === OrderType.STOP_LIMIT;
+  // Removed legacy price input logic (handled by OrderEntryForm)
 
   return (
     <div className="bg-white dark:bg-gray-900 rounded-lg shadow p-4">
       <h2 className="text-lg font-semibold mb-4">Order Management</h2>
       
-      {/* New Order Form */}
+      {/* New Order Form - replaced with OrderEntryForm */}
       <div className="mb-6">
-        <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Create New Order</h3>
-        
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label htmlFor="order-symbol" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Symbol
-            </label>
-            <input
-              id="order-symbol"
-              type="text"
-              value={symbol}
-              disabled
-              className="block w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            />
-          </div>
-          
-          <div>
-            <label htmlFor="order-type" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Order Type
-            </label>
-            <select
-              id="order-type"
-              value={newOrder.type}
-              onChange={(e) => handleInputChange('type', e.target.value as OrderType)}
-              className="block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            >
-              <option value={OrderType.MARKET}>Market</option>
-              <option value={OrderType.LIMIT}>Limit</option>
-              <option value={OrderType.STOP}>Stop</option>
-              <option value={OrderType.STOP_LIMIT}>Stop Limit</option>
-            </select>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-3 mb-3">
-          <div>
-            <label htmlFor="order-side" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Side
-            </label>
-            <div className="flex">
-              <button
-                type="button"
-                onClick={() => handleInputChange('side', OrderSide.BUY)}
-                className={`flex-1 py-2 text-sm font-medium rounded-l-md focus:outline-none ${
-                  newOrder.side === OrderSide.BUY
-                    ? 'bg-green-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700'
-                }`}
-              >
-                Buy
-              </button>
-              <button
-                type="button"
-                onClick={() => handleInputChange('side', OrderSide.SELL)}
-                className={`flex-1 py-2 text-sm font-medium rounded-r-md focus:outline-none ${
-                  newOrder.side === OrderSide.SELL
-                    ? 'bg-red-600 text-white'
-                    : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-700'
-                }`}
-              >
-                Sell
-              </button>
-            </div>
-          </div>
-          
-          <div>
-            <label htmlFor="order-quantity" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Quantity
-            </label>
-            <input
-              id="order-quantity"
-              type="number"
-              min="0.00000001"
-              step="0.00000001"
-              value={newOrder.quantity}
-              onChange={(e) => handleInputChange('quantity', parseFloat(e.target.value))}
-              className="block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            />
-          </div>
-        </div>
-        
-        {showPriceInput && (
-          <div className="mb-3">
-            <label htmlFor="order-price" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Price
-            </label>
-            <input
-              id="order-price"
-              type="number"
-              min="0.00000001"
-              step="0.00000001"
-              value={newOrder.price}
-              onChange={(e) => handleInputChange('price', parseFloat(e.target.value))}
-              className="block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            />
-          </div>
-        )}
-        
-        {showStopPriceInput && (
-          <div className="mb-3">
-            <label htmlFor="order-stop-price" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Stop Price
-            </label>
-            <input
-              id="order-stop-price"
-              type="number"
-              min="0.00000001"
-              step="0.00000001"
-              value={newOrder.stopPrice}
-              onChange={(e) => handleInputChange('stopPrice', parseFloat(e.target.value))}
-              className="block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            />
-          </div>
-        )}
-        
-        {showLimitPriceInput && (
-          <div className="mb-3">
-            <label htmlFor="order-limit-price" className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Limit Price
-            </label>
-            <input
-              id="order-limit-price"
-              type="number"
-              min="0.00000001"
-              step="0.00000001"
-              value={newOrder.limitPrice}
-              onChange={(e) => handleInputChange('limitPrice', parseFloat(e.target.value))}
-              className="block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            />
-          </div>
-        )}
-        
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={handleSubmitOrder}
-            className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${
-              newOrder.side === OrderSide.BUY
-                ? 'bg-green-600 hover:bg-green-700 focus:ring-green-500'
-                : 'bg-red-600 hover:bg-red-700 focus:ring-red-500'
-            } focus:outline-none focus:ring-2 focus:ring-offset-2`}
-          >
-            {newOrder.side === OrderSide.BUY ? 'Buy' : 'Sell'} {symbol}
-          </button>
-        </div>
+        <OrderEntryForm
+          portfolio={null} // TODO: pass real portfolio if available
+          availableSymbols={[symbol]}
+          selectedSymbol={symbol}
+          onSubmitOrder={handleSubmitOrder}
+        />
       </div>
       
       {/* Active Orders */}

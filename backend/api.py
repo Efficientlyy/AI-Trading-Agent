@@ -835,37 +835,205 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
+# Portfolio endpoint for frontend integration
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+@app.get("/strategies/{strategy_id}/performance")
+def get_strategy_performance(
+    strategy_id: int,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)
+):
+    """
+    Returns performance metrics for the most recent backtest of the given strategy.
+    """
+    # Get the most recent backtest for the strategy and user
+    backtest = backtest_repository.get_strategy_backtests(
+        db, strategy_id=strategy_id, user_id=current_user.id, skip=0, limit=1
+    )
+    if not backtest or len(backtest) == 0:
+        raise HTTPException(status_code=404, detail="No backtest found for this strategy.")
+    backtest = backtest[0]
+    # The backtest 'results' field should contain metrics like sharpe_ratio, win_rate, profit_factor, etc.
+    metrics = backtest.results if hasattr(backtest, 'results') else {}
+    return metrics
+
+from pydantic import BaseModel
+
+class OrderRequest(BaseModel):
+    symbol: str
+    side: str  # 'buy' or 'sell'
+    order_type: str  # 'market' or 'limit'
+    quantity: float
+    price: float = None
+
+class CancelOrderRequest(BaseModel):
+    order_id: str
+
+class ParameterUpdateRequest(BaseModel):
+    config: Dict[str, Any]
+
+@app.post("/orders/place")
+def place_order(
+    order: OrderRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)
+):
+    """
+    Places a new order for the authenticated user.
+    """
+    # In production, retrieve the user's portfolio and order manager from session/context
+    # For now, this is a stub
+    # Example: order_manager = get_order_manager_for_user(current_user.id)
+    # result = order_manager.create_order(...)
+    return {"status": "success", "order": order.dict()}
+
+@app.post("/orders/cancel")
+def cancel_order(
+    cancel: CancelOrderRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)
+):
+    """
+    Cancels an order by order_id for the authenticated user.
+    """
+    # In production, retrieve the user's order manager and cancel the order
+    # For now, this is a stub
+    return {"status": "success", "order_id": cancel.order_id}
+
+@app.put("/strategies/{strategy_id}/parameters")
+def update_strategy_parameters(
+    strategy_id: int,
+    update: ParameterUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)
+):
+    """
+    Updates the parameters/config for a strategy belonging to the authenticated user.
+    """
+    strategy = strategy_repository.update_strategy_config(
+        db, strategy_id=strategy_id, user_id=current_user.id, config=update.config
+    )
+    if not strategy:
+        raise HTTPException(status_code=404, detail="Strategy not found or not owned by user.")
+    return {"status": "success", "strategy_id": strategy_id, "config": strategy.config}
+
+@app.get("/portfolio")
+def get_portfolio(
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_active_user)
+):
+    """
+    Returns the live portfolio state for the authenticated user.
+    """
+    # Import here to avoid circular imports
+    from ai_trading_agent.agent.portfolio import BasePortfolioManager
+    # In production, retrieve the correct portfolio manager instance for the user/session
+    # For now, instantiate a new one (replace with dependency injection/session management as needed)
+    portfolio_manager = BasePortfolioManager()
+    state = portfolio_manager.get_current_state()
+    # Remove debug/extra info for API response
+    response = {
+        "timestamp": state["timestamp"].isoformat(),
+        "cash": state["cash"],
+        "positions": state["positions"],
+        "total_value": state["total_value"]
+    }
+    return response
+
 @app.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: str, db: Session = Depends(get_db)):
-    # In a real application, you would verify the user_id with a token
+    import asyncio
+    # --- In-memory agent status store (per user) ---
+    if not hasattr(websocket_endpoint, "_agent_status_store"):
+        websocket_endpoint._agent_status_store = {}
+    agent_status_store = websocket_endpoint._agent_status_store
+    if user_id not in agent_status_store:
+        agent_status_store[user_id] = {
+            "status": "stopped",
+            "reasoning": "Agent is idle.",
+            "timestamp": datetime.now().isoformat()
+        }
     await manager.connect(websocket, user_id)
+    subscriptions = set()
     try:
         while True:
-            data = await websocket.receive_text()
             try:
+                data = await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
                 message = json.loads(data)
                 action = message.get("action")
-                
                 if action == "ping":
                     await websocket.send_text(json.dumps({"action": "pong", "timestamp": datetime.now().isoformat()}))
-                
                 elif action == "subscribe":
-                    # Handle subscription
                     topic = message.get("topic")
                     if topic:
+                        subscriptions.add(topic)
                         await websocket.send_text(json.dumps({"action": "subscribed", "topic": topic}))
-                
                 elif action == "unsubscribe":
-                    # Handle unsubscription
                     topic = message.get("topic")
-                    if topic:
+                    if topic and topic in subscriptions:
+                        subscriptions.remove(topic)
                         await websocket.send_text(json.dumps({"action": "unsubscribed", "topic": topic}))
-                
+                elif action == "start_agent":
+                    agent_status_store[user_id] = {
+                        "status": "running",
+                        "reasoning": "Agent started and monitoring market.",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    # Broadcast new status to agent_status subscribers
+                    status_update = {
+                        "topic": "agent_status",
+                        "timestamp": agent_status_store[user_id]["timestamp"],
+                        "status": "running",
+                        "reasoning": agent_status_store[user_id]["reasoning"]
+                    }
+                    await websocket.send_text(json.dumps(status_update))
+                elif action == "stop_agent":
+                    agent_status_store[user_id] = {
+                        "status": "stopped",
+                        "reasoning": "Agent stopped by user.",
+                        "timestamp": datetime.now().isoformat()
+                    }
+                    # Broadcast new status to agent_status subscribers
+                    status_update = {
+                        "topic": "agent_status",
+                        "timestamp": agent_status_store[user_id]["timestamp"],
+                        "status": "stopped",
+                        "reasoning": agent_status_store[user_id]["reasoning"]
+                    }
+                    await websocket.send_text(json.dumps(status_update))
                 else:
                     await websocket.send_text(json.dumps({"error": "Unknown action"}))
-            
-            except json.JSONDecodeError:
-                await websocket.send_text(json.dumps({"error": "Invalid JSON"}))
-    
+            except asyncio.TimeoutError:
+                # Periodically send updates for subscribed topics
+                for topic in list(subscriptions):
+                    if topic == "portfolio":
+                        # Simulate portfolio update
+                        portfolio_update = {
+                            "topic": "portfolio",
+                            "timestamp": datetime.now().isoformat(),
+                            "total_value": 100000 + int(datetime.now().second),
+                            "cash": 50000,
+                            "positions": {"AAPL": {"quantity": 10, "price": 150.0}},
+                        }
+                        await websocket.send_text(json.dumps(portfolio_update))
+                    elif topic == "trades":
+                        # Simulate trade update
+                        trade_update = {
+                            "topic": "trades",
+                            "timestamp": datetime.now().isoformat(),
+                            "trade": {"symbol": "AAPL", "side": "buy", "quantity": 1, "price": 150.0},
+                        }
+                        await websocket.send_text(json.dumps(trade_update))
+                    elif topic == "agent_status":
+                        # Send current agent status
+                        status_update = {
+                            "topic": "agent_status",
+                            "timestamp": agent_status_store[user_id]["timestamp"],
+                            "status": agent_status_store[user_id]["status"],
+                            "reasoning": agent_status_store[user_id]["reasoning"]
+                        }
+                        await websocket.send_text(json.dumps(status_update))
     except WebSocketDisconnect:
         manager.disconnect(websocket, user_id)

@@ -6,13 +6,13 @@ jest.mock('./monitoring', () => {
   const originalModule = jest.requireActual('./monitoring');
   
   // Create a fresh circuit breakers object for each test
-  let mockCircuitBreakers = {};
+  let mockCircuitBreakers: { [key: string]: any } = {};
   
   // Return a modified version of the original module
   return {
     ...originalModule,
     // Override the functions that use circuit breakers
-    canMakeApiCall: (exchange, method, config = {}) => {
+    canMakeApiCall: (exchange: string, method: string, config: { failureThreshold?: number; resetTimeoutMs?: number } = {}) => {
       const key = `${exchange}:${method}`;
       if (!mockCircuitBreakers[key]) {
         return true; // Default to closed circuit
@@ -33,7 +33,7 @@ jest.mock('./monitoring', () => {
       return true;
     },
     
-    recordCircuitBreakerResult: (exchange, method, success, config = {}) => {
+    recordCircuitBreakerResult: (exchange: string, method: string, success: boolean, config: { failureThreshold?: number; resetTimeoutMs?: number } = {}) => {
       const key = `${exchange}:${method}`;
       const { failureThreshold = 5, resetTimeoutMs = 60000 } = config;
       
@@ -73,7 +73,7 @@ jest.mock('./monitoring', () => {
       }
     },
     
-    resetCircuitBreaker: (exchange, method) => {
+    resetCircuitBreaker: (exchange: string, method: string) => {
       const key = `${exchange}:${method}`;
       mockCircuitBreakers[key] = {
         state: 'closed',
@@ -83,7 +83,7 @@ jest.mock('./monitoring', () => {
       };
     },
     
-    getCircuitBreakerState: (exchange, method) => {
+    getCircuitBreakerState: (exchange: string, method: string) => {
       const key = `${exchange}:${method}`;
       return mockCircuitBreakers[key] || {
         state: 'closed',

@@ -9,8 +9,8 @@ import {
   Tooltip,
   Legend
 } from 'chart.js';
-import { OHLCV } from '../../types';
-import { marketDataApi } from '../../api/marketData';
+import { OHLCV, HistoricalDataRequest } from '../../types';
+import { marketApi } from '../../api/market';
 
 ChartJS.register(LineElement, PointElement, LinearScale, CategoryScale, Tooltip, Legend);
 
@@ -29,7 +29,7 @@ const HistoricalDataViewer: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await marketDataApi.getHistoricalData({ symbol, start, end, timeframe });
+      const res = await marketApi.getHistoricalData({ symbol, start, end, timeframe: timeframe as HistoricalDataRequest['timeframe'] });
       setData(res.data);
     } catch (e: any) {
       setError('Failed to fetch historical data');

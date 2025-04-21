@@ -78,6 +78,7 @@ export interface Order {
   updatedAt: Date;
   clientOrderId: string;
   timeInForce: string;
+  realized_pnl?: number;
 }
 
 export interface Trade {
@@ -106,14 +107,17 @@ export interface OrderRequest {
 // Performance metrics types
 export interface PerformanceMetrics {
   total_return: number;
-  annualized_return: number;
+
   sharpe_ratio: number;
   max_drawdown: number;
-  win_rate: number;
-  profit_factor: number;
-  volatility: number;
-  beta: number;
-  alpha: number;
+  win_rate?: number;
+  profit_factor?: number;
+  avg_trade?: number;
+
+  volatility?: number;
+  beta?: number;
+  alpha?: number;
+  [key: string]: number | undefined;
 }
 
 // Backtest types
@@ -189,7 +193,7 @@ export interface HistoricalDataRequest {
 }
 
 // WebSocket subscription types
-export type TopicType = 'portfolio' | 'sentiment_signal' | 'performance';
+export type TopicType = 'portfolio' | 'sentiment_signal' | 'performance' | 'agent_status' | 'recent_trades';
 
 export interface WebSocketMessage {
   action: 'subscribe' | 'unsubscribe';
@@ -207,4 +211,10 @@ export interface WebSocketUpdate {
     profit_factor?: number;
     avg_trade?: number;
   };
+  agent_status?: {
+    status: 'running' | 'stopped' | 'error';
+    reasoning: string;
+    timestamp: string;
+  };
+  recent_trades?: Trade[];
 }

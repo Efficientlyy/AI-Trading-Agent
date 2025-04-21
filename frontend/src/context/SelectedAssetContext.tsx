@@ -15,8 +15,8 @@ export const useSelectedAsset = () => {
   return context;
 };
 
-export const SelectedAssetProvider = ({ children }: { children: ReactNode }) => {
-  const [symbol, setSymbol] = useState<string>('BTC/USD');
+export const SelectedAssetProvider = ({ children, initialSymbol }: { children: ReactNode, initialSymbol?: string }) => {
+  const [symbol, setSymbol] = useState<string>(initialSymbol || 'BTC/USD');
   return (
     <SelectedAssetContext.Provider value={{ symbol, setSymbol }}>
       {children}

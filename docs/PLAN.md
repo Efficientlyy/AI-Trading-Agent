@@ -196,17 +196,18 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 
 ### 🔄 Phase 3: Sentiment Analysis System (IN PROGRESS)
 - 🔄 Implement sentiment data collection from various sources
-  - 🔄 Social media (Twitter, Reddit)
-  - 🔄 News articles
-  - 🔄 Market sentiment indicators (Fear & Greed Index)
-- 🔄 Develop NLP processing pipeline
-  - 🔄 Text preprocessing
-  - 🔄 Sentiment scoring
-  - 🔄 Entity recognition
-- 🔄 Create sentiment-based trading strategy
-  - 🔄 Signal generation based on sentiment thresholds
-  - 🔄 Position sizing using volatility-based and Kelly criterion methods
-  - 🔄 Stop-loss and take-profit management
+  - 🔄 Social media (Reddit)
+  - ✅ Social media (Twitter)
+  - ✅ News articles
+  - ✅ Market sentiment indicators (Fear & Greed Index)
+- ✅ Develop NLP processing pipeline
+  - ✅ Text preprocessing
+  - ✅ Sentiment scoring
+  - ✅ Entity recognition
+- ✅ Create sentiment-based trading strategy
+  - ✅ Signal generation based on sentiment thresholds
+  - ✅ Position sizing using volatility-based and Kelly criterion methods
+  - ✅ Stop-loss and take-profit management
 
 #### 🔄 Detailed Sentiment Analysis Development Plan
 
@@ -646,6 +647,20 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
   - ✅ Add comprehensive logging for API calls and responses
   - ✅ Create API logs dashboard with filtering and visualization
   - ✅ Implement alerting for failed trades or API issues
+
+### ✅ Backend & API Integration (2025-04-21)
+- ✅ Portfolio endpoint returns live data from the portfolio manager
+- ✅ Strategy performance endpoint returns latest backtest metrics
+- ✅ Order management endpoints (place/cancel) implemented
+- ✅ Strategy parameter adjustment endpoint implemented
+- ✅ WebSocket supports real-time updates for portfolio, trades, and agent status (topic-based)
+
+### ✅ Frontend Real-Time Autonomy Features (2025-04-21)
+- ✅ AgentStatus component created (shows live status, reasoning, last updated)
+- ✅ AgentStatus wired to backend WebSocket for live updates
+- ✅ Portfolio and Trades components connected to WebSocket for live updates (2025-04-21)
+- ✅ Agent controls (start/stop, feedback) fully implemented with real-time feedback and notifications (2025-04-21)
+- ✅ Dashboard UI/UX: autonomy signaling and real-time feedback enhanced with live banner, activity feed, and agent reasoning (2025-04-21)
 
 ### ⏳ Phase 8: Continuous Improvement (IN PROGRESS)
 - ✅ Performance optimization

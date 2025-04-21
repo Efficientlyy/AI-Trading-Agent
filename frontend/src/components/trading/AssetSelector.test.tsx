@@ -18,7 +18,7 @@ describe('AssetSelector', () => {
         <Consumer />
       </SelectedAssetProvider>
     );
-    const select = screen.getByRole('combobox');
+    const select = screen.getByRole('combobox') as HTMLSelectElement;
     expect(select.value).toBe('BTC/USD');
     fireEvent.change(select, { target: { value: 'AAPL' } });
     expect(screen.getByTestId('selected-symbol').textContent).toBe('AAPL');

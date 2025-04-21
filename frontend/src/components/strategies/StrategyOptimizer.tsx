@@ -44,6 +44,7 @@ const StrategyOptimizer: React.FC = () => {
             total_return: 0.23,
             sharpe_ratio: 1.44,
             max_drawdown: 0.08,
+            annualized_return: 0.18,
             win_rate: 0.62,
             profit_factor: 1.9,
             avg_trade: 0.012,

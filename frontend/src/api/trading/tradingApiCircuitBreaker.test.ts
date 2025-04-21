@@ -8,11 +8,11 @@ import { canMakeApiCall, recordApiCall, recordCircuitBreakerResult } from '../ut
 import { mockAxios, mockMonitoring } from '../../tests/mocks/globalMocks';
 
 // Mock axios
-jest.mock('axios', () => mockAxios();
+jest.mock('axios', () => mockAxios());
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 // Mock monitoring utilities
-jest.mock('../utils/monitoring', () => mockMonitoring();
+jest.mock('../utils/monitoring', () => mockMonitoring());
 
 // Mock authenticated client
 jest.mock('../client', () => ({
@@ -34,13 +34,16 @@ describe('Trading API Circuit Breaker Integration', () => {
   const binanceConfig = {
     apiKey: 'binance-api-key',
     apiSecret: 'binance-api-secret',
+    testnet: true, // Add this if required by BinanceConfig
   };
 
   const coinbaseConfig = {
     apiKey: 'coinbase-api-key',
     apiSecret: 'coinbase-api-secret',
     passphrase: 'coinbase-passphrase',
+    sandbox: true, // Add this if required by CoinbaseConfig
   };
+
 
   beforeEach(() => {
     jest.clearAllMocks();

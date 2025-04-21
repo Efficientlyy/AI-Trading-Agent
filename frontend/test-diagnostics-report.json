@@ -1,0 +1,104 @@
+{
+  "summary": {
+    "total": 17,
+    "passing": 0,
+    "failing": 17,
+    "passRate": "0.0%"
+  },
+  "passingTests": [],
+  "failingTests": [
+    "src\\api\\trading\\alpacaTradingApi.test.ts",
+    "src\\api\\trading\\binanceTradingApi.test.ts",
+    "src\\api\\trading\\coinbaseTradingApi.test.ts",
+    "src\\api\\trading\\paperTradingApi.test.ts",
+    "src\\api\\trading\\tradingApiCircuitBreaker.test.ts",
+    "src\\api\\utils\\circuitBreaker.test.ts",
+    "src\\api\\utils\\errorHandling.test.ts",
+    "src\\api\\utils\\monitoring.test.ts",
+    "src\\components\\trading\\AssetSelector.test.tsx",
+    "src\\context\\SelectedAssetContext.test.tsx",
+    "src\\pages\\Analytics.test.tsx",
+    "src\\pages\\Dashboard.test.tsx",
+    "src\\pages\\Portfolio.test.tsx",
+    "src\\pages\\Trade.test.tsx",
+    "src\\pages\\__integration__.test.tsx",
+    "src\\tests\\integration\\trading.test.ts",
+    "src\\tests\\router-integration.test.tsx"
+  ],
+  "errorPatterns": {
+    "unknown": [
+      {
+        "file": "src\\api\\trading\\alpacaTradingApi.test.ts",
+        "error": "Command failed: npx jest src\\api\\trading\\alpacaTradingApi.test.ts --no-cache"
+      },
+      {
+        "file": "src\\api\\trading\\binanceTradingApi.test.ts",
+        "error": "Command failed: npx jest src\\api\\trading\\binanceTradingApi.test.ts --no-cache"
+      },
+      {
+        "file": "src\\api\\trading\\coinbaseTradingApi.test.ts",
+        "error": "Command failed: npx jest src\\api\\trading\\coinbaseTradingApi.test.ts --no-cache"
+      },
+      {
+        "file": "src\\api\\trading\\paperTradingApi.test.ts",
+        "error": "Command failed: npx jest src\\api\\trading\\paperTradingApi.test.ts --no-cache"
+      },
+      {
+        "file": "src\\api\\trading\\tradingApiCircuitBreaker.test.ts",
+        "error": "Command failed: npx jest src\\api\\trading\\tradingApiCircuitBreaker.test.ts --no-cache"
+      },
+      {
+        "file": "src\\api\\utils\\circuitBreaker.test.ts",
+        "error": "Command failed: npx jest src\\api\\utils\\circuitBreaker.test.ts --no-cache"
+      },
+      {
+        "file": "src\\api\\utils\\errorHandling.test.ts",
+        "error": "Command failed: npx jest src\\api\\utils\\errorHandling.test.ts --no-cache"
+      },
+      {
+        "file": "src\\api\\utils\\monitoring.test.ts",
+        "error": "Command failed: npx jest src\\api\\utils\\monitoring.test.ts --no-cache"
+      },
+      {
+        "file": "src\\components\\trading\\AssetSelector.test.tsx",
+        "error": "Command failed: npx jest src\\components\\trading\\AssetSelector.test.tsx --no-cache"
+      },
+      {
+        "file": "src\\context\\SelectedAssetContext.test.tsx",
+        "error": "Command failed: npx jest src\\context\\SelectedAssetContext.test.tsx --no-cache"
+      },
+      {
+        "file": "src\\pages\\Analytics.test.tsx",
+        "error": "Command failed: npx jest src\\pages\\Analytics.test.tsx --no-cache"
+      },
+      {
+        "file": "src\\pages\\Dashboard.test.tsx",
+        "error": "Command failed: npx jest src\\pages\\Dashboard.test.tsx --no-cache"
+      },
+      {
+        "file": "src\\pages\\Portfolio.test.tsx",
+        "error": "Command failed: npx jest src\\pages\\Portfolio.test.tsx --no-cache"
+      },
+      {
+        "file": "src\\pages\\Trade.test.tsx",
+        "error": "Command failed: npx jest src\\pages\\Trade.test.tsx --no-cache"
+      },
+      {
+        "file": "src\\pages\\__integration__.test.tsx",
+        "error": "Command failed: npx jest src\\pages\\__integration__.test.tsx --no-cache"
+      },
+      {
+        "file": "src\\tests\\integration\\trading.test.ts",
+        "error": "Command failed: npx jest src\\tests\\integration\\trading.test.ts --no-cache"
+      },
+      {
+        "file": "src\\tests\\router-integration.test.tsx",
+        "error": "Command failed: npx jest src\\tests\\router-integration.test.tsx --no-cache"
+      }
+    ]
+  },
+  "recommendations": [
+    "Run tests with verbose output to see detailed error messages: npm test -- --verbose",
+    "Focus on fixing tests in the src\\api\\trading directory first"
+  ]
+}
