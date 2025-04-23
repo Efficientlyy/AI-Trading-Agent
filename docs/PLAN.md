@@ -7,22 +7,22 @@ To align with the modular, multi-agent architecture and provide a professional u
 ### 1. Page Responsibilities
 
 **Dashboard Page (Overview & Monitoring):**
-- Portfolio Summary (value, allocation, performance)
-- Asset Allocation Chart (clickable, drill-down)
-- Technical Analysis Chart (overview mode, key indicators)
-- Sentiment Summary (signal strengths, news/social/fundamental signals)
-- Recent Trades (latest trades, quick status)
-- Notifications (alerts, errors, info)
-- Quick Links (Trading, Backtesting, Strategies, Settings)
+- ✅ Portfolio Summary (value, allocation, performance)
+- ✅ Asset Allocation Chart (clickable, drill-down)
+- ✅ Technical Analysis Chart (overview mode, key indicators)
+- ✅ Sentiment Summary (signal strengths, news/social/fundamental signals)
+- ✅ Recent Trades (latest trades, quick status)
+- ✅ Notifications (alerts, errors, info)
+- ✅ Quick Links (Trading, Backtesting, Strategies, Settings)
 
 **Trade Page (Action & Execution):**
-- Asset Selector (context-aware, defaults to asset clicked in dashboard)
-- Live Price Chart (focused, trading indicators)
-- Order Entry Form (buy/sell, order type, quantity, price, etc.)
-- Order Book & Recent Trades (for selected asset)
-- Open Orders & Order History (manage/cancel/view trades)
-- Position Details (current position, P&L, risk for selected asset)
-- Trade Confirmation & Feedback
+- ✅ Asset Selector (context-aware, defaults to asset clicked in dashboard)
+- ✅ Live Price Chart (focused, trading indicators)
+- ✅ Order Entry Form (buy/sell, order type, quantity, price, etc.)
+- ✅ Order Book & Recent Trades (for selected asset)
+- ✅ Open Orders & Order History (manage/cancel/view trades)
+- ✅ Position Details (current position, P&L, risk for selected asset)
+- ✅ Trade Confirmation & Feedback
 
 ### 2. File/Component Structure
 - `/src/pages/Dashboard.tsx` — high-level monitoring/overview
@@ -223,10 +223,10 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 
 3. 🔄 **Plan Real Data Collectors**
    - 🔄 Design stubs for:
-     - 🔄 Twitter API collector
+     - ✅ Twitter API collector
      - 🔄 Reddit API collector
-     - 🔄 News API collector
-     - 🔄 Fear & Greed Index fetcher
+     - ✅ News API collector
+     - ✅ Fear & Greed Index fetcher
    - 🔄 Implement incrementally, starting with public/free APIs.
 
 4. 🔄 **Develop NLP Processing Pipeline**
@@ -662,7 +662,21 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 - ✅ Agent controls (start/stop, feedback) fully implemented with real-time feedback and notifications (2025-04-21)
 - ✅ Dashboard UI/UX: autonomy signaling and real-time feedback enhanced with live banner, activity feed, and agent reasoning (2025-04-21)
 
+### ✅ AI/Agent Intelligence (2025-04-21)
+- ✅ Adaptive strategy switching (performance/risk/market regime-based) — implemented in backtest, dynamically switches strategies based on metrics and market conditions
+- ✅ Agent self-assessment and auto-tuning (periodic review and parameter optimization) — agent now periodically evaluates performance and can re-optimize parameters
+- ✅ Integration with genetic optimizer for dynamic re-optimization — genetic algorithm optimizer integrated for parameter optimization (sentiment thresholds, position sizing method, stop-loss/take-profit, risk parameters)
+- ⏳ Advanced signal processing (noise filtering, regime detection)
+- ⏳ Explainability: Surface agent reasoning and decision drivers in the UI
+- ⏳ (Optional/future) RL or meta-learning for continuous agent improvement
+
 ### ⏳ Phase 8: Continuous Improvement (IN PROGRESS)
+
+- [ ] Integrate live market data feed for charts and agent input
+  - [ ] Backend: Connect to real-time data provider and stream data
+  - [ ] Frontend: Subscribe to live data for chart/agent updates
+  - [ ] Agent: Process and act on real-time data
+  - [ ] Test with paper trading mode
 - ✅ Performance optimization
   - ✅ Implement memoization and caching strategies
   - ✅ Create batch processing for API calls
