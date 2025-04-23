@@ -65,5 +65,9 @@ simple_import_test.py
 # MCP server
 mcp-server-browserbase/
 
+# Jupyter notebooks and temp data
+notebooks/
+temp_data/
+
 # Test results and artifacts
 test_results/

@@ -1,21 +1,29 @@
-import React, { useMemo, useEffect, useState } from 'react';
+import { ArrowDownIcon, ArrowUpIcon, MinusIcon } from '@heroicons/react/24/solid';
+import React, { useEffect, useMemo, useState } from 'react';
+import { getMockSentimentSummary } from '../../api/mockData/mockSentimentSummary';
+import { sentimentApi } from '../../api/sentiment';
+import { useDataSource } from '../../context/DataSourceContext';
 import { useRenderLogger } from '../../hooks/useRenderLogger';
 import { SentimentSignal } from '../../types';
-import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from '@heroicons/react/24/solid';
-import { useDataSource } from '../../context/DataSourceContext';
-import { sentimentApi } from '../../api/sentiment';
-import { getMockSentimentSummary } from '../../api/mockData/mockSentimentSummary';
+import SentimentTrendChart from './SentimentTrendChart'; // Import the new chart component
 
 interface SentimentSummaryProps {
   onSymbolSelect?: (symbol: string) => void;
   selectedSymbol?: string;
 }
 
-const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, selectedSymbol }) => {
-  useRenderLogger('SentimentSummary', { selectedSymbol });
+const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, selectedSymbol: propSelectedSymbol }) => {
+  useRenderLogger('SentimentSummary', { propSelectedSymbol });
   const { dataSource } = useDataSource();
   const [sentimentData, setSentimentData] = useState<Record<string, SentimentSignal> | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedSymbol, setSelectedSymbol] = useState<string | undefined>(propSelectedSymbol); // Manage selected symbol state internally
+
+  useEffect(() => {
+    // Sync internal state with prop if it changes externally
+    setSelectedSymbol(propSelectedSymbol);
+  }, [propSelectedSymbol]);
+
 
   useEffect(() => {
     let isMounted = true;
@@ -35,6 +43,7 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
     fetchSentiment();
     return () => { isMounted = false; };
   }, [dataSource]);
+
   const sentimentAnalysis = useMemo(() => {
     if (!sentimentData) return { buyCount: 0, sellCount: 0, holdCount: 0, signals: [] };
 
@@ -59,7 +68,7 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
     if (!sentimentData || Object.keys(sentimentData).length === 0) return 'neutral';
 
     const { buyCount, sellCount } = sentimentAnalysis;
-    
+
     if (buyCount > sellCount * 2) return 'strongly_bullish';
     if (buyCount > sellCount) return 'bullish';
     if (sellCount > buyCount * 2) return 'strongly_bearish';
@@ -70,7 +79,7 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
   // Get signal icon and color
   const getSignalDisplay = (signal: 'buy' | 'sell' | 'hold', strength: number) => {
     const strengthClass = strength > 0.7 ? 'font-bold' : strength > 0.4 ? 'font-medium' : 'font-normal';
-    
+
     if (signal === 'buy') {
       return {
         icon: <ArrowUpIcon className="h-4 w-4 text-green-500" />,
@@ -136,8 +145,9 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
 
   // Handle symbol click
   const handleSymbolClick = (symbol: string) => {
+    setSelectedSymbol(symbol); // Update internal state
     if (onSymbolSelect) {
-      onSymbolSelect(symbol);
+      onSymbolSelect(symbol); // Also call external handler if provided
     }
   };
 
@@ -160,7 +170,7 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
   return (
     <div className="dashboard-widget col-span-1">
       <h2 className="text-lg font-semibold mb-3">Market Sentiment</h2>
-      
+
       {/* Sentiment Summary */}
       <div className="grid grid-cols-3 gap-2 mb-4">
         <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-center">
@@ -176,13 +186,13 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
           <div className="text-xs text-red-800 dark:text-red-300">Bearish</div>
         </div>
       </div>
-      
+
       {/* Overall Sentiment */}
       <div className={`${sentimentDisplay.bgColor} ${sentimentDisplay.textColor} p-3 rounded-md mb-4 text-center`}>
         <h3 className="font-medium">Overall Market Sentiment</h3>
         <p className="text-xl font-bold">{sentimentDisplay.label}</p>
       </div>
-      
+
       {/* Top Signals */}
       <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Top Signals</h3>
       {sentimentAnalysis.signals.length === 0 ? (
@@ -194,13 +204,12 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
           {sentimentAnalysis.signals.slice(0, 5).map((signal) => {
             const display = getSignalDisplay(signal.signal, signal.strength);
             return (
-              <div 
+              <div
                 key={signal.symbol}
-                className={`p-2 rounded border ${
-                  selectedSymbol === signal.symbol 
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                className={`p-2 rounded border ${selectedSymbol === signal.symbol
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
                     : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
-                } cursor-pointer transition-colors`}
+                  } cursor-pointer transition-colors`}
                 onClick={() => handleSymbolClick(signal.symbol)}
               >
                 <div className="flex justify-between items-center">
@@ -220,11 +229,18 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
           })}
         </div>
       )}
-      
+
       {/* Info text */}
       {onSymbolSelect && (
         <div className="mt-3 text-xs text-gray-500 dark:text-gray-400 text-center">
           Click on a symbol to analyze it
+        </div>
+      )}
+
+      {/* Sentiment Trend Chart */}
+      {selectedSymbol && (
+        <div className="mt-6">
+          <SentimentTrendChart symbol={selectedSymbol} timeframe="1M" /> {/* Render chart if a symbol is selected */}
         </div>
       )}
     </div>

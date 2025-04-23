@@ -230,17 +230,17 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
    - 🔄 Implement incrementally, starting with public/free APIs.
 
 4. 🔄 **Develop NLP Processing Pipeline**
-   - 🔄 Create `TextPreprocessor` for cleaning and normalizing text
-   - 🔄 Implement `SentimentAnalyzer` with multiple models:
-     - 🔄 Rule-based (VADER)
-     - 🔄 ML-based (DistilBERT or similar)
-   - 🔄 Add `EntityRecognizer` for identifying assets/tickers
+   - ✅ Create `TextPreprocessor` for cleaning and normalizing text
+   - ✅ Implement `SentimentAnalyzer` with multiple models:
+     - ✅ Rule-based (VADER)
+     - ✅ ML-based (DistilBERT or similar)
+   - ✅ Add `EntityRecognizer` for identifying assets/tickers
    - 🔄 Create unit tests for each component
 
 5. 🔄 **Build Signal Generation**
-   - 🔄 Create `SentimentSignalGenerator` class
-   - 🔄 Implement time-based aggregation of sentiment scores
-   - 🔄 Add configurable thresholds for signal generation
+   - ✅ Create `SentimentSignalGenerator` class
+   - ✅ Implement time-based aggregation of sentiment scores
+   - ✅ Add configurable thresholds for signal generation
    - 🔄 Create visualization tools for sentiment trends
 
 #### ✅ Phase 3.1: Sentiment Pipeline Integration Tests (COMPLETED)
