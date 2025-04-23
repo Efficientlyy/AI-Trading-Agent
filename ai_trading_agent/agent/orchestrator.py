@@ -143,6 +143,8 @@ except ImportError as e:
     SimpleRiskManager = None
     SimulatedExecutionHandler = None
 
+from .adaptive_manager import AdaptiveStrategyManager
+
 class BacktestOrchestrator(BaseOrchestrator):
     """
     Orchestrator specifically designed for running backtests.
@@ -175,6 +177,16 @@ class BacktestOrchestrator(BaseOrchestrator):
                 - 'timeframe' (Optional[str]): Data timeframe (e.g., '1d').
         """
         super().__init__(data_manager, strategy_manager, portfolio_manager, risk_manager, execution_handler, config)
+
+        # --- Adaptive Strategy Manager Integration ---
+        available_strategies = self.config.get('available_strategies', [])
+        optimizer = self.config.get('optimizer')
+        self.adaptive_manager = AdaptiveStrategyManager(
+            strategy_manager=self.strategy_manager,
+            performance_history=[],
+            available_strategies=available_strategies,
+            optimizer=optimizer
+        )
 
         # Validate required config keys
         required_keys = ['start_date', 'end_date', 'symbols']
@@ -247,7 +259,7 @@ class BacktestOrchestrator(BaseOrchestrator):
 
             # 1. Update Portfolio Manager with current market data (for valuation)
             try:
-                self.portfolio_manager.update_market_data(market_data)
+                self.portfolio_manager.update_market_prices(market_data)
                 portfolio_state = self.portfolio_manager.get_portfolio_state() # Corrected method name
                 current_positions = portfolio_state.get('positions', {})
                 # Record portfolio state at the START of the timestamp processing
@@ -451,6 +463,20 @@ class BacktestOrchestrator(BaseOrchestrator):
 
         self._running = False
         logging.info("Backtest run finished.")
+
+        # --- Adaptive Strategy Evaluation & Switching ---
+        metrics = self.results.get('performance_metrics', {})
+        regime_label = None
+        # Attempt to extract regime label from strategy manager if available
+        if hasattr(self.strategy_manager, 'get_last_regime_label'):
+            regime_label = self.strategy_manager.get_last_regime_label()
+        reason = self.adaptive_manager.evaluate_and_adapt(metrics, market_regime=regime_label)
+        if reason:
+            logging.info(f"[ADAPTIVE] {reason}")
+            self.results['adaptive_reason'] = reason
+        if regime_label is not None:
+            self.results['regime_label'] = regime_label
+
         return self.results
 
     # --- Add stop method implementation --- #

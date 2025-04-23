@@ -359,11 +359,14 @@ class SimpleStrategyManager(BaseStrategyManager):
     Manages a collection of strategies and orchestrates signal generation.
     In this simple version, it handles one strategy directly.
     """
-    def __init__(self, config: Optional[Dict[str, Any]] = None, data_manager: DataManagerABC = None):
-        super().__init__(config=config, data_manager=data_manager)
-        # self._strategies is already initialized in BaseStrategyManager's __init__
-        # No need to re-initialize here: self._strategies: Dict[str, BaseStrategy] = {}
-        self.data_manager = data_manager # Store the data manager
+    def __init__(self, config: Dict[str, Any], data_manager: DataManagerABC):
+        print("DEBUG: BaseStrategyManager config keys:", list(config.keys()))
+        logger.info(f"DEBUG: BaseStrategyManager config: {config}")
+        super().__init__(config, data_manager)
+        self._strategies = {}
+        self.data_manager = data_manager
+        self.config = config
+        self.name = config.get('name', 'BaseStrategyManager')
  
     def add_strategy(self, strategy: BaseStrategy) -> None:
         """ Registers a strategy instance with the manager. """
@@ -523,83 +526,101 @@ class SimpleStrategyManager(BaseStrategyManager):
  
 class SentimentStrategyManager(BaseStrategyManager):
     """Manages sentiment-based strategies.
- 
+
     This specific implementation generates signals based on sentiment scores.
+    Now supports advanced signal processing (noise filtering and regime detection) on sentiment and price data.
     """
     def __init__(self, config: Dict[str, Any], data_manager: DataManagerABC):
+        print("DEBUG: SentimentStrategyManager config keys:", list(config.keys()))
+        logger.info(f"DEBUG: SentimentStrategyManager config: {config}")
         super().__init__(config, data_manager)
         # Add strategy-specific parameters from config
         self.sentiment_threshold = config.get('sentiment_threshold', 0.5) # Example threshold
         self.lookback = config.get('lookback', 20) # For potential technical indicators
+        # --- Advanced signal processing config ---
+        self.signal_processing_cfg = config.get('signal_processing', {})
         logger.info(f"SentimentStrategyManager initialized with threshold: {self.sentiment_threshold}")
  
     def generate_signals(self, current_data: Dict[str, pd.Series], historical_data: Dict[str, pd.DataFrame]) -> Dict[str, int]:
         """Generates trading signals based on sentiment data.
- 
+        Now supports configurable advanced signal processing (noise filtering and regime detection).
         Args:
-            current_data: Dictionary mapping symbol to a Series of current data (OHLCV, sentiment, etc.).
-            historical_data: Dictionary mapping symbol to a DataFrame of historical data.
- 
+            current_data: Dict of {symbol: pd.Series} for the current timestamp.
+            historical_data: Dict of {symbol: pd.DataFrame} for lookback window.
         Returns:
-            A dictionary mapping symbol to a signal (-1 for SELL, 0 for HOLD, 1 for BUY).
+            Dict of {symbol: signal}.
         """
         signals = {}
-        symbols = list(current_data.keys()) # Get symbols from current data keys
- 
-        for symbol in symbols:
-            # Ensure data exists for the symbol
-            if symbol not in current_data or current_data[symbol] is None or current_data[symbol].empty:
-                logger.warning(f"No current data available for {symbol} at this timestamp.")
-                signals[symbol] = 0 # HOLD if no data
-                continue
- 
-            # Safely get the sentiment score
-            current_sentiment = current_data[symbol].get('sentiment_score')
- 
-            # Check if sentiment score is valid
-            if current_sentiment is None or pd.isna(current_sentiment):
-                # If sentiment is missing, try getting it from historical data's last row (if available)
-                # This handles cases where sentiment might lag or not be present every tick
-                if symbol in historical_data and not historical_data[symbol].empty and 'sentiment_score' in historical_data[symbol].columns:
-                     last_historical_sentiment = historical_data[symbol]['sentiment_score'].iloc[-1]
-                     if last_historical_sentiment is not None and not pd.isna(last_historical_sentiment):
-                         current_sentiment = last_historical_sentiment
-                         logger.debug(f"Using last historical sentiment ({current_sentiment}) for {symbol}.")
-                     else:
-                         logger.debug(f"Sentiment score missing for {symbol} (current & historical). Holding.")
-                         signals[symbol] = 0 # HOLD if no sentiment found
-                         continue
+        for symbol, series in current_data.items():
+            # --- Extract sentiment and price series ---
+            sentiment_col = f'{symbol}_sentiment_score' if f'{symbol}_sentiment_score' in series else 'sentiment_score'
+            price_col = 'close' if 'close' in series else series.index[0] if len(series.index) > 0 else None
+
+            # --- Prepare historical data for processing ---
+            hist = historical_data.get(symbol)
+            if hist is not None and not hist.empty:
+                # --- Apply signal processing if configured ---
+                from ai_trading_agent.signal_processing.filters import exponential_moving_average, savitzky_golay_filter, rolling_zscore
+                from ai_trading_agent.signal_processing.regime import volatility_regime
+                # --- Sentiment filtering ---
+                sentiment_filter = self.signal_processing_cfg.get('sentiment_filter')
+                sentiment_window = self.signal_processing_cfg.get('sentiment_filter_window', 10)
+                sentiment_series = hist[sentiment_col] if sentiment_col in hist else None
+                if sentiment_series is not None and sentiment_filter:
+                    if sentiment_filter == 'ema':
+                        sentiment_series = exponential_moving_average(sentiment_series, span=sentiment_window)
+                    elif sentiment_filter == 'savgol':
+                        sentiment_series = savitzky_golay_filter(sentiment_series, window_length=sentiment_window)
+                    elif sentiment_filter == 'zscore':
+                        sentiment_series = rolling_zscore(sentiment_series, window=sentiment_window)
+                    current_sentiment = sentiment_series.iloc[-1]
                 else:
-                    logger.debug(f"Sentiment score not available for {symbol}. Holding.")
-                    signals[symbol] = 0 # HOLD if no sentiment found
-                    continue
- 
-            # --- Basic Sentiment Strategy Logic --- #
+                    current_sentiment = series.get(sentiment_col, None)
+                # --- Price filtering ---
+                price_filter = self.signal_processing_cfg.get('price_filter')
+                price_window = self.signal_processing_cfg.get('price_filter_window', 10)
+                price_series = hist[price_col] if price_col in hist else None
+                if price_series is not None and price_filter:
+                    if price_filter == 'ema':
+                        price_series = exponential_moving_average(price_series, span=price_window)
+                    elif price_filter == 'savgol':
+                        price_series = savitzky_golay_filter(price_series, window_length=price_window)
+                    elif price_filter == 'zscore':
+                        price_series = rolling_zscore(price_series, window=price_window)
+                # --- Regime detection ---
+                regime_type = self.signal_processing_cfg.get('regime_detection')
+                regime_window = self.signal_processing_cfg.get('regime_window', 20)
+                regime_threshold = self.signal_processing_cfg.get('regime_vol_threshold', 0.02)
+                regime_label = None
+                if price_series is not None and regime_type == 'volatility':
+                    regime_labels = volatility_regime(price_series, window=regime_window, threshold=regime_threshold)
+                    regime_label = regime_labels.iloc[-1]
+                # Optionally use regime_label in your strategy logic
+            else:
+                current_sentiment = series.get(sentiment_col, None)
+                regime_label = None
+
+            # --- Enhanced Sentiment Strategy Logic: Regime-aware --- #
             try:
-                # Convert sentiment to float for comparison, handle potential errors
                 sentiment_float = float(current_sentiment)
- 
-                if sentiment_float > self.sentiment_threshold:
-                    logger.debug(f"BUY signal generated for {symbol} (Sentiment: {sentiment_float} > {self.sentiment_threshold})")
-                    signals[symbol] = 1 # BUY
-                elif sentiment_float < -self.sentiment_threshold: # Example: Symmetric threshold
-                    logger.debug(f"SELL signal generated for {symbol} (Sentiment: {sentiment_float} < {-self.sentiment_threshold})")
-                    signals[symbol] = -1 # SELL
+                # Only trade in 'low_vol' regime if regime_label is present
+                if regime_label is not None and regime_label != 'low_vol':
+                    signals[symbol] = 0 # HOLD in high_vol or unknown regime
                 else:
-                    # logger.debug(f"HOLD signal for {symbol} (Sentiment: {sentiment_float} within threshold)")
-                    signals[symbol] = 0 # HOLD
+                    if sentiment_float > self.sentiment_threshold:
+                        signals[symbol] = 1 # BUY
+                    elif sentiment_float < -self.sentiment_threshold:
+                        signals[symbol] = -1 # SELL
+                    else:
+                        signals[symbol] = 0 # HOLD
             except (ValueError, TypeError) as e:
                 logger.error(f"Error converting sentiment '{current_sentiment}' to float for {symbol}: {e}. Holding.")
                 signals[symbol] = 0 # HOLD on error
- 
         # Ensure all symbols managed by the strategy have a signal (default to HOLD)
-        # This covers cases where a symbol might be in the config but lacks data initially
         for symbol in self.config.get('symbols', []):
-             if symbol not in signals:
-                 signals[symbol] = 0
-                 logger.warning(f"No data found for configured symbol {symbol}, setting HOLD signal.")
- 
- 
+            if symbol not in signals:
+                signals[symbol] = 0
+                logger.warning(f"No data found for configured symbol {symbol}, setting HOLD signal.")
         return signals
  
     # Potentially override other methods if needed

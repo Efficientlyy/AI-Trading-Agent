@@ -165,17 +165,16 @@ def create_strategy(config: Dict[str, Any]) -> BaseStrategy:
     
     return strategy_class(name=name, config=strategy_config)
 
-def create_strategy_manager(strategy: BaseStrategy, manager_type: str = "BaseStrategyManager") -> StrategyManagerABC:
+def create_strategy_manager(strategy: BaseStrategy, manager_type: str = "BaseStrategyManager", data_manager=None, config=None) -> StrategyManagerABC:
     """
     Create a strategy manager instance based on configuration.
     
     Args:
         strategy: The strategy instance to manage.
         manager_type: The type of strategy manager to create.
-        
+        data_manager: The data manager instance, if needed by the manager.
     Returns:
         An instance of StrategyManagerABC.
-        
     Raises:
         ValueError: If the strategy manager type is not recognized.
     """
@@ -185,12 +184,13 @@ def create_strategy_manager(strategy: BaseStrategy, manager_type: str = "BaseStr
     manager_class = STRATEGY_MANAGER_REGISTRY[manager_type]
     logger.info(f"Creating {manager_type} for strategy: {strategy.name}")
     
-    # Different strategy managers might have different constructors
-    if manager_type == "BaseStrategyManager":
-        return manager_class(strategy)
+    if manager_type == "SentimentStrategyManager":
+        # Use explicit config if provided, otherwise fallback to strategy.config
+        final_config = config if config is not None else strategy.config
+        return manager_class(final_config, data_manager)
     else:
-        # For more complex managers, might need to pass more arguments
         return manager_class(strategy)
+
 
 def create_risk_manager(config: Dict[str, Any]) -> RiskManagerABC:
     """
