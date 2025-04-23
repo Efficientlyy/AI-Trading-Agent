@@ -6,6 +6,8 @@
  */
 
 /// <reference types="cypress" />
+export {};
+
 
 describe('Order Flow', () => {
   beforeEach(() => {

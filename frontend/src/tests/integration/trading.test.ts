@@ -51,7 +51,8 @@ const mockMarketData: Record<string, any> = {
     volume24h: 800000000,
     marketCap: 420000000000,
     lastUpdated: new Date().toISOString()
-  } };
+  }
+};
 
 // Mock available assets
 const mockAssets = [
@@ -131,15 +132,15 @@ jest.mock('../../api/utils/circuitBreakerExecutor', () => ({
 const renderWithProviders = (ui: React.ReactElement) => {
   return render(
     <MemoryRouter>
-      <ThemeProvider>
-        <AuthProvider>
-          <DataSourceProvider>
-            <SelectedAssetProvider>
-              {ui}
-            </SelectedAssetProvider>
-          </DataSourceProvider>
-        </AuthProvider>
-      </ThemeProvider>
+    <ThemeProvider>
+    <AuthProvider>
+    <DataSourceProvider>
+    <SelectedAssetProvider>
+    { ui }
+    </SelectedAssetProvider>
+    </DataSourceProvider>
+    </AuthProvider>
+    </ThemeProvider>
     </MemoryRouter>
   );
 };
@@ -151,16 +152,16 @@ describe('Trade Page Integration Tests', () => {
 
   it('renders the trade page with all required components', async () => {
     renderWithProviders(<Trade />);
-    
+
     // Check for main components
     expect(screen.getByText(/Market Order/i)).toBeInTheDocument();
     expect(screen.getByText(/Limit Order/i)).toBeInTheDocument();
     expect(screen.getByText(/Buy/i)).toBeInTheDocument();
     expect(screen.getByText(/Sell/i)).toBeInTheDocument();
-    
+
     // Check for asset selector
     expect(screen.getByText(/Select Asset/i)).toBeInTheDocument();
-    
+
     // Verify market data is loaded
     await waitFor(() => {
       expect(screen.getByText(/Current Price/i)).toBeInTheDocument();
@@ -169,44 +170,44 @@ describe('Trade Page Integration Tests', () => {
 
   it('selects an asset and updates market data', async () => {
     renderWithProviders(<Trade />);
-    
+
     // Wait for asset selector to be loaded
     await waitFor(() => {
       expect(screen.getByTestId('asset-selector')).toBeInTheDocument();
     });
-    
+
     // Select a different asset
     fireEvent.click(screen.getByTestId('asset-selector'));
     fireEvent.click(screen.getByText('ETH-USD'));
-    
+
     // Verify market data is updated for the selected asset
     await waitFor(() => {
       expect(screen.getByText('ETH-USD')).toBeInTheDocument();
-      expect(screen.getByText('$3,500.00')).toBeInTheDocument(); 
+      expect(screen.getByText('$3,500.00')).toBeInTheDocument();
     });
   });
 
   it('validates market order form inputs correctly', async () => {
     renderWithProviders(<Trade />);
-    
+
     // Select market order tab if not already selected
     const marketOrderTab = screen.getByText(/Market Order/i);
     fireEvent.click(marketOrderTab);
-    
+
     // Try to submit without quantity
     const submitButton = screen.getByText(/Place Order/i);
     fireEvent.click(submitButton);
-    
+
     // Check for validation error
     await waitFor(() => {
       expect(screen.getByText(/Quantity is required/i)).toBeInTheDocument();
     });
-    
+
     // Enter invalid quantity (too small)
     const quantityInput = screen.getByLabelText(/Quantity/i);
     fireEvent.change(quantityInput, { target: { value: '0.00000001' } });
     fireEvent.click(submitButton);
-    
+
     // Check for min quantity validation
     await waitFor(() => {
       expect(screen.getByText(/Minimum order size is/i)).toBeInTheDocument();
@@ -215,30 +216,30 @@ describe('Trade Page Integration Tests', () => {
 
   it('validates limit order form inputs correctly', async () => {
     renderWithProviders(<Trade />);
-    
+
     // Select limit order tab
     const limitOrderTab = screen.getByText(/Limit Order/i);
     fireEvent.click(limitOrderTab);
-    
+
     // Try to submit without price and quantity
     const submitButton = screen.getByText(/Place Order/i);
     fireEvent.click(submitButton);
-    
+
     // Check for validation errors
     await waitFor(() => {
       expect(screen.getByText(/Price is required/i)).toBeInTheDocument();
       expect(screen.getByText(/Quantity is required/i)).toBeInTheDocument();
     });
-    
+
     // Enter invalid price (negative)
     const priceInput = screen.getByLabelText(/Price/i);
     fireEvent.change(priceInput, { target: { value: '-100' } });
-    
+
     // Enter invalid quantity (too large)
     const quantityInput = screen.getByLabelText(/Quantity/i);
     fireEvent.change(quantityInput, { target: { value: '1000' } });
     fireEvent.click(submitButton);
-    
+
     // Check for validation errors
     await waitFor(() => {
       expect(screen.getByText(/Price must be positive/i)).toBeInTheDocument();
@@ -248,29 +249,29 @@ describe('Trade Page Integration Tests', () => {
 
   it('submits market order successfully', async () => {
     renderWithProviders(<Trade />);
-    
+
     // Select market order tab
     const marketOrderTab = screen.getByText(/Market Order/i);
     fireEvent.click(marketOrderTab);
-    
+
     // Select buy side
     const buySideButton = screen.getByText(/Buy/i);
     fireEvent.click(buySideButton);
-    
+
     // Enter valid quantity
     const quantityInput = screen.getByLabelText(/Quantity/i);
     fireEvent.change(quantityInput, { target: { value: '0.1' } });
-    
+
     // Submit the order
     const submitButton = screen.getByText(/Place Order/i);
     fireEvent.click(submitButton);
-    
+
     // Check for success message
     await waitFor(() => {
       expect(screen.getByText(/Order placed successfully/i)).toBeInTheDocument();
       expect(screen.getByText(/Order ID: ord123456789/i)).toBeInTheDocument();
     });
-    
+
     // Check order details are displayed
     expect(screen.getByText(/Status: FILLED/i)).toBeInTheDocument();
     expect(screen.getByText(/Total Value: \$5,000.00/i)).toBeInTheDocument();
@@ -278,26 +279,26 @@ describe('Trade Page Integration Tests', () => {
 
   it('submits limit order successfully', async () => {
     renderWithProviders(<Trade />);
-    
+
     // Select limit order tab
     const limitOrderTab = screen.getByText(/Limit Order/i);
     fireEvent.click(limitOrderTab);
-    
+
     // Select sell side
     const sellSideButton = screen.getByText(/Sell/i);
     fireEvent.click(sellSideButton);
-    
+
     // Enter valid price and quantity
     const priceInput = screen.getByLabelText(/Price/i);
     fireEvent.change(priceInput, { target: { value: '51000' } });
-    
+
     const quantityInput = screen.getByLabelText(/Quantity/i);
     fireEvent.change(quantityInput, { target: { value: '0.05' } });
-    
+
     // Submit the order
     const submitButton = screen.getByText(/Place Order/i);
     fireEvent.click(submitButton);
-    
+
     // Check for success message
     await waitFor(() => {
       expect(screen.getByText(/Order placed successfully/i)).toBeInTheDocument();
@@ -308,30 +309,30 @@ describe('Trade Page Integration Tests', () => {
     // Mock API error
     const tradingService = require('../../api/services/tradingService');
     tradingService.placeOrder.mockRejectedValueOnce(new Error('API error'));
-    
+
     renderWithProviders(<Trade />);
-    
+
     // Wait for order form to be loaded
     await waitFor(() => {
       expect(screen.getByTestId('order-entry-form')).toBeInTheDocument();
     });
-    
+
     // Select market order tab
     const marketOrderTab = screen.getByText(/Market Order/i);
     fireEvent.click(marketOrderTab);
-    
+
     // Select buy side
     const buySideButton = screen.getByText(/Buy/i);
     fireEvent.click(buySideButton);
-    
+
     // Enter valid quantity
     const quantityInput = screen.getByLabelText(/Quantity/i);
     fireEvent.change(quantityInput, { target: { value: '0.1' } });
-    
+
     // Submit the order
     const submitButton = screen.getByText(/Place Order/i);
     fireEvent.click(submitButton);
-    
+
     // Check for error message
     await waitFor(() => {
       expect(screen.getByText(/Failed to place order/i)).toBeInTheDocument();
@@ -342,12 +343,12 @@ describe('Trade Page Integration Tests', () => {
   it('uses circuit breaker for API calls', async () => {
     const circuitBreaker = require('../../api/utils/circuitBreakerExecutor');
     renderWithProviders(<Trade />);
-    
+
     // Wait for components to load
     await waitFor(() => {
       expect(screen.getByTestId('order-entry-form')).toBeInTheDocument();
     });
-    
+
     // Verify circuit breaker was used
     expect(circuitBreaker.executeWithCircuitBreaker).toHaveBeenCalled();
   });
@@ -363,14 +364,14 @@ describe('Trade Page Integration Tests', () => {
         clear: jest.fn()
       })
     }));
-    
+
     renderWithProviders(<Trade />);
-    
+
     // Wait for components to load
     await waitFor(() => {
       expect(screen.getByTestId('order-entry-form')).toBeInTheDocument();
     });
-    
+
     // Verify performance optimizations were used
     const performanceOptimizations = require('../../api/utils/performanceOptimizations');
     expect(performanceOptimizations.memoize).toHaveBeenCalled();
