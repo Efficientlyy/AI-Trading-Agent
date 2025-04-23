@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { WebSocketMessage, WebSocketUpdate, TopicType } from '../types';
+import { WebSocketMessage, WebSocketUpdate, TopicType, OHLCVLiveUpdate } from '../types';
 
 const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000/ws/updates';
 
@@ -7,8 +7,9 @@ interface WebSocketHookResult {
   data: WebSocketUpdate;
   status: 'connecting' | 'connected' | 'disconnected';
   error: string | null;
-  subscribe: (topic: TopicType) => void;
-  unsubscribe: (topic: TopicType) => void;
+  subscribe: (topic: TopicType, options?: { symbol?: string; timeframe?: string }) => void;
+  unsubscribe: (topic: TopicType, options?: { symbol?: string; timeframe?: string }) => void;
+  getOHLCVStream: (symbol: string, timeframe: string) => void;
 }
 
 // Mock data for development mode
@@ -63,203 +64,148 @@ const MOCK_DATA: Record<string, any> = {
 };
 
 export const useWebSocket = (initialTopics: TopicType[] = []): WebSocketHookResult => {
+  // Store symbol/timeframe subscriptions for ohlcv
+  const ohlcvSubscriptions = useRef<{ [key: string]: { symbol: string; timeframe: string } }>({});
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
   const [data, setData] = useState<WebSocketUpdate>({});
   const [error, setError] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const topicsRef = useRef<Set<TopicType>>(new Set(initialTopics));
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttemptsRef = useRef<number>(0);
   const initialTopicsProcessedRef = useRef<boolean>(false);
+  const reconnectAttemptsRef = useRef<number>(0);
   const MAX_RECONNECT_ATTEMPTS = 3;
 
-  // Function to send a message to the WebSocket server
-  const sendMessage = useCallback((message: WebSocketMessage) => {
+  // Enhanced subscribe to support symbol/timeframe for ohlcv
+  const subscribe = useCallback((topic: TopicType, options?: { symbol?: string; timeframe?: string }) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
+      const msg: any = { action: 'subscribe', topic };
+      if (topic === 'ohlcv' && options?.symbol) {
+        msg.symbol = options.symbol;
+        msg.timeframe = options.timeframe || '1m';
+        ohlcvSubscriptions.current[`${options.symbol}:${msg.timeframe}`] = { symbol: options.symbol, timeframe: msg.timeframe };
+      }
+      wsRef.current.send(JSON.stringify(msg));
+      topicsRef.current.add(topic);
     }
   }, []);
 
-  // Helper function to update data based on topic
+  const unsubscribe = useCallback((topic: TopicType, options?: { symbol?: string; timeframe?: string }) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      const msg: any = { action: 'unsubscribe', topic };
+      if (topic === 'ohlcv' && options?.symbol) {
+        msg.symbol = options.symbol;
+        msg.timeframe = options.timeframe || '1m';
+        delete ohlcvSubscriptions.current[`${options.symbol}:${msg.timeframe}`];
+      }
+      wsRef.current.send(JSON.stringify(msg));
+      topicsRef.current.delete(topic);
+    }
+  }, []);
+
+  // Helper to get live OHLCV stream
+  const getOHLCVStream = useCallback((symbol: string, timeframe: string) => {
+    subscribe('ohlcv', { symbol, timeframe });
+  }, [subscribe]);
+
+  // Update data for a topic
   const updateDataForTopic = useCallback((topic: TopicType, topicData: any) => {
-    setData(prevData => {
-      const newData = { ...prevData };
-      
-      // Update the correct property based on the topic
+    setData(prev => {
+      const newData = { ...prev };
       if (topic === 'portfolio') {
         newData.portfolio = topicData;
       } else if (topic === 'sentiment_signal') {
         newData.sentiment_signal = topicData;
       } else if (topic === 'performance') {
         newData.performance = topicData;
+      } else if (topic === 'ohlcv') {
+        if (Array.isArray(topicData.data)) {
+          newData.ohlcv = topicData;
+        } else if (typeof topicData.data === 'object' && topicData.data !== null) {
+          // Defensive: ensure topic is present
+          newData.ohlcv = { ...newData.ohlcv, ...topicData, topic: 'ohlcv' };
+        }
       }
-      
       return newData;
     });
   }, []);
 
-  // Subscribe to a topic
-  const subscribe = useCallback((topic: TopicType) => {
-    topicsRef.current.add(topic);
-    setError(null); // Clear any previous errors
-    
-    // In development mode, immediately update with mock data
-    if (process.env.NODE_ENV === 'development') {
-      if (MOCK_DATA[topic]) {
-        updateDataForTopic(topic, MOCK_DATA[topic]);
-      }
-      return;
-    }
-    
-    // In production, send subscription to server
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      sendMessage({ action: 'subscribe', topic });
-    }
-  }, [sendMessage, updateDataForTopic]);
-
-  // Unsubscribe from a topic
-  const unsubscribe = useCallback((topic: TopicType) => {
-    topicsRef.current.delete(topic);
-    
-    // In development mode, no need to send unsubscribe message
-    if (process.env.NODE_ENV === 'development') {
-      return;
-    }
-    
-    // In production, send unsubscribe to server
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      sendMessage({ action: 'unsubscribe', topic });
-    }
-  }, [sendMessage]);
-
-  // Initialize with mock data in development mode
+  // WebSocket connection logic
   useEffect(() => {
-    // Only run once and only in development mode
-    if (process.env.NODE_ENV === 'development' && !initialTopicsProcessedRef.current) {
-      console.log('Using mock WebSocket data in development mode');
-      setStatus('connected');
-      
-      // Initialize with mock data for initial topics
-      const currentTopics = Array.from(topicsRef.current);
-      currentTopics.forEach((topic: TopicType) => {
-        if (MOCK_DATA[topic]) {
-          updateDataForTopic(topic, MOCK_DATA[topic]);
-        }
-      });
-      
-      initialTopicsProcessedRef.current = true;
-    }
-  }, [updateDataForTopic]);
+    let ws: WebSocket;
+    let currentTopics = new Set(topicsRef.current);
 
-  // Setup WebSocket connection in production
-  useEffect(() => {
-    // Skip in development mode
-    if (process.env.NODE_ENV === 'development') {
-      return;
-    }
-    
-    // For production, use real WebSocket connection
     const connectWebSocket = () => {
-      // Clear any existing reconnect timeout
-      if (reconnectTimeoutRef.current) {
-        clearTimeout(reconnectTimeoutRef.current);
-        reconnectTimeoutRef.current = null;
-      }
-
-      // Create new WebSocket connection
-      const ws = new WebSocket(WS_URL);
+      ws = new WebSocket(WS_URL);
       wsRef.current = ws;
       setStatus('connecting');
-      setError(null); // Clear any previous errors
-
-      // Store a copy of the topics ref for the cleanup function
-      const currentTopics = Array.from(topicsRef.current);
 
       ws.onopen = () => {
         setStatus('connected');
-        console.log('WebSocket connected');
-        reconnectAttemptsRef.current = 0; // Reset reconnect attempts on successful connection
-        
-        // Subscribe to all topics in the set
+        setError(null);
         currentTopics.forEach((topic: TopicType) => {
           ws.send(JSON.stringify({ action: 'subscribe', topic }));
         });
+        reconnectAttemptsRef.current = 0;
       };
 
       ws.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data);
-          // Assume the message contains topic data in a format like { topic: data }
-          Object.entries(message).forEach(([topicKey, topicData]) => {
-            const topic = topicKey as TopicType;
-            if (topic === 'portfolio' || topic === 'sentiment_signal' || topic === 'performance') {
-              updateDataForTopic(topic, topicData);
-            }
-          });
-        } catch (error) {
-          console.error('Failed to parse WebSocket message:', error);
+          const msg = JSON.parse(event.data);
+          if (msg.topic === 'ohlcv') {
+            setData(prev => ({ ...prev, ohlcv: msg }));
+          } else if (msg.topic) {
+            updateDataForTopic(msg.topic, msg);
+          }
+        } catch (e) {
+          console.error('WebSocket message parse error:', e);
           setError('Failed to parse WebSocket message');
         }
       };
 
       ws.onclose = () => {
         setStatus('disconnected');
-        console.log('WebSocket disconnected');
-        
-        // Attempt to reconnect after a delay, but only up to MAX_RECONNECT_ATTEMPTS
         if (reconnectAttemptsRef.current < MAX_RECONNECT_ATTEMPTS) {
-          console.log(`Attempting to reconnect (${reconnectAttemptsRef.current + 1}/${MAX_RECONNECT_ATTEMPTS})...`);
           reconnectAttemptsRef.current += 1;
           reconnectTimeoutRef.current = setTimeout(() => {
             connectWebSocket();
           }, 3000);
         } else {
-          console.log(`Max reconnect attempts (${MAX_RECONNECT_ATTEMPTS}) reached. Using mock data instead.`);
           setError('Failed to connect to WebSocket server. Using mock data instead.');
-          // Fall back to mock data after max reconnect attempts
           currentTopics.forEach((topic: TopicType) => {
             if (MOCK_DATA[topic]) {
               updateDataForTopic(topic, MOCK_DATA[topic]);
             }
           });
-          setStatus('connected'); // Pretend we're connected to avoid UI showing disconnected state
+          setStatus('connected');
         }
       };
 
       ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
         setError('WebSocket connection error');
         ws.close();
       };
 
-      // Return cleanup function
       return () => {
-        // Unsubscribe from all topics before closing
         if (ws.readyState === WebSocket.OPEN) {
           currentTopics.forEach((topic: TopicType) => {
             ws.send(JSON.stringify({ action: 'unsubscribe', topic }));
           });
         }
-        
         ws.close();
       };
     };
 
-    // Connect to WebSocket and get the cleanup function
     const cleanup = connectWebSocket();
 
-    // Cleanup when component unmounts
     return () => {
-      if (cleanup) {
-        cleanup();
-      }
-      
+      if (cleanup) cleanup();
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
         reconnectTimeoutRef.current = null;
       }
     };
-  }, [updateDataForTopic]); // Only depend on updateDataForTopic
+  }, [updateDataForTopic]);
 
   // Subscribe to initial topics when status changes to connected
   useEffect(() => {
@@ -271,5 +217,5 @@ export const useWebSocket = (initialTopics: TopicType[] = []): WebSocketHookResu
     }
   }, [status, subscribe, initialTopics]);
 
-  return { data, status, error, subscribe, unsubscribe };
+  return { data, status, error, subscribe, unsubscribe, getOHLCVStream };
 };

@@ -193,11 +193,30 @@ export interface HistoricalDataRequest {
 }
 
 // WebSocket subscription types
-export type TopicType = 'portfolio' | 'sentiment_signal' | 'performance' | 'agent_status' | 'recent_trades';
+export type TopicType = 'portfolio' | 'sentiment_signal' | 'performance' | 'agent_status' | 'recent_trades' | 'ohlcv';
 
 export interface WebSocketMessage {
   action: 'subscribe' | 'unsubscribe';
   topic: TopicType;
+  symbol?: string;
+  timeframe?: string;
+}
+
+export interface OHLCV {
+  timestamp: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface OHLCVLiveUpdate {
+  topic: 'ohlcv';
+  symbol: string;
+  timeframe: string;
+  data: OHLCV[] | OHLCV;
+  timestamp: string;
 }
 
 export interface WebSocketUpdate {
@@ -217,4 +236,5 @@ export interface WebSocketUpdate {
     timestamp: string;
   };
   recent_trades?: Trade[];
+  ohlcv?: OHLCVLiveUpdate;
 }
