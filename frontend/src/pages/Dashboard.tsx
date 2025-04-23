@@ -94,7 +94,7 @@ const Dashboard: React.FC = () => {
       <AssetAllocationChart onAssetSelect={handleSymbolSelect} selectedAsset={selectedSymbol} />
       <RecentTrades trades={wsData.recent_trades || mockTrades} symbol={selectedSymbol} />
     </div>
-  ), [handleSymbolSelect, selectedSymbol, wsData.trades, mockTrades]);
+  ), [handleSymbolSelect, selectedSymbol, wsData.recent_trades, mockTrades]);
 
   // Memoize the third column components
   const [agentLoading, setAgentLoading] = React.useState(false);

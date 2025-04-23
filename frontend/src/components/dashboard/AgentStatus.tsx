@@ -4,6 +4,8 @@ interface AgentStatusProps {
   status?: 'running' | 'stopped' | 'error';
   reasoning?: string;
   lastUpdated?: string;
+  regimeLabel?: string;
+  adaptiveReason?: string;
 }
 
 const statusColors = {
@@ -12,7 +14,7 @@ const statusColors = {
   error: 'bg-red-500',
 };
 
-const AgentStatus: React.FC<AgentStatusProps> = ({ status, reasoning, lastUpdated }) => {
+const AgentStatus: React.FC<AgentStatusProps> = ({ status, reasoning, lastUpdated, regimeLabel, adaptiveReason }) => {
   if (!status) {
     return (
       <div className="rounded-lg shadow p-4 bg-white border border-gray-200 flex flex-col gap-2 animate-pulse">
@@ -40,6 +42,18 @@ const AgentStatus: React.FC<AgentStatusProps> = ({ status, reasoning, lastUpdate
         <div className="rounded bg-gray-50 p-2 text-sm text-gray-700 min-h-[48px]">
           {reasoning}
         </div>
+        {regimeLabel && (
+          <div className="mt-2">
+            <span className="block text-xs text-blue-400 mb-1">Market Regime:</span>
+            <div className="rounded bg-blue-50 p-2 text-sm text-blue-700 min-h-[24px]">{regimeLabel}</div>
+          </div>
+        )}
+        {adaptiveReason && (
+          <div className="mt-2">
+            <span className="block text-xs text-purple-400 mb-1">Agent Adaptation:</span>
+            <div className="rounded bg-purple-50 p-2 text-sm text-purple-700 min-h-[24px]">{adaptiveReason}</div>
+          </div>
+        )}
       </div>
     </div>
   );
