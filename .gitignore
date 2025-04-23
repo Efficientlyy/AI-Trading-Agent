@@ -41,7 +41,7 @@ rust_extensions/target/
 rust_extensions/Cargo.lock
 
 # Environment variables
-#.env
+.env
 .env.local
 .env.development
 .env.test
