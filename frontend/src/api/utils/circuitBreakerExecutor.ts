@@ -1,22 +1,21 @@
-import { canMakeApiCall, recordApiCall, recordCircuitBreakerResult } from './monitoring';
-import { recordEnhancedApiCall, recordCircuitBreakerStateChange, getEnhancedApiMetrics } from './enhancedMonitoring';
-import { cacheForFallback, executeFallback } from './fallback';
-import { executeApiCall, ApiError, NetworkError } from './errorHandling';
-import { 
-  logApiCallAttempt, 
-  logApiCallSuccess, 
-  logApiCallFailure, 
-  logFallbackAttempt, 
-  logFallbackSuccess, 
-  logFallbackFailure, 
+import {
+  logApiCallAttempt,
+  logApiCallFailure,
+  logApiCallSuccess,
   logCircuitBreakerStateChange,
-  LogLevel
+  logFallbackAttempt,
+  logFallbackFailure,
+  logFallbackSuccess,
 } from './enhancedLogging';
-import { 
-  memoize, 
-  measureExecutionTime, 
+import { getEnhancedApiMetrics, recordCircuitBreakerStateChange, recordEnhancedApiCall } from './enhancedMonitoring';
+import { ApiError, executeApiCall, NetworkError } from './errorHandling';
+import { cacheForFallback, executeFallback } from './fallback';
+import { canMakeApiCall, recordApiCall, recordCircuitBreakerResult } from './monitoring';
+import {
   createBatchProcessor,
-  getPerformanceMetrics
+  getPerformanceMetrics,
+  measureExecutionTime,
+  memoize
 } from './performanceOptimizations';
 
 /**
@@ -103,7 +102,7 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
   if (!canMakeApiCall(exchange, method)) {
     console.warn(`Circuit breaker open for ${exchange} ${method}, using fallback`);
     recordEnhancedApiCall(exchange, method, 'fallback_attempt');
-    
+
     // Log circuit breaker open state
     logCircuitBreakerStateChange(
       exchange,
@@ -112,7 +111,7 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
       'open',
       'Circuit breaker is open, attempting fallback'
     );
-    
+
     // Use fallback mechanism if available
     if (primaryFallback || secondaryFallback || cacheRetrieval) {
       try {
@@ -124,7 +123,7 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
         } else if (secondaryFallback) {
           logFallbackAttempt(exchange, method, 'secondary');
         }
-        
+
         const startTime = Date.now();
         const result = await executeFallback({
           primary: primaryFallback,
@@ -138,9 +137,9 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
             isCritical
           }
         });
-        
+
         const duration = Date.now() - startTime;
-        
+
         // Log fallback success
         if (primaryFallback) {
           logFallbackSuccess(exchange, method, 'primary', duration);
@@ -149,11 +148,11 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
         } else if (secondaryFallback) {
           logFallbackSuccess(exchange, method, 'secondary', duration);
         }
-        
+
         return result;
       } catch (fallbackError) {
         recordEnhancedApiCall(exchange, method, 'fallback_failure');
-        
+
         // Log fallback failure
         if (primaryFallback) {
           logFallbackFailure(exchange, method, 'primary', fallbackError as Error);
@@ -162,34 +161,34 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
         } else if (secondaryFallback) {
           logFallbackFailure(exchange, method, 'secondary', fallbackError as Error);
         }
-        
+
         console.error(`${exchange} fallback error in ${method}:`, fallbackError);
         throw new Error(`${exchange} API ${method} unavailable and fallback failed: ${(fallbackError as Error).message}`);
       }
     }
-    
+
     throw new Error(`${exchange} API ${method} unavailable and no fallback provided`);
   }
-  
+
   const startTime = Date.now();
-  
+
   try {
     // Record the API call attempt
     recordEnhancedApiCall(exchange, method, 'attempt');
     recordApiCall(exchange, method, 'attempt');
-    
+
     // Log API call attempt
     logApiCallAttempt(exchange, method);
-    
+
     // Create a memoized version of the API call if enabled
-    const memoizedApiCall = enableMemoization ? 
+    const memoizedApiCall = enableMemoization ?
       memoize(apiCall, {
         maxAgeMs: memoizationMaxAgeMs,
         maxCacheSize: memoizationMaxCacheSize,
         keyGenerator: () => `${exchange}:${method}`, // Use exchange and method as the cache key
-      }) : 
+      }) :
       apiCall;
-    
+
     // Execute the API call with retry logic
     const result = await executeApiCall<T>(() => memoizedApiCall(), {
       maxRetries,
@@ -202,44 +201,44 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
         return false;
       }),
     });
-    
+
     // Record successful API call with duration
     const duration = Date.now() - startTime;
     recordEnhancedApiCall(exchange, method, 'success', duration);
     recordApiCall(exchange, method, 'success', duration);
     recordCircuitBreakerResult(exchange, method, true);
-    
+
     // Log API call success
     logApiCallSuccess(exchange, method, duration, result);
-    
+
     // Cache successful result for potential future fallbacks
     cacheForFallback(`${exchange}:${method}`, result);
-    
+
     return result;
   } catch (error) {
     // Record failed API call with duration
     const duration = Date.now() - startTime;
     recordEnhancedApiCall(exchange, method, 'failure', duration, error as Error);
     recordApiCall(exchange, method, 'failure', duration, error as Error);
-    
+
     // Log API call failure
     logApiCallFailure(exchange, method, error as Error, duration);
-    
+
     // Record circuit breaker result and potentially change state
     const previousState = getEnhancedApiMetrics(exchange, method).circuitBreakerState.state;
     recordCircuitBreakerResult(exchange, method, false);
     const currentState = getEnhancedApiMetrics(exchange, method).circuitBreakerState.state;
-    
+
     // Record state change if it occurred
     if (previousState !== currentState) {
       recordCircuitBreakerStateChange(
-        exchange, 
-        method, 
-        previousState, 
-        currentState, 
+        exchange,
+        method,
+        previousState,
+        currentState,
         `Error: ${(error as Error).message}`
       );
-      
+
       // Log circuit breaker state change
       logCircuitBreakerStateChange(
         exchange,
@@ -249,14 +248,14 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
         `Error: ${(error as Error).message}`
       );
     }
-    
+
     console.error(`${exchange} API error in ${method}:`, error);
-    
+
     // Use fallback mechanism if available
     if (primaryFallback || secondaryFallback || cacheRetrieval) {
       try {
         recordEnhancedApiCall(exchange, method, 'fallback_attempt');
-        
+
         // Log fallback attempt
         if (primaryFallback) {
           logFallbackAttempt(exchange, method, 'primary');
@@ -265,7 +264,7 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
         } else if (secondaryFallback) {
           logFallbackAttempt(exchange, method, 'secondary');
         }
-        
+
         const fallbackStartTime = Date.now();
         const result = await executeFallback({
           primary: primaryFallback,
@@ -280,9 +279,9 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
             error: error as Error
           }
         });
-        
+
         const fallbackDuration = Date.now() - fallbackStartTime;
-        
+
         // Log fallback success
         if (primaryFallback) {
           logFallbackSuccess(exchange, method, 'primary', fallbackDuration);
@@ -291,11 +290,11 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
         } else if (secondaryFallback) {
           logFallbackSuccess(exchange, method, 'secondary', fallbackDuration);
         }
-        
+
         return result;
       } catch (fallbackError) {
         recordEnhancedApiCall(exchange, method, 'fallback_failure');
-        
+
         // Log fallback failure
         if (primaryFallback) {
           logFallbackFailure(exchange, method, 'primary', fallbackError as Error);
@@ -304,12 +303,12 @@ export const executeWithCircuitBreaker = measureExecutionTime(async <T>(
         } else if (secondaryFallback) {
           logFallbackFailure(exchange, method, 'secondary', fallbackError as Error);
         }
-        
+
         console.error(`${exchange} fallback error in ${method}:`, fallbackError);
         throw new Error(`${exchange} API ${method} failed and fallback failed: ${(fallbackError as Error).message}`);
       }
     }
-    
+
     // Re-throw the error if no fallback
     throw error as Error;
   }
@@ -338,7 +337,7 @@ export const createCircuitBreakerBatchProcessor = <T, R>(
     maxWaitMs = 100,
     keyGenerator,
   } = options;
-  
+
   return createBatchProcessor<T, R>({
     maxBatchSize,
     maxWaitMs,

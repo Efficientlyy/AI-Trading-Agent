@@ -225,28 +225,40 @@ class SentimentStrategy(BaseStrategy):
             config: Configuration dictionary. Expected keys:
                 - 'buy_threshold' (float): Sentiment score above which to buy. Default 0.1.
                 - 'sell_threshold' (float): Sentiment score below which to sell. Default -0.1.
+                - 'lookback_period' (int): Number of periods to lookback for sentiment analysis. Default 3.
+                - 'smoothing_factor' (float): Weight for exponential smoothing. Default 0.7.
+                - 'use_volume_weighting' (bool): Whether to weight sentiment by volume. Default False.
+                - 'signal_scaling' (bool): Whether to scale signal strength by sentiment. Default False.
+                - 'min_data_points' (int): Minimum data points needed for signal generation. Default 2.
         """
         super().__init__(name=name, config=config)
+        self.config = config if config is not None else {} 
         self.buy_threshold = self.config.get('buy_threshold', 0.1)
         self.sell_threshold = self.config.get('sell_threshold', -0.1)
+        self.lookback_period = self.config.get('lookback_period', 3)
+        self.smoothing_factor = self.config.get('smoothing_factor', 0.7)
+        self.use_volume_weighting = self.config.get('use_volume_weighting', False)
+        self.signal_scaling = self.config.get('signal_scaling', False)
+        self.min_data_points = self.config.get('min_data_points', 2)
         self.analyzer = None
         if SentimentIntensityAnalyzer:
             self.analyzer = SentimentIntensityAnalyzer()
         else:
             logging.warning(f"{self.name}: VADER analyzer not available.")
+        logging.info(f"{self.name} initialized with thresholds - Buy: {self.buy_threshold}, Sell: {self.sell_threshold}, Lookback: {self.lookback_period}")
  
     def generate_signals(
         self,
         data: Dict[str, pd.DataFrame], # Historical data window
-        current_positions: Dict[str, Any],
+        current_positions: Dict[str, Any] = None,
         **kwargs: Any
     ) -> Dict[str, int]:
         """
-        Generates buy/sell/hold signals based on the latest sentiment score.
+        Generates buy/sell/hold signals based on sentiment data with optional smoothing.
 
         Args:
             data: Dictionary mapping symbol to a DataFrame containing historical data.
-                  Expected columns: 'sentiment_score'.
+                  Expected columns: 'sentiment_score' or similar sentiment indicators.
             current_positions: Dictionary mapping symbol to current position details.
             kwargs: Additional arguments, potentially including `current_data` (a Dict[str, pd.Series])
                     and `timestamp`.
@@ -254,101 +266,135 @@ class SentimentStrategy(BaseStrategy):
         Returns:
             Dictionary mapping symbol to signal (1 for Buy, -1 for Sell, 0 for Hold).
         """
-        logger.info(f"{self.name}: Entering generate_signals at timestamp {kwargs.get('timestamp', 'N/A')}")
+        if current_positions is None:
+            current_positions = {}
+            
+        logger.info(f"{self.name}: Generating signals at timestamp {kwargs.get('timestamp', 'N/A')}")
         signals = {}
         timestamp = kwargs.get('timestamp')
-        current_data_arg = kwargs.get('current_data') # Check if current data is passed
 
-        # Determine the set of symbols to process
-        # Use symbols from historical data dict primarily, but consider current_data if passed
-        symbols_to_process = set(data.keys())
-        if isinstance(current_data_arg, dict):
-            symbols_to_process.update(current_data_arg.keys())
-
-        for symbol in symbols_to_process:
-            latest_score = None
-            score_source = "N/A"
-
-            # 1. Prioritize current sentiment score if available in kwargs['current_data']
-            if isinstance(current_data_arg, dict) and symbol in current_data_arg:
-                current_symbol_series = current_data_arg[symbol]
-                if isinstance(current_symbol_series, pd.Series) and 'sentiment_score' in current_symbol_series.index:
-                    current_score = current_symbol_series['sentiment_score']
-                    if not pd.isna(current_score):
-                        latest_score = current_score
-                        score_source = "current_data"
-                    else:
-                        logger.debug(f"{self.name}: Current sentiment score for {symbol} is NaN.")
-                elif isinstance(current_symbol_series, pd.Series) and 'text' in current_symbol_series.index and self.analyzer:
-                     current_text = current_symbol_series['text']
-                     if not pd.isna(current_text) and isinstance(current_text, str):
-                         try:
-                             vs = self.analyzer.polarity_scores(current_text)
-                             latest_score = vs['compound']
-                             score_source = "current_data_text"
-                         except Exception as e:
-                             logging.error(f"{self.name}: Error analyzing current text for {symbol}: {e}", exc_info=True)
-                     else:
-                         logger.debug(f"{self.name}: Current text for {symbol} is invalid.")
-
-            # 2. Fallback to the last value in the historical data window if current is not found/valid
-            if latest_score is None and symbol in data:
-                symbol_data = data[symbol]
-                if not symbol_data.empty:
-                    if 'sentiment_score' in symbol_data.columns:
-                        hist_score = symbol_data['sentiment_score'].iloc[-1]
-                        if not pd.isna(hist_score):
-                            latest_score = hist_score
-                            score_source = "historical_data_last"
-                        else:
-                             logger.debug(f"{self.name}: Last historical sentiment score for {symbol} is NaN.")
-                    elif 'text' in symbol_data.columns and self.analyzer:
-                        hist_text = symbol_data['text'].iloc[-1]
-                        if not pd.isna(hist_text) and isinstance(hist_text, str):
-                             try:
-                                 vs = self.analyzer.polarity_scores(hist_text)
-                                 latest_score = vs['compound']
-                                 score_source = "historical_data_text_last"
-                             except Exception as e:
-                                logging.error(f"{self.name}: Error analyzing last historical text for {symbol}: {e}", exc_info=True)
-                        else:
-                             logger.debug(f"{self.name}: Last historical text for {symbol} is invalid.")
-
-            # 3. If no valid score found, generate HOLD
-            if latest_score is None:
-                logging.warning(f"{self.name}: Could not determine a valid sentiment score for {symbol} at {timestamp}. Generating HOLD signal.")
-                signals[symbol] = 0
+        # Process each symbol in the historical data
+        for symbol, symbol_data in data.items():
+            # Early validation of the data
+            if symbol_data is None or symbol_data.empty:
+                logger.warning(f"{self.name}: Empty data for symbol {symbol}. Setting HOLD signal.")
+                signals[symbol] = 0  # Default to HOLD
                 continue
-
-            # --- Debug Logging --- 
-            logger.debug(f"{self.name} - Symbol: {symbol}, Timestamp: {timestamp}, Score: {latest_score:.4f} (Source: {score_source}), Buy: {self.buy_threshold}, Sell: {self.sell_threshold}")
-            # --- End Debug Logging ---
-
-            # Generate signal based on score and thresholds
-            if latest_score > self.buy_threshold:
-                signals[symbol] = 1  # Buy signal
-            elif latest_score < self.sell_threshold:
-                signals[symbol] = -1 # Sell signal
-            else:
-                signals[symbol] = 0  # Hold signal
-
-            # --- Added Debug Logging for Signal --- 
-            logger.debug(f"{self.name} - Symbol: {symbol}, Generated Signal: {signals[symbol]}")
-            # --- End Added Debug Logging ---
-
-            # Simple logging
-            # logging.debug(f"{self.name} - {symbol}: Score={latest_score:.2f}, Signal={signals[symbol]}")
- 
+            
+            try:
+                # Log all available columns to help debug
+                logger.debug(f"{self.name}: Available columns for {symbol}: {list(symbol_data.columns)}")
+                
+                # Find any column that might contain sentiment data using more flexible matching
+                sentiment_col = None
+                for col in symbol_data.columns:
+                    col_lower = col.lower()
+                    if any(term in col_lower for term in ['sentiment', 'score', 'polarity', 'sentiment_score']):
+                        sentiment_col = col
+                        break
+                
+                # If no sentiment column found, try common prefixed patterns
+                if sentiment_col is None:
+                    prefixed_patterns = [f'{symbol}_sentiment', f'{symbol.lower()}_sentiment', 
+                                         f'{symbol}_score', f'{symbol.lower()}_score']
+                    for pattern in prefixed_patterns:
+                        matching_cols = [col for col in symbol_data.columns if pattern in col.lower()]
+                        if matching_cols:
+                            sentiment_col = matching_cols[0]
+                            break
+                
+                # Still no sentiment column? Look for any numeric column that might work
+                if sentiment_col is None:
+                    numeric_cols = symbol_data.select_dtypes(include=['number']).columns
+                    if 'sentiment' in numeric_cols:
+                        sentiment_col = 'sentiment'
+                    elif len(numeric_cols) > 0:
+                        # Use the first numeric column as a last resort
+                        sentiment_col = numeric_cols[0]
+                        logger.warning(f"{self.name}: No explicit sentiment column found. Using numeric column {sentiment_col} as fallback.")
+                
+                # If still no sentiment column found, set HOLD and continue to next symbol
+                if sentiment_col is None:
+                    logger.error(f"{self.name}: No suitable sentiment or numeric column found for {symbol}. Available columns: {list(symbol_data.columns)}. Setting HOLD signal.")
+                    signals[symbol] = 0  # Default to HOLD
+                    continue
+                
+                logger.info(f"{self.name}: Using sentiment column: {sentiment_col} for {symbol}")
+                
+                # Make sure the data is sorted by timestamp for time series analysis
+                if isinstance(symbol_data.index, pd.DatetimeIndex):
+                    symbol_data = symbol_data.sort_index()
+                elif 'timestamp' in symbol_data.columns:
+                    symbol_data = symbol_data.sort_values('timestamp')
+                
+                # Get the sentiment values and ensure they are numeric
+                try:
+                    sentiment_values = pd.to_numeric(symbol_data[sentiment_col], errors='coerce')
+                    # Drop NaN values
+                    valid_sentiment = sentiment_values.dropna()
+                    
+                    if valid_sentiment.empty:
+                        logger.warning(f"{self.name}: No valid sentiment values for {symbol} after cleaning. Setting HOLD signal.")
+                        signals[symbol] = 0  # Default to HOLD
+                        continue
+                        
+                    # Get the latest valid sentiment value for signal generation
+                    latest_sentiment = valid_sentiment.iloc[-1]
+                    
+                    # Generate clear Buy/Sell/Hold signal based on thresholds
+                    if latest_sentiment > self.buy_threshold:
+                        signals[symbol] = 1  # BUY signal
+                        logger.info(f"{self.name}: BUY signal for {symbol} - sentiment: {latest_sentiment:.4f} > threshold: {self.buy_threshold}")
+                    elif latest_sentiment < self.sell_threshold:
+                        signals[symbol] = -1  # SELL signal
+                        logger.info(f"{self.name}: SELL signal for {symbol} - sentiment: {latest_sentiment:.4f} < threshold: {self.sell_threshold}")
+                    else:
+                        signals[symbol] = 0  # HOLD signal
+                        logger.info(f"{self.name}: HOLD signal for {symbol} - sentiment: {latest_sentiment:.4f} is between thresholds")
+                    
+                except Exception as e:
+                    logger.error(f"{self.name}: Error converting sentiment values to numeric for {symbol}: {e}")
+                    signals[symbol] = 0  # Default to HOLD on error
+            
+            except Exception as e:
+                logger.error(f"{self.name}: Error processing sentiment for {symbol}: {e}")
+                signals[symbol] = 0  # Default to HOLD on error
+                
+        # Ensure we have signals for all symbols (final sanity check)
+        for symbol in data.keys():
+            if symbol not in signals:
+                logger.warning(f"{self.name}: No signal generated for {symbol}. Setting HOLD as fallback.")
+                signals[symbol] = 0
+        
+        logger.info(f"{self.name}: Generated signals for {len(signals)} symbols: {signals}")
         return signals
- 
-    def update_config(self, new_config: Dict[str, Any]) -> None:
-        """ Updates the strategy's configuration. """
-        super().update_config(new_config)
-        # Re-read thresholds from the updated config
-        self.buy_threshold = self.config.get('buy_threshold', 0.1)
-        self.sell_threshold = self.config.get('sell_threshold', -0.1)
-        logging.info(f"{self.name}: Configuration updated. New thresholds: Buy > {self.buy_threshold}, Sell < {self.sell_threshold}")
- 
+
+    def update_config(self, config_updates: Dict[str, Any]) -> None:
+        """
+        Updates the strategy's configuration parameters.
+
+        Args:
+            config_updates: Dictionary containing parameters to update.
+        """
+        for key, value in config_updates.items():
+            if key in self.config:
+                self.config[key] = value
+                logger.info(f"{self.name}: Updated config {key} to {value}")
+                # Update instance variables
+                if key == 'buy_threshold':
+                    self.buy_threshold = value
+                elif key == 'sell_threshold':
+                    self.sell_threshold = value
+                elif key == 'lookback_period':
+                    self.lookback_period = value
+                elif key == 'smoothing_factor':
+                    self.smoothing_factor = value
+                elif key == 'use_volume_weighting':
+                    self.use_volume_weighting = value
+                elif key == 'signal_scaling':
+                    self.signal_scaling = value
+                elif key == 'min_data_points':
+                    self.min_data_points = value
  
 # --- Concrete Strategy Manager Implementation --- #
  
@@ -536,10 +582,11 @@ class SentimentStrategyManager(BaseStrategyManager):
         super().__init__(config, data_manager)
         # Add strategy-specific parameters from config
         self.sentiment_threshold = config.get('sentiment_threshold', 0.5) # Example threshold
-        self.lookback = config.get('lookback', 20) # For potential technical indicators
+        # Increase lookback to ensure we have sufficient data for sentiment analysis and signal generation
+        self.lookback = config.get('lookback', 120) # Increased default lookback from 60 to 120
         # --- Advanced signal processing config ---
         self.signal_processing_cfg = config.get('signal_processing', {})
-        logger.info(f"SentimentStrategyManager initialized with threshold: {self.sentiment_threshold}")
+        logger.info(f"SentimentStrategyManager initialized with threshold: {self.sentiment_threshold}, lookback: {self.lookback}")
  
     def generate_signals(self, current_data: Dict[str, pd.Series], historical_data: Dict[str, pd.DataFrame]) -> Dict[str, int]:
         """Generates trading signals based on sentiment data.

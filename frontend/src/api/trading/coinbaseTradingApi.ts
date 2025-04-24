@@ -1,11 +1,11 @@
-import { TradingApi } from './index';
-import { OrderRequest, Order, Portfolio, Position, OrderStatus, OrderType, OrderSide } from '../../types';
-import { TradingMode } from '../../config';
-import { createAuthenticatedClient } from '../client';
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import crypto from 'crypto';
-import { ApiError, NetworkError } from '../utils/errorHandling';
+import { TradingMode } from '../../config';
+import { Order, OrderRequest, OrderSide, OrderStatus, OrderType, Portfolio, Position } from '../../types';
+import { createAuthenticatedClient } from '../client';
 import { executeWithCircuitBreaker } from '../utils/circuitBreakerExecutor';
+import { ApiError, NetworkError } from '../utils/errorHandling';
+import { TradingApi } from './index';
 
 // Coinbase API endpoints
 const COINBASE_API_URL = 'https://api.exchange.coinbase.com';
@@ -20,37 +20,37 @@ interface CoinbaseConfig {
 // Create Coinbase API client
 const createCoinbaseClient = (tradingMode: TradingMode, coinbaseConfig: CoinbaseConfig): AxiosInstance => {
   const baseURL = tradingMode === 'live' ? COINBASE_API_URL : COINBASE_SANDBOX_API_URL;
-  
+
   const client = axios.create({
     baseURL,
     // Add timeouts to prevent hanging requests
     timeout: 30000, // 30 seconds
   });
-  
+
   // Add request interceptor for authentication
   client.interceptors.request.use((config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const method = config.method?.toUpperCase() || 'GET';
     const path = config.url || '';
     const body = config.data ? JSON.stringify(config.data) : '';
-    
+
     // Create signature
     const message = timestamp + method + path + body;
     const signature = crypto
       .createHmac('sha256', coinbaseConfig.apiSecret)
       .update(message)
       .digest('base64');
-    
+
     // Add headers
     // Use the set method of AxiosHeaders
     config.headers.set('CB-ACCESS-KEY', coinbaseConfig.apiKey);
     config.headers.set('CB-ACCESS-SIGN', signature);
     config.headers.set('CB-ACCESS-TIMESTAMP', timestamp);
     config.headers.set('CB-ACCESS-PASSPHRASE', coinbaseConfig.passphrase);
-    
+
     return config;
   });
-  
+
   // Add response interceptor for error handling
   client.interceptors.response.use(
     response => response,
@@ -58,42 +58,42 @@ const createCoinbaseClient = (tradingMode: TradingMode, coinbaseConfig: Coinbase
       // Handle specific Coinbase error codes
       if (axios.isAxiosError(error) && error.response) {
         const { status, data } = error.response;
-        
+
         // Rate limiting
         if (status === 429) {
           return Promise.reject(new ApiError(
-            'Coinbase rate limit exceeded', 
-            429, 
+            'Coinbase rate limit exceeded',
+            429,
             data,
             true
           ));
         }
-        
+
         // Server errors
         if (status >= 500) {
           return Promise.reject(new ApiError(
-            'Coinbase server error', 
-            status, 
+            'Coinbase server error',
+            status,
             data,
             true
           ));
         }
-        
+
         // Authentication errors
         if (status === 401) {
           return Promise.reject(new ApiError(
-            'Coinbase authentication failed', 
-            401, 
+            'Coinbase authentication failed',
+            401,
             data,
             false // Not retryable
           ));
         }
       }
-      
+
       return Promise.reject(error);
     }
   );
-  
+
   return client;
 };
 
@@ -149,10 +149,10 @@ const executeCoinbaseCall = async <T>(
 export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseConfig): TradingApi => {
   // Create Coinbase client
   const client = createCoinbaseClient(tradingMode, config);
-  
+
   // Create authenticated client for our backend
   const backendClient = createAuthenticatedClient();
-  
+
   // Helper function to get cached portfolio
   const getCachedPortfolio = async (): Promise<Portfolio | null> => {
     try {
@@ -161,13 +161,13 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
       if (cachedData) {
         const parsed = JSON.parse(cachedData);
         const cacheTime = parsed.timestamp;
-        
+
         // Check if cache is fresh enough (15 minutes)
         if (Date.now() - cacheTime < 15 * 60 * 1000) {
           return parsed.data;
         }
       }
-      
+
       return null;
     } catch (e) {
       console.error('Error retrieving cached portfolio:', e);
@@ -189,10 +189,10 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
       return null;
     }
   };
-  
+
   // Exchange name for logging
   const EXCHANGE = 'Coinbase';
-  
+
   return {
     // Account and portfolio methods
     async getPortfolio(): Promise<Portfolio> {
@@ -201,7 +201,7 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         async () => {
           // Get accounts (balances)
           const { data: accounts } = await client.get('/accounts');
-          
+
           // Build portfolio
           const portfolio: Portfolio = {
             cash: 0, // Will be calculated
@@ -210,21 +210,21 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
             daily_pnl: 0, // Not directly available from Coinbase API
             margin_multiplier: 1 // Coinbase Pro doesn't offer margin by default
           };
-          
+
           // Process accounts
           let totalValue = 0;
           let cashValue = 0;
-          
+
           for (const account of accounts) {
             const currency = account.currency;
             const balance = parseFloat(account.balance);
-            
+
             // Skip zero balances
             if (balance <= 0) continue;
-            
+
             // Stablecoins and fiat are considered cash
             const isStablecoinOrFiat = ['USD', 'USDC', 'USDT', 'DAI', 'EUR', 'GBP'].includes(currency);
-            
+
             if (isStablecoinOrFiat) {
               cashValue += balance;
               totalValue += balance;
@@ -234,11 +234,11 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
                 const productId = `${currency}-USD`;
                 const { data: ticker } = await client.get(`/products/${productId}/ticker`);
                 const price = parseFloat(ticker.price);
-                
+
                 if (price > 0) {
                   const marketValue = balance * price;
                   totalValue += marketValue;
-                  
+
                   // Add to positions
                   portfolio.positions[currency] = {
                     symbol: `${currency}/USD`,
@@ -256,16 +256,16 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
               }
             }
           }
-          
+
           portfolio.cash = cashValue;
           portfolio.total_value = totalValue;
-          
+
           // Cache the portfolio for future fallbacks
           localStorage.setItem('Coinbase:portfolio', JSON.stringify({
             timestamp: Date.now(),
             data: portfolio
           }));
-          
+
           return portfolio;
         },
         config,
@@ -281,7 +281,7 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
           // Try to get cached portfolio data
           const cachedPortfolio = await getCachedPortfolio();
           if (!cachedPortfolio) throw new Error('No cached portfolio available');
-          
+
           // Update prices for positions if possible
           try {
             for (const symbol of Object.keys(cachedPortfolio.positions)) {
@@ -298,14 +298,14 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
                 // Continue with other positions
               }
             }
-            
+
             // Recalculate total value
             let positionsValue = 0;
             Object.values(cachedPortfolio.positions).forEach(position => {
               positionsValue += position.market_value;
             });
             cachedPortfolio.total_value = cachedPortfolio.cash + positionsValue;
-            
+
             return cachedPortfolio;
           } catch (e) {
             console.error('Failed to update cached portfolio:', e);
@@ -316,14 +316,14 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         getCachedPortfolio,
         // Validate portfolio data
         (portfolio: Portfolio) => {
-          return !!portfolio && 
-                 typeof portfolio.cash === 'number' && 
-                 typeof portfolio.total_value === 'number' && 
-                 !!portfolio.positions;
+          return !!portfolio &&
+            typeof portfolio.cash === 'number' &&
+            typeof portfolio.total_value === 'number' &&
+            !!portfolio.positions;
         }
       );
     },
-    
+
     async getPositions(): Promise<Record<string, Position>> {
       return executeCoinbaseCall(
         'getPositions',
@@ -335,13 +335,13 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         async () => ({})
       );
     },
-    
+
     async getBalance(asset?: string): Promise<number> {
       return executeCoinbaseCall(
         'getBalance',
         async () => {
           const { data: accounts } = await client.get('/accounts');
-          
+
           if (asset) {
             // Convert asset format from "BTC/USD" to "BTC"
             const currency = asset.split('/')[0];
@@ -357,7 +357,7 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         async () => 0
       );
     },
-    
+
     // Order management methods
     async createOrder(orderRequest: OrderRequest): Promise<Order> {
       return executeCoinbaseCall(
@@ -365,14 +365,14 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         async () => {
           // Convert our order format to Coinbase format
           const productId = orderRequest.symbol.replace('/', '-'); // Convert "BTC/USD" to "BTC-USD"
-          
+
           // Base parameters for all order types
           const params: Record<string, any> = {
             product_id: productId,
             side: orderRequest.side.toLowerCase(),
             size: orderRequest.quantity.toString(),
           };
-          
+
           // Add parameters based on order type
           if (orderRequest.order_type === 'limit' && orderRequest.price) {
             params.type = 'limit';
@@ -381,10 +381,10 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
           } else {
             params.type = 'market';
           }
-          
+
           // Send order to Coinbase
           const { data } = await client.post('/orders', params);
-          
+
           // Convert Coinbase order to our format
           return convertCoinbaseOrder(data);
         },
@@ -396,7 +396,7 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         }
       );
     },
-    
+
     async cancelOrder(orderId: string): Promise<boolean> {
       return executeCoinbaseCall(
         'cancelOrder',
@@ -416,22 +416,22 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         }
       );
     },
-    
+
     async getOrders(status?: string): Promise<Order[]> {
       return executeCoinbaseCall(
         'getOrders',
         async () => {
           // Get orders from Coinbase
           const { data } = await client.get('/orders');
-          
+
           // Convert to our format
           const orders = data.map(convertCoinbaseOrder);
-          
+
           // Filter by status if provided
           if (status) {
             return orders.filter((order: Order) => order.status === status);
           }
-          
+
           return orders;
         },
         config,
@@ -442,7 +442,7 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         }
       );
     },
-    
+
     async getOrder(orderId: string): Promise<Order | null> {
       return executeCoinbaseCall(
         'getOrder',
@@ -462,7 +462,7 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         }
       );
     },
-    
+
     // Market data methods
     async getMarketPrice(symbol: string): Promise<number> {
       return executeCoinbaseCall(
@@ -484,7 +484,7 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         }
       );
     },
-    
+
     async getOrderBook(symbol: string, limit: number = 10): Promise<{ bids: any[], asks: any[] }> {
       return executeCoinbaseCall(
         'getOrderBook',
@@ -493,18 +493,18 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
           const { data } = await client.get(`/products/${productId}/book`, {
             params: { level: 2 }, // Level 2 provides the top 50 bids and asks
           });
-          
+
           // Convert to our format
           const bids = data.bids.slice(0, limit).map((bid: any) => ({
             price: parseFloat(bid[0]),
             size: parseFloat(bid[1]),
           }));
-          
+
           const asks = data.asks.slice(0, limit).map((ask: any) => ({
             price: parseFloat(ask[0]),
             size: parseFloat(ask[1]),
           }));
-          
+
           return { bids, asks };
         },
         config,
@@ -519,26 +519,26 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         }
       );
     },
-    
+
     async getTicker(symbol: string): Promise<{ price: number, volume: number, change: number }> {
       return executeCoinbaseCall(
         'getTicker',
         async () => {
           const productId = symbol.replace('/', '-'); // Convert "BTC/USD" to "BTC-USD"
-          
+
           // Get ticker
           const { data: ticker } = await client.get(`/products/${productId}/ticker`);
-          
+
           // Get 24h stats
           const { data: stats } = await client.get(`/products/${productId}/stats`);
-          
+
           const price = parseFloat(ticker.price);
           const volume = parseFloat(stats.volume);
-          
+
           // Calculate change percentage
           const open = parseFloat(stats.open);
           const change = open > 0 ? (price - open) / open : 0;
-          
+
           return { price, volume, change };
         },
         config,
@@ -553,7 +553,7 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         }
       );
     },
-    
+
     // Exchange info methods
     async getExchangeInfo(): Promise<any> {
       return executeCoinbaseCall(
@@ -561,7 +561,7 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         async () => {
           // Get products
           const { data: products } = await client.get('/products');
-          
+
           // Convert to our format
           return {
             name: 'Coinbase',
@@ -589,7 +589,7 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         }
       );
     },
-    
+
     async getSymbols(): Promise<string[]> {
       return executeCoinbaseCall(
         'getSymbols',
@@ -609,14 +609,14 @@ export const coinbaseTradingApi = (tradingMode: TradingMode, config: CoinbaseCon
         }
       );
     },
-    
+
     async getAssetInfo(symbol: string): Promise<any> {
       return executeCoinbaseCall(
         'getAssetInfo',
         async () => {
           const productId = symbol.replace('/', '-'); // Convert "BTC/USD" to "BTC-USD"
           const { data } = await client.get(`/products/${productId}`);
-          
+
           return {
             symbol,
             baseAsset: data.base_currency,

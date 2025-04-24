@@ -127,63 +127,142 @@ async def websocket_endpoint(websocket: WebSocket):
             "timestamp": datetime.now().isoformat()
         }
 
+    # Initialize global CCXT provider if needed
+    if not hasattr(websocket_endpoint, "_ccxt_provider"):
+        websocket_endpoint._ccxt_provider = None
+    
+    # Global mapping of user subscriptions
+    if not hasattr(websocket_endpoint, "_user_subscriptions"):
+        websocket_endpoint._user_subscriptions = {}
+
     await manager.connect(websocket, user_id)
-    subscriptions = set()
-    ohlcv_tasks = {}
-    ccxt_provider = None
+    
+    # Initialize or get subscriptions for this user
+    if user_id not in websocket_endpoint._user_subscriptions:
+        websocket_endpoint._user_subscriptions[user_id] = {
+            "topics": set(),
+            "ohlcv_symbols": {},  # Map symbol to timeframe
+            "tasks": {}
+        }
+    
+    user_subs = websocket_endpoint._user_subscriptions[user_id]
+    
     try:
         while True:
             try:
                 data = await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
                 message = json.loads(data)
                 action = message.get("action")
+                
                 if action == "ping":
                     await websocket.send_text(json.dumps({"action": "pong", "timestamp": datetime.now().isoformat()}))
+                
                 elif action == "subscribe":
                     topic = message.get("topic")
                     if topic:
-                        subscriptions.add(topic)
+                        user_subs["topics"].add(topic)
                         await websocket.send_text(json.dumps({"action": "subscribed", "topic": topic}))
-                        # --- Live OHLCV subscription ---
+                        
+                        # Handle OHLCV subscription
                         if topic == "ohlcv":
                             symbol = message.get("symbol")
                             timeframe = message.get("timeframe", "1m")
+                            
                             if symbol:
-                                if not ccxt_provider:
-                                    ccxt_provider = CcxtProvider()
-                                    await ccxt_provider.connect_realtime()
-                                await ccxt_provider.subscribe_to_symbols([symbol])
-                                async def stream_ohlcv():
-                                    while True:
-                                        ohlcv_data = await ccxt_provider.get_realtime_data()
-                                        if ohlcv_data:
-                                            await websocket.send_text(json.dumps({
-                                                "topic": "ohlcv",
-                                                "symbol": symbol,
-                                                "timeframe": timeframe,
-                                                "data": ohlcv_data,
-                                                "timestamp": datetime.now().isoformat()
-                                            }))
-                                        await asyncio.sleep(1)  # Adjust polling interval as needed
-                                ohlcv_tasks[symbol] = asyncio.create_task(stream_ohlcv())
+                                # Store the symbol-timeframe subscription
+                                user_subs["ohlcv_symbols"][symbol] = timeframe
+                                
+                                # Initialize CCXT provider if needed
+                                if websocket_endpoint._ccxt_provider is None:
+                                    # Create provider with paper trading config
+                                    config = {
+                                        "exchange_id": os.getenv("EXCHANGE_ID", "binance"),
+                                        "api_key": os.getenv("EXCHANGE_API_KEY", ""),
+                                        "secret_key": os.getenv("EXCHANGE_SECRET_KEY", ""),
+                                        "options": {
+                                            "defaultType": "spot",
+                                            "adjustForTimeDifference": True
+                                        }
+                                    }
+                                    websocket_endpoint._ccxt_provider = CcxtProvider(config)
+                                    await websocket_endpoint._ccxt_provider.connect_realtime()
+                                    
+                                # Subscribe to the symbol
+                                await websocket_endpoint._ccxt_provider.subscribe_to_symbols([symbol])
+                                
+                                # Create streaming task if not already running
+                                if symbol not in user_subs["tasks"]:
+                                    task_name = f"ohlcv_stream_{symbol}_{timeframe}_{user_id}"
+                                    
+                                    async def stream_ohlcv(s=symbol, tf=timeframe):
+                                        logging.info(f"Started OHLCV streaming for {s} ({tf})")
+                                        last_data = None
+                                        
+                                        while True:
+                                            try:
+                                                # Get latest data from provider
+                                                ohlcv_data = await websocket_endpoint._ccxt_provider.get_realtime_data()
+                                                
+                                                if ohlcv_data and ohlcv_data.get('symbol') == s:
+                                                    # Convert raw data to frontend format
+                                                    data = ohlcv_data.get('data')
+                                                    if isinstance(data, list) and len(data) >= 6:
+                                                        # Format: [timestamp, open, high, low, close, volume]
+                                                        formatted_data = {
+                                                            "timestamp": datetime.fromtimestamp(data[0]/1000).isoformat(),
+                                                            "open": data[1],
+                                                            "high": data[2],
+                                                            "low": data[3],
+                                                            "close": data[4],
+                                                            "volume": data[5]
+                                                        }
+                                                        
+                                                        # Avoid sending duplicate data
+                                                        current_data = json.dumps(formatted_data)
+                                                        if current_data != last_data:
+                                                            await websocket.send_text(json.dumps({
+                                                                "topic": "ohlcv",
+                                                                "symbol": s,
+                                                                "timeframe": tf,
+                                                                "data": formatted_data
+                                                            }))
+                                                            last_data = current_data
+                                            
+                                            except Exception as e:
+                                                logging.error(f"Error in OHLCV streaming for {s}: {e}")
+                                                
+                                            # Sleep to avoid excessive polling
+                                            await asyncio.sleep(0.5)
+                                    
+                                    user_subs["tasks"][symbol] = asyncio.create_task(stream_ohlcv())
+                                    logging.info(f"Created streaming task for {symbol} ({timeframe}) for user {user_id}")
+                
                 elif action == "unsubscribe":
                     topic = message.get("topic")
+                    symbol = message.get("symbol", "")
+                    
                     if topic:
-                        subscriptions.discard(topic)
+                        user_subs["topics"].discard(topic)
                         await websocket.send_text(json.dumps({"action": "unsubscribed", "topic": topic}))
-                        # Cancel OHLCV streaming if needed
-                        if topic == "ohlcv":
-                            symbol = message.get("symbol")
-                            if symbol and symbol in ohlcv_tasks:
-                                ohlcv_tasks[symbol].cancel()
-                                del ohlcv_tasks[symbol]
+                        
+                        # Handle OHLCV unsubscription
+                        if topic == "ohlcv" and symbol:
+                            if symbol in user_subs["ohlcv_symbols"]:
+                                del user_subs["ohlcv_symbols"][symbol]
+                                
+                            # Cancel streaming task if it exists
+                            if symbol in user_subs["tasks"]:
+                                user_subs["tasks"][symbol].cancel()
+                                del user_subs["tasks"][symbol]
+                                logging.info(f"Cancelled streaming task for {symbol} for user {user_id}")
+                
                 elif action == "start_agent":
+                    # Update agent status and broadcast
                     agent_status_store[user_id] = {
                         "status": "running",
                         "reasoning": "Agent started and monitoring market.",
                         "timestamp": datetime.now().isoformat()
                     }
-                    # Broadcast new status to agent_status subscribers
                     status_update = {
                         "topic": "agent_status",
                         "timestamp": agent_status_store[user_id]["timestamp"],
@@ -191,13 +270,14 @@ async def websocket_endpoint(websocket: WebSocket):
                         "reasoning": agent_status_store[user_id]["reasoning"]
                     }
                     await websocket.send_text(json.dumps(status_update))
+                
                 elif action == "stop_agent":
+                    # Update agent status and broadcast
                     agent_status_store[user_id] = {
                         "status": "stopped",
                         "reasoning": "Agent stopped by user.",
                         "timestamp": datetime.now().isoformat()
                     }
-                    # Broadcast new status to agent_status subscribers
                     status_update = {
                         "topic": "agent_status",
                         "timestamp": agent_status_store[user_id]["timestamp"],
@@ -205,29 +285,44 @@ async def websocket_endpoint(websocket: WebSocket):
                         "reasoning": agent_status_store[user_id]["reasoning"]
                     }
                     await websocket.send_text(json.dumps(status_update))
+                
                 else:
                     await websocket.send_text(json.dumps({"error": "Unknown action"}))
+            
             except asyncio.TimeoutError:
                 # Periodically send updates for subscribed topics
-                for topic in list(subscriptions):
+                for topic in list(user_subs["topics"]):
                     if topic == "portfolio":
-                        # Simulate portfolio update
+                        # Get real portfolio data or use mock data
+                        is_paper_trading = os.getenv("PAPER_TRADING", "true").lower() == "true"
+                        
+                        # In a real implementation, this would query the portfolio manager
                         portfolio_update = {
                             "topic": "portfolio",
                             "timestamp": datetime.now().isoformat(),
-                            "total_value": 100000 + int(datetime.now().second),
-                            "cash": 50000,
-                            "positions": {"AAPL": {"quantity": 10, "price": 150.0}},
+                            "paper_trading": is_paper_trading,
+                            "portfolio": {
+                                "total_value": 100000 + int(datetime.now().second),
+                                "available_cash": 50000,
+                                "total_pnl": 1500,
+                                "total_pnl_percentage": 1.5,
+                                "positions": {
+                                    "BTC/USDT": {"quantity": 0.1, "entry_price": 45000, "current_price": 46000, "pnl": 100},
+                                    "ETH/USDT": {"quantity": 2, "entry_price": 3000, "current_price": 3100, "pnl": 200}
+                                }
+                            }
                         }
                         await websocket.send_text(json.dumps(portfolio_update))
+                    
                     elif topic == "trades":
-                        # Simulate trade update
+                        # In a real implementation, this would query recent trades
                         trade_update = {
                             "topic": "trades",
                             "timestamp": datetime.now().isoformat(),
-                            "trade": {"symbol": "AAPL", "side": "buy", "quantity": 1, "price": 150.0},
+                            "trade": {"symbol": "BTC/USDT", "side": "buy", "quantity": 0.01, "price": 46000.0},
                         }
                         await websocket.send_text(json.dumps(trade_update))
+                    
                     elif topic == "agent_status":
                         # Send current agent status
                         status_update = {
@@ -239,10 +334,23 @@ async def websocket_endpoint(websocket: WebSocket):
                             "adaptive_reason": agent_status_store[user_id].get("adaptive_reason")
                         }
                         await websocket.send_text(json.dumps(status_update))
+    
     except WebSocketDisconnect:
         manager.disconnect(websocket, user_id)
-        # Cancel any running OHLCV tasks
-        for task in ohlcv_tasks.values():
-            task.cancel()
-        if ccxt_provider:
-            await ccxt_provider.close()
+        
+        # Clean up user resources
+        if user_id in websocket_endpoint._user_subscriptions:
+            # Cancel all tasks
+            for task in user_subs["tasks"].values():
+                task.cancel()
+                
+            # Check if this was the last connection for this user
+            if user_id not in manager.active_connections:
+                # If no more connections for this user, clean up subscriptions
+                del websocket_endpoint._user_subscriptions[user_id]
+                
+        # Clean up global provider if no more users
+        if not websocket_endpoint._user_subscriptions and websocket_endpoint._ccxt_provider:
+            await websocket_endpoint._ccxt_provider.close()
+            websocket_endpoint._ccxt_provider = None
+            logging.info("Closed CCXT provider as there are no more active users")

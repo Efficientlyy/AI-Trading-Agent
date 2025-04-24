@@ -9,6 +9,8 @@ import logging
 from typing import Dict, List, Any, Optional
 import pandas as pd
 from datetime import datetime, timedelta
+import os
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -162,11 +164,58 @@ class RedditSentimentCollector(BaseSentimentCollector):
         self._initialize_client()
         
     def _initialize_client(self):
-        """Initialize the Reddit API client using credentials from config."""
-        # TODO: Implement Reddit API client initialization
-        # This will depend on the specific Reddit API library being used (PRAW, etc.)
-        self.client = None
-        logger.info("Reddit API client initialization placeholder")
+        """Initialize the Reddit API client using PRAW library."""
+        try:
+            import praw
+            from ..nlp_processing.sentiment_processor import SentimentProcessor
+            
+            # Extract configuration values with defaults
+            client_id = self.config.get('client_id', '')
+            client_secret = self.config.get('client_secret', '')
+            user_agent = self.config.get('user_agent', 'AI Trading Agent Sentiment Collector')
+            
+            # Use environment variables as fallback
+            if not client_id:
+                client_id = os.environ.get("REDDIT_CLIENT_ID", "")
+            if not client_secret:
+                client_secret = os.environ.get("REDDIT_CLIENT_SECRET", "")
+            if not user_agent:
+                user_agent = os.environ.get("REDDIT_USER_AGENT", "AI Trading Agent Sentiment Collector")
+                
+            # Configure subreddits and keywords
+            self.subreddits = self.config.get('subreddits', ["wallstreetbets", "cryptocurrency", "stocks", "investing"])
+            self.keywords = self.config.get('keywords', [])
+            self.comment_limit = self.config.get('comment_limit', 10)  # Number of top comments to fetch per post
+            self.post_limit = self.config.get('post_limit', 100)  # Number of posts to fetch per subreddit
+            self.time_filter = self.config.get('time_filter', 'day')  # Time filter for Reddit search
+            
+            # Initialize PRAW Reddit client
+            self.client = praw.Reddit(
+                client_id=client_id,
+                client_secret=client_secret,
+                user_agent=user_agent,
+                # Additional credentials if needed for script apps
+                username=self.config.get('username', os.environ.get("REDDIT_USERNAME", "")),
+                password=self.config.get('password', os.environ.get("REDDIT_PASSWORD", ""))
+            )
+            
+            # Ensure read-only mode for data collection
+            self.client.read_only = True
+            
+            # Initialize SentimentProcessor for text analysis
+            self.sentiment_processor = SentimentProcessor(**self.config.get('nlp_config', {}))
+            
+            # Rate limiting
+            self.rate_limit_wait = self.config.get('rate_limit_wait', 1.0)  # Wait time in seconds between API calls
+            
+            logger.info(f"Reddit API client initialized successfully with {len(self.subreddits)} subreddits")
+            
+        except ImportError as e:
+            logger.error(f"Failed to import required libraries for Reddit API: {e}")
+            self.client = None
+        except Exception as e:
+            logger.error(f"Error initializing Reddit API client: {e}")
+            self.client = None
         
     def collect(self, symbols: List[str], start_date: Optional[datetime] = None, 
                 end_date: Optional[datetime] = None) -> pd.DataFrame:
@@ -184,28 +233,254 @@ class RedditSentimentCollector(BaseSentimentCollector):
         start_date, end_date = self._validate_dates(start_date, end_date)
         logger.info(f"Collecting Reddit sentiment data for {symbols} from {start_date} to {end_date}")
         
-        # TODO: Implement actual Reddit API calls and data processing
-        # For now, return a mock DataFrame with sample data
+        # If client initialization failed, return mock data
+        if self.client is None:
+            logger.warning("Reddit API client not initialized, returning mock data")
+            return self._generate_mock_data(symbols, start_date, end_date)
+            
+        # Check if we have actual symbols to search for
+        if not symbols:
+            logger.warning("No symbols provided for Reddit sentiment collection")
+            return pd.DataFrame()  # Return empty DataFrame
+            
+        try:
+            # Collect sentiment data for each symbol
+            all_data = []
+            
+            # Create search queries based on symbols
+            # Convert symbols to search terms (e.g., "BTC" -> "BTC OR Bitcoin", "ETH" -> "ETH OR Ethereum")
+            search_queries = self._create_search_queries(symbols)
+            
+            # Collect data for each subreddit and search query
+            for subreddit_name in self.subreddits:
+                try:
+                    subreddit = self.client.subreddit(subreddit_name)
+                    
+                    for symbol, search_query in search_queries.items():
+                        logger.debug(f"Searching r/{subreddit_name} for '{search_query}'")
+                        
+                        try:
+                            # Search for submissions matching the query
+                            submissions = subreddit.search(
+                                search_query, 
+                                limit=self.post_limit, 
+                                time_filter=self.time_filter,
+                                sort='relevance'
+                            )
+                            
+                            # Process each submission
+                            for submission in submissions:
+                                # Skip submissions outside the requested date range
+                                submission_time = datetime.fromtimestamp(submission.created_utc)
+                                if submission_time < start_date or submission_time > end_date:
+                                    continue
+                                
+                                # Process submission text
+                                submission_text = f"{submission.title} {submission.selftext}"
+                                submission_data = {
+                                    'timestamp': submission_time,
+                                    'symbol': symbol,
+                                    'source': 'reddit',
+                                    'subreddit': subreddit_name,
+                                    'content': submission_text,
+                                    'url': submission.url,
+                                    'score': submission.score,
+                                    'num_comments': submission.num_comments,
+                                    'is_comment': False,
+                                    'post_id': submission.id
+                                }
+                                
+                                # Process sentiment
+                                submission_sentiment = self.sentiment_processor.process_data([{'text': submission_text}])
+                                if submission_sentiment and len(submission_sentiment) > 0:
+                                    submission_data['sentiment_score'] = submission_sentiment[0].get('sentiment_score', 0.0)
+                                else:
+                                    submission_data['sentiment_score'] = 0.0
+                                
+                                all_data.append(submission_data)
+                                
+                                # Process top comments if requested
+                                if self.comment_limit > 0:
+                                    submission.comments.replace_more(limit=0)  # Skip "load more comments" objects
+                                    top_comments = list(submission.comments)[:self.comment_limit]
+                                    
+                                    for comment in top_comments:
+                                        comment_time = datetime.fromtimestamp(comment.created_utc)
+                                        
+                                        # Skip comments outside the requested date range
+                                        if comment_time < start_date or comment_time > end_date:
+                                            continue
+                                            
+                                        # Process comment text
+                                        comment_text = comment.body
+                                        comment_data = {
+                                            'timestamp': comment_time,
+                                            'symbol': symbol,
+                                            'source': 'reddit',
+                                            'subreddit': subreddit_name,
+                                            'content': comment_text,
+                                            'url': f"https://reddit.com{comment.permalink}",
+                                            'score': comment.score,
+                                            'num_comments': 0,  # Comments don't have nested comments count
+                                            'is_comment': True,
+                                            'post_id': submission.id,
+                                            'comment_id': comment.id
+                                        }
+                                        
+                                        # Process sentiment
+                                        comment_sentiment = self.sentiment_processor.process_data([{'text': comment_text}])
+                                        if comment_sentiment and len(comment_sentiment) > 0:
+                                            comment_data['sentiment_score'] = comment_sentiment[0].get('sentiment_score', 0.0)
+                                        else:
+                                            comment_data['sentiment_score'] = 0.0
+                                            
+                                        all_data.append(comment_data)
+                                
+                                # Apply rate limiting to prevent API abuse
+                                time.sleep(self.rate_limit_wait)
+                                
+                        except Exception as e:
+                            logger.error(f"Error searching r/{subreddit_name} for '{search_query}': {e}")
+                            continue
+                
+                except Exception as e:
+                    logger.error(f"Error accessing subreddit r/{subreddit_name}: {e}")
+                    continue
+            
+            # Convert to DataFrame
+            if not all_data:
+                logger.warning("No Reddit data collected, returning mock data")
+                return self._generate_mock_data(symbols, start_date, end_date)
+                
+            # Create DataFrame
+            df = pd.DataFrame(all_data)
+            
+            # Add volume column (count of mentions)
+            volume_df = df.groupby(['symbol', 'subreddit']).size().reset_index(name='volume')
+            df = pd.merge(df, volume_df, on=['symbol', 'subreddit'], how='left')
+            
+            # Add post_count and comment_count
+            post_count_df = df[~df['is_comment']].groupby('symbol').size().reset_index(name='post_count')
+            comment_count_df = df[df['is_comment']].groupby('symbol').size().reset_index(name='comment_count')
+            
+            # Merge counts back to main df
+            df = pd.merge(df, post_count_df, on='symbol', how='left')
+            df = pd.merge(df, comment_count_df, on='symbol', how='left')
+            
+            # Fill missing values
+            df['post_count'] = df['post_count'].fillna(0).astype(int)
+            df['comment_count'] = df['comment_count'].fillna(0).astype(int)
+            
+            logger.info(f"Collected {len(df)} Reddit sentiment data points")
+            return df
+            
+        except Exception as e:
+            logger.error(f"Error collecting Reddit sentiment data: {e}")
+            return self._generate_mock_data(symbols, start_date, end_date)
+    
+    def _create_search_queries(self, symbols: List[str]) -> Dict[str, str]:
+        """
+        Create search queries for each symbol.
         
-        # Create a sample DataFrame with mock data
+        Args:
+            symbols: List of asset symbols
+            
+        Returns:
+            Dictionary mapping symbols to search queries
+        """
+        # Common name mappings for crypto and stocks
+        symbol_mappings = {
+            'BTC': ['Bitcoin', 'BTC'],
+            'ETH': ['Ethereum', 'ETH'],
+            'DOGE': ['Dogecoin', 'DOGE'],
+            'AAPL': ['Apple', 'AAPL'],
+            'MSFT': ['Microsoft', 'MSFT'],
+            'GOOGL': ['Google', 'Alphabet', 'GOOGL'],
+            'AMZN': ['Amazon', 'AMZN'],
+            'TSLA': ['Tesla', 'TSLA']
+            # Add more mappings as needed
+        }
+        
+        # Create search queries
+        queries = {}
+        for symbol in symbols:
+            # Use mapping if available, otherwise just use the symbol
+            if symbol in symbol_mappings:
+                terms = symbol_mappings[symbol]
+                query = ' OR '.join([f'"{term}"' for term in terms])
+            else:
+                # For unknown symbols, just search for the symbol itself
+                query = f'"{symbol}"'
+                
+            # Add custom keywords from config if available
+            if self.keywords:
+                symbol_specific_keywords = [f'{symbol} {kw}' for kw in self.keywords]
+                query += ' OR ' + ' OR '.join([f'"{kw}"' for kw in symbol_specific_keywords])
+                
+            queries[symbol] = query
+            
+        return queries
+            
+    def _generate_mock_data(self, symbols: List[str], start_date: datetime, end_date: datetime) -> pd.DataFrame:
+        """
+        Generate mock Reddit sentiment data for testing.
+        
+        Args:
+            symbols: List of asset symbols
+            start_date: Start date for data collection
+            end_date: End date for data collection
+            
+        Returns:
+            DataFrame with mock Reddit sentiment data
+        """
+        import random
+        import numpy as np
+        
+        # Create mock data
         data = []
         current_date = start_date
+        
+        # Mock subreddits
+        mock_subreddits = ['wallstreetbets', 'cryptocurrency', 'stocks', 'investing']
+        
         while current_date <= end_date:
             for symbol in symbols:
-                # Generate mock data
+                # Generate mock sentiment scores - slightly biased negative or positive based on symbol
+                bias = hash(symbol) % 10 / 10.0  # Deterministic bias based on symbol
+                sentiment_score = (random.random() - 0.5) * 2.0 * 0.8 + bias * 0.2
+                sentiment_score = max(min(sentiment_score, 1.0), -1.0)  # Clamp to [-1.0, 1.0]
+                
+                # Pick a random subreddit
+                subreddit = random.choice(mock_subreddits)
+                
+                # Generate mock volume counts
+                volume = int(random.expovariate(0.1)) + 1  # Exponential distribution
+                post_count = max(1, int(volume * 0.3))
+                comment_count = volume - post_count
+                
+                # Add entry
                 data.append({
                     'timestamp': current_date,
                     'symbol': symbol,
                     'source': 'reddit',
-                    'sentiment_score': 0.0,  # Placeholder
-                    'volume': 0,  # Placeholder
-                    'subreddit': '',  # Placeholder
-                    'post_count': 0,  # Placeholder
-                    'comment_count': 0,  # Placeholder
+                    'sentiment_score': sentiment_score,
+                    'volume': volume,
+                    'subreddit': subreddit,
+                    'post_count': post_count,
+                    'comment_count': comment_count,
+                    'content': f"Mock Reddit content for {symbol}",  # Mock content
+                    'url': f"https://reddit.com/r/{subreddit}/mock/{symbol}",  # Mock URL
+                    'is_comment': False
                 })
-            current_date += timedelta(hours=4)  # Less frequent than Twitter
             
-        return pd.DataFrame(data)
+            # Advance by a random time interval (average 4 hours)
+            hours_increment = random.expovariate(0.25)  # Mean of 4 hours
+            current_date += timedelta(hours=hours_increment)
+            
+        # Convert to DataFrame
+        df = pd.DataFrame(data)
+        
+        return df
 
 
 class NewsAPISentimentCollector(BaseSentimentCollector):

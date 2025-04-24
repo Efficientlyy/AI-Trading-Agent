@@ -1,29 +1,29 @@
-import React, { useEffect, useCallback, useMemo, memo } from 'react';
-import { useRenderLogger } from '../hooks/useRenderLogger';
-import { useSelectedAsset } from '../context/SelectedAssetContext';
+import React, { memo, useCallback, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import SimpleNotificationSystem from '../components/common/SimpleNotificationSystem';
-import PortfolioSummary from '../components/dashboard/PortfolioSummary';
-import PerformanceMetrics from '../components/dashboard/PerformanceMetrics';
-import SentimentSummary from '../components/dashboard/SentimentSummary';
-import EquityCurveChart from '../components/dashboard/EquityCurveChart';
-import AssetAllocationChart from '../components/dashboard/AssetAllocationChart';
-import RecentTrades from '../components/dashboard/RecentTrades';
-import TechnicalAnalysisChart from '../components/dashboard/TechnicalAnalysisChart';
-import useHistoricalData from '../hooks/useHistoricalData';
-import TradingStrategy from '../components/dashboard/TradingStrategy';
-import RiskCalculator from '../components/dashboard/RiskCalculator';
-import BacktestingInterface from '../components/dashboard/BacktestingInterface';
-import StrategyOptimizer from '../components/dashboard/StrategyOptimizer';
-import PortfolioBacktester from '../components/dashboard/PortfolioBacktester';
-import TradeStatistics from '../components/dashboard/TradeStatistics';
-import PerformanceAnalysis from '../components/dashboard/PerformanceAnalysis';
-import AgentStatus from '../components/dashboard/AgentStatus';
-import AgentControls from '../components/dashboard/AgentControls';
-import AgentAutonomyBanner from '../components/dashboard/AgentAutonomyBanner';
-import { useWebSocket } from '../hooks/useWebSocket';
 import { getMockTrades } from '../api/mockData/mockTrades';
 import { useNotification } from '../components/common/NotificationSystem';
+import SimpleNotificationSystem from '../components/common/SimpleNotificationSystem';
+import AgentAutonomyBanner from '../components/dashboard/AgentAutonomyBanner';
+import AgentControls from '../components/dashboard/AgentControls';
+import AgentStatus from '../components/dashboard/AgentStatus';
+import AssetAllocationChart from '../components/dashboard/AssetAllocationChart';
+import BacktestingInterface from '../components/dashboard/BacktestingInterface';
+import EquityCurveChart from '../components/dashboard/EquityCurveChart';
+import PerformanceAnalysis from '../components/dashboard/PerformanceAnalysis';
+import PerformanceMetrics from '../components/dashboard/PerformanceMetrics';
+import PortfolioBacktester from '../components/dashboard/PortfolioBacktester';
+import PortfolioSummary from '../components/dashboard/PortfolioSummary';
+import RecentTrades from '../components/dashboard/RecentTrades';
+import RiskCalculator from '../components/dashboard/RiskCalculator';
+import SentimentSummary from '../components/dashboard/SentimentSummary';
+import StrategyOptimizer from '../components/dashboard/StrategyOptimizer';
+import TechnicalAnalysisChart from '../components/dashboard/TechnicalAnalysisChart';
+import TradeStatistics from '../components/dashboard/TradeStatistics';
+import TradingStrategy from '../components/dashboard/TradingStrategy';
+import { useSelectedAsset } from '../context/SelectedAssetContext';
+import useHistoricalData from '../hooks/useHistoricalData';
+import { useRenderLogger } from '../hooks/useRenderLogger';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 const MOCK_SYMBOL = 'AAPL';
 const MOCK_STRATEGY = 'Moving Average Crossover';
@@ -34,7 +34,6 @@ const MOCK_PARAMETERS = [
 const MOCK_ASSETS = ['AAPL', 'MSFT', 'BTC', 'ETH'];
 
 const Dashboard: React.FC = () => {
-  // ...existing code...
   const { data: wsData } = useWebSocket(['agent_status', 'portfolio', 'recent_trades']);
   useRenderLogger('Dashboard');
   const { symbol: selectedSymbol, setSymbol: setSelectedSymbol } = useSelectedAsset();
@@ -96,116 +95,128 @@ const Dashboard: React.FC = () => {
     </div>
   ), [handleSymbolSelect, selectedSymbol, wsData.recent_trades, mockTrades]);
 
+  // Type mapping function to convert string status to expected enum values
+  const mapAgentStatus = (status: string | undefined): "running" | "stopped" | "error" | undefined => {
+    if (!status) return undefined;
+
+    // Normalize status to match expected values
+    if (status.toLowerCase() === "running") return "running";
+    if (status.toLowerCase() === "stopped") return "stopped";
+
+    // Default any other status to error
+    return "error";
+  };
+
   // Memoize the third column components
   const [agentLoading, setAgentLoading] = React.useState(false);
-const prevStatusRef = React.useRef(wsData.agent_status?.status);
-const { addNotification } = useNotification();
+  const prevStatusRef = React.useRef(wsData.agent_status?.status);
+  const { addNotification } = useNotification();
 
-// When agent_status changes, disable loading and show notification
-React.useEffect(() => {
-  if (agentLoading && wsData.agent_status?.status !== prevStatusRef.current) {
-    setAgentLoading(false);
-    if (wsData.agent_status?.status === 'running') {
-      addNotification({
-        type: 'success',
-        title: 'Agent Started',
-        message: 'Trading agent is now running.'
-      });
-    } else if (wsData.agent_status?.status === 'stopped') {
-      addNotification({
-        type: 'info',
-        title: 'Agent Stopped',
-        message: 'Trading agent has been stopped.'
-      });
-    } else if (wsData.agent_status?.status === 'error') {
-      addNotification({
-        type: 'error',
-        title: 'Agent Error',
-        message: wsData.agent_status?.reasoning || 'An error occurred with the trading agent.'
-      });
+  // When agent_status changes, disable loading and show notification
+  React.useEffect(() => {
+    if (agentLoading && wsData.agent_status?.status !== prevStatusRef.current) {
+      setAgentLoading(false);
+      if (wsData.agent_status?.status === 'running') {
+        addNotification({
+          type: 'success',
+          title: 'Agent Started',
+          message: 'Trading agent is now running.'
+        });
+      } else if (wsData.agent_status?.status === 'stopped') {
+        addNotification({
+          type: 'info',
+          title: 'Agent Stopped',
+          message: 'Trading agent has been stopped.'
+        });
+      } else if (wsData.agent_status?.status === 'error') {
+        addNotification({
+          type: 'error',
+          title: 'Agent Error',
+          message: wsData.agent_status?.reasoning || 'An error occurred with the trading agent.'
+        });
+      }
+      prevStatusRef.current = wsData.agent_status?.status;
     }
-    prevStatusRef.current = wsData.agent_status?.status;
-  }
-}, [wsData.agent_status?.status, agentLoading, addNotification]);
+  }, [wsData.agent_status?.status, agentLoading, addNotification]);
 
-const { status: wsStatus } = useWebSocket([]); // get wsRef
-const wsRef = React.useRef<WebSocket | null>(null);
+  const { status: wsStatus } = useWebSocket([]); // get wsRef
+  const wsRef = React.useRef<WebSocket | null>(null);
 
-// Patch: get wsRef from useWebSocket if exposed, else fallback
-// (If wsRef is not exposed, consider patching useWebSocket to provide it)
+  // Patch: get wsRef from useWebSocket if exposed, else fallback
+  // (If wsRef is not exposed, consider patching useWebSocket to provide it)
 
-const sendAgentAction = (action: 'start_agent' | 'stop_agent') => {
-  setAgentLoading(true);
-  try {
-    const ws = (window as any).wsRef || wsRef.current;
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      ws.send(JSON.stringify({ action }));
-      addNotification({
-        type: 'info',
-        title: action === 'start_agent' ? 'Starting Agent...' : 'Stopping Agent...',
-        message: action === 'start_agent' ? 'Attempting to start the trading agent.' : 'Attempting to stop the trading agent.'
-      });
-    } else {
+  const sendAgentAction = (action: 'start_agent' | 'stop_agent') => {
+    setAgentLoading(true);
+    try {
+      const ws = (window as any).wsRef || wsRef.current;
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ action }));
+        addNotification({
+          type: 'info',
+          title: action === 'start_agent' ? 'Starting Agent...' : 'Stopping Agent...',
+          message: action === 'start_agent' ? 'Attempting to start the trading agent.' : 'Attempting to stop the trading agent.'
+        });
+      } else {
+        setAgentLoading(false);
+        addNotification({
+          type: 'error',
+          title: 'WebSocket Error',
+          message: 'WebSocket not connected. Please refresh and try again.'
+        });
+      }
+    } catch (e) {
       setAgentLoading(false);
       addNotification({
         type: 'error',
-        title: 'WebSocket Error',
-        message: 'WebSocket not connected. Please refresh and try again.'
+        title: 'Action Failed',
+        message: 'Failed to send command: ' + (e as any).message
       });
     }
-  } catch (e) {
-    setAgentLoading(false);
-    addNotification({
-      type: 'error',
-      title: 'Action Failed',
-      message: 'Failed to send command: ' + (e as any).message
-    });
-  }
-};
+  };
 
-const handleStartAgent = () => sendAgentAction('start_agent');
-const handleStopAgent = () => sendAgentAction('stop_agent');
+  const handleStartAgent = () => sendAgentAction('start_agent');
+  const handleStopAgent = () => sendAgentAction('stop_agent');
 
-const columnThree = useMemo(() => (
+  const columnThree = useMemo(() => (
     <div className="space-y-6 col-span-1">
       <AgentControls
-        status={wsData.agent_status?.status}
+        status={mapAgentStatus(wsData.agent_status?.status)}
         onStart={handleStartAgent}
         onStop={handleStopAgent}
         isLoading={agentLoading}
       />
       <AgentStatus
-        status={wsData.agent_status?.status}
+        status={mapAgentStatus(wsData.agent_status?.status)}
         reasoning={wsData.agent_status?.reasoning}
         lastUpdated={wsData.agent_status?.timestamp ? new Date(wsData.agent_status.timestamp).toLocaleTimeString() : undefined}
       />
-      <TechnicalAnalysisChart 
+      <TechnicalAnalysisChart
         symbol={selectedSymbol || 'BTC'}
         data={historicalData}
         isLoading={false}
       />
       <TradingStrategy symbol={selectedSymbol || 'BTC'} />
       <RiskCalculator symbol={selectedSymbol || 'BTC'} />
-      <BacktestingInterface 
-        symbol={selectedSymbol || MOCK_SYMBOL} 
-        availableStrategies={[MOCK_STRATEGY]} 
-        backtestResults={[]} 
-        backtestMetrics={undefined} 
-        backtestTrades={mockTrades} 
-        isLoading={false} 
+      <BacktestingInterface
+        symbol={selectedSymbol || MOCK_SYMBOL}
+        availableStrategies={[MOCK_STRATEGY]}
+        backtestResults={[]}
+        backtestMetrics={undefined}
+        backtestTrades={mockTrades}
+        isLoading={false}
       />
-      <StrategyOptimizer 
-        symbol={selectedSymbol || MOCK_SYMBOL} 
-        strategy={MOCK_STRATEGY} 
-        availableParameters={MOCK_PARAMETERS} 
-        optimizationResults={[]} 
-        isLoading={false} 
+      <StrategyOptimizer
+        symbol={selectedSymbol || MOCK_SYMBOL}
+        strategy={MOCK_STRATEGY}
+        availableParameters={MOCK_PARAMETERS}
+        optimizationResults={[]}
+        isLoading={false}
       />
       <PortfolioBacktester availableAssets={MOCK_ASSETS} isLoading={false} />
       <TradeStatistics trades={mockTrades} />
       <PerformanceAnalysis />
     </div>
-  ), [selectedSymbol, historicalData, mockTrades]);
+  ), [selectedSymbol, historicalData, mockTrades, wsData.agent_status, agentLoading, handleStartAgent, handleStopAgent]);
 
   return (
     <>
@@ -215,20 +226,20 @@ const columnThree = useMemo(() => (
       {/* Autonomy Banner */}
       <div className="px-6">
         <AgentAutonomyBanner
-          status={wsData.agent_status?.status}
+          status={mapAgentStatus(wsData.agent_status?.status)}
           lastUpdated={wsData.agent_status?.timestamp ? new Date(wsData.agent_status.timestamp).toLocaleTimeString() : undefined}
           lastTrade={wsData.recent_trades && wsData.recent_trades.length > 0 ? {
-            symbol: wsData.recent_trades[wsData.recent_trades.length-1].symbol,
-            side: wsData.recent_trades[wsData.recent_trades.length-1].side,
-            price: wsData.recent_trades[wsData.recent_trades.length-1].price,
-            timestamp: wsData.recent_trades[wsData.recent_trades.length-1].timestamp.toString()
+            symbol: wsData.recent_trades[wsData.recent_trades.length - 1].symbol,
+            side: wsData.recent_trades[wsData.recent_trades.length - 1].side,
+            price: wsData.recent_trades[wsData.recent_trades.length - 1].price,
+            timestamp: wsData.recent_trades[wsData.recent_trades.length - 1].timestamp.toString()
           } : undefined}
           currentStrategy={wsData.agent_status?.reasoning && wsData.agent_status?.reasoning.match(/strategy: ([^\.;]+)/i)?.[1]}
           reasoning={wsData.agent_status?.reasoning}
           activityFeed={(() => {
-            const feed: Array<{time: string, message: string}> = [];
+            const feed: Array<{ time: string, message: string }> = [];
             if (wsData.recent_trades) {
-              wsData.recent_trades.slice(-5).forEach(trade => {
+              wsData.recent_trades.slice(-5).forEach((trade: any) => {
                 feed.push({
                   time: typeof trade.timestamp === 'number' ? new Date(trade.timestamp).toLocaleTimeString() : trade.timestamp,
                   message: `${trade.side.toUpperCase()} ${trade.symbol} @ $${trade.price}`

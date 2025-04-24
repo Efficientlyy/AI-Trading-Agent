@@ -1,11 +1,10 @@
-import React from 'react';
-import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
-import Trade from './Trade';
-import { SelectedAssetProvider } from '../context/SelectedAssetContext';
-import { portfolioApi } from '../api/portfolio';
 import * as marketApi from '../api/market';
+import { portfolioApi } from '../api/portfolio';
 import * as tradesApi from '../api/trades';
+import { SelectedAssetProvider } from '../context/SelectedAssetContext';
+import Trade from './Trade';
 
 // Mock the API modules
 jest.mock('../api/portfolio', () => ({
@@ -15,7 +14,8 @@ jest.mock('../api/portfolio', () => ({
 
 jest.mock('../api/market', () => ({
   getAssets: jest.fn(),
-  getHistoricalData: jest.fn()
+  getHistoricalData: jest.fn(),
+  getOrderBook: jest.fn()
 }));
 
 jest.mock('../api/trades', () => ({
@@ -76,9 +76,9 @@ describe('Trade Page', () => {
   beforeEach(() => {
     // Reset all mocks
     jest.clearAllMocks();
-    
+
     // Setup API mock responses
-    (portfolioApi.getPortfolio as jest.Mock).mockImplementation(() => Promise.resolve({
+    (portfolioApi as any).getPortfolio.mockImplementation(() => Promise.resolve({
       portfolio: {
         total_value: 100000,
         cash: 50000,
@@ -90,23 +90,25 @@ describe('Trade Page', () => {
             current_price: 50000,
             market_value: 50000,
             unrealized_pnl: 5000
-          } }
-      } }));
-    
-    (marketApi.getAssets as jest.Mock).mockImplementation(() => Promise.resolve({
+          }
+        }
+      }
+    }));
+
+    (marketApi as any).getAssets.mockImplementation(() => Promise.resolve({
       assets: [
         { symbol: 'BTC/USD' },
         { symbol: 'ETH/USD' }
       ]
     }));
-    
-    (tradesApi.getRecentTrades as jest.Mock).mockImplementation(() => Promise.resolve({
+
+    (tradesApi as any).getRecentTrades.mockImplementation(() => Promise.resolve({
       trades: [
         { id: '1', symbol: 'BTC/USD', side: 'buy', price: 45000, quantity: 1, timestamp: Date.now(), status: 'filled' }
       ]
     }));
 
-    (marketApi.getHistoricalData as jest.Mock).mockImplementation(() => Promise.resolve({
+    (marketApi as any).getHistoricalData.mockImplementation(() => Promise.resolve({
       data: [
         { timestamp: '2023-01-01T00:00:00Z', open: 46000, high: 47000, low: 45000, close: 46500, volume: 100 }
       ]
@@ -161,7 +163,7 @@ describe('Trade Page', () => {
 
     // Check that createOrder was called
     await waitFor(() => {
-      expect(portfolioApi.createOrder).toHaveBeenCalledWith({
+      expect((portfolioApi as any).createOrder).toHaveBeenCalledWith({
         symbol: 'BTC/USD',
         side: 'buy',
         quantity: 1,
@@ -174,7 +176,7 @@ describe('Trade Page', () => {
   });
 
   it('handles order submission error', async () => {
-    (portfolioApi.createOrder as jest.Mock).mockImplementation(() => Promise.reject({ message: 'Insufficient funds' }));
+    (portfolioApi as any).createOrder.mockImplementation(() => Promise.reject({ message: 'Insufficient funds' }));
 
     render(
       <BrowserRouter>

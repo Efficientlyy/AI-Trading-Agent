@@ -1,4 +1,4 @@
-import { ChartOptions, createChart, IChartApi, ISeriesApi, LineData, SeriesOptions } from 'lightweight-charts';
+import { ChartOptions, createChart, SeriesOptions } from 'lightweight-charts';
 import React, { useEffect, useRef, useState } from 'react';
 import { getMockHistoricalSentiment } from '../../api/mockData/mockHistoricalSentiment'; // Assuming this mock data function exists
 import { useDataSource } from '../../context/DataSourceContext';
@@ -11,11 +11,11 @@ interface SentimentTrendChartProps {
 
 const SentimentTrendChart: React.FC<SentimentTrendChartProps> = ({ symbol, timeframe = '1M' }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
-    const chartRef = useRef<IChartApi | null>(null);
-    const sentimentSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+    const chartRef = useRef<any | null>(null);
+    const sentimentSeriesRef = useRef<any | null>(null);
 
     const { dataSource } = useDataSource();
-    const [sentimentData, setSentimentData] = useState<LineData[] | null>(null);
+    const [sentimentData, setSentimentData] = useState<any[] | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +32,7 @@ const SentimentTrendChart: React.FC<SentimentTrendChartProps> = ({ symbol, timef
 
                 if (isMounted) {
                     // Format data for lightweight-charts
-                    const formattedData: LineData[] = data.map((item: { timestamp: string; score: number }) => ({
+                    const formattedData: any[] = data.map((item: { timestamp: string; score: number }) => ({
                         time: Math.floor(new Date(item.timestamp).getTime() / 1000),
                         value: item.score, // Assuming the data has a 'score' field
                     }));
@@ -101,8 +101,6 @@ const SentimentTrendChart: React.FC<SentimentTrendChartProps> = ({ symbol, timef
         const sentimentSeriesOptions: SeriesOptions = {
             color: '#2962FF',
             lineWidth: 2,
-            lastValueVisible: false,
-            priceLineVisible: false,
         };
 
         const sentimentSeries = chart.addLineSeries(sentimentSeriesOptions);

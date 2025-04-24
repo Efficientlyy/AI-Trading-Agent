@@ -1,11 +1,10 @@
-import { TradingApi } from './index';
-import { OrderRequest, Order, Portfolio, Position } from '../../types';
-import { TradingMode } from '../../config';
-import { OrderSide, OrderType } from '../../types';
-import { createAuthenticatedClient } from '../client';
 import axios from 'axios';
+import { TradingMode } from '../../config';
+import { Order, OrderRequest, Portfolio, Position } from '../../types';
+import { createAuthenticatedClient } from '../client';
 import { ApiError, NetworkError } from '../utils/errorHandling';
-import { executeWithCircuitBreaker } from '../utils/circuitBreakerExecutor';
+import { executeTrading } from '../utils/tradingCircuitBreaker';
+import { TradingApi } from './index';
 
 // Alpaca API endpoints
 const ALPACA_LIVE_API_URL = 'https://api.alpaca.markets';
@@ -24,7 +23,7 @@ const createAlpacaClient = (tradingMode: TradingMode, config: AlpacaConfig) => {
   // For live mode, use the configuration setting
   const useRealMoney = tradingMode === 'live' && !config.paperTrading;
   const baseURL = useRealMoney ? ALPACA_LIVE_API_URL : ALPACA_PAPER_API_URL;
-  
+
   const client = axios.create({
     baseURL,
     headers: {
@@ -32,7 +31,7 @@ const createAlpacaClient = (tradingMode: TradingMode, config: AlpacaConfig) => {
       'APCA-API-SECRET-KEY': config.apiSecret,
     },
   });
-  
+
   // Create data API client
   const dataClient = axios.create({
     baseURL: ALPACA_DATA_API_URL,
@@ -41,7 +40,7 @@ const createAlpacaClient = (tradingMode: TradingMode, config: AlpacaConfig) => {
       'APCA-API-SECRET-KEY': config.apiSecret,
     },
   });
-  
+
   return {
     client,
     dataClient,
@@ -66,32 +65,6 @@ const convertAlpacaOrder = (alpacaOrder: any): Order => {
   };
 };
 
-// Execute Alpaca API call with circuit breaker pattern
-const executeAlpacaCall = async <T>(
-  method: string,
-  apiCall: () => Promise<T>,
-  config: AlpacaConfig,
-  primaryFallback?: () => Promise<T>,
-  secondaryFallback?: () => Promise<T>,
-  cacheRetrieval?: () => Promise<T | null>,
-  validator?: (result: T) => boolean
-): Promise<T> => {
-  return executeWithCircuitBreaker(apiCall, {
-    exchange: 'Alpaca',
-    method,
-    primaryFallback,
-    secondaryFallback,
-    cacheRetrieval,
-    validator,
-    isRetryable: (error: Error) => {
-      // Retry on network errors and server errors (5xx)
-      if (error instanceof NetworkError) return true;
-      if (error instanceof ApiError && (error as ApiError).isRetryable) return true;
-      return false;
-    }
-  });
-};
-
 // Helper function to fetch market price
 const fetchMarketPrice = async (symbol: string, client: any): Promise<number | null> => {
   try {
@@ -100,7 +73,7 @@ const fetchMarketPrice = async (symbol: string, client: any): Promise<number | n
     if (response.data && response.data.trade && response.data.trade.p) {
       return parseFloat(response.data.trade.p);
     }
-    
+
     // Fallback to latest quote
     const quoteResponse = await client.get(`/v2/stocks/${symbol}/quotes/latest`);
     if (quoteResponse.data && quoteResponse.data.quote) {
@@ -118,7 +91,7 @@ const fetchMarketPrice = async (symbol: string, client: any): Promise<number | n
         return parseFloat(quote.bp);
       }
     }
-    
+
     return null;
   } catch (error) {
     console.error(`Error fetching market price for ${symbol}:`, error);
@@ -130,10 +103,10 @@ const fetchMarketPrice = async (symbol: string, client: any): Promise<number | n
 export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
   // Create Alpaca client
   const { client, dataClient } = createAlpacaClient('live', config);
-  
+
   // Create authenticated client for our backend
   const backendClient = createAuthenticatedClient();
-  
+
   // Helper function to get cached portfolio
   const getCachedPortfolio = async (): Promise<Portfolio | null> => {
     try {
@@ -142,13 +115,13 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
       if (cachedData) {
         const parsed = JSON.parse(cachedData);
         const cacheTime = parsed.timestamp;
-        
+
         // Check if cache is fresh enough (15 minutes)
         if (Date.now() - cacheTime < 15 * 60 * 1000) {
           return parsed.data;
         }
       }
-      
+
       return null;
     } catch (e) {
       console.error('Error retrieving cached portfolio:', e);
@@ -158,17 +131,16 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
 
   // Get portfolio information with enhanced fallback
   const getPortfolio = async (): Promise<Portfolio> => {
-    return executeAlpacaCall<Portfolio>(
-      'getPortfolio',
+    return executeTrading<Portfolio>(
       async () => {
         // Fetch account information
         const accountResponse = await client.get('/v2/account');
         const account = accountResponse.data;
-        
+
         // Fetch positions
         const positionsResponse = await client.get('/v2/positions');
         const positions = positionsResponse.data;
-        
+
         // Format portfolio data
         const portfolio: Portfolio = {
           cash: parseFloat(account.cash),
@@ -177,7 +149,7 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
           daily_pnl: parseFloat(account.equity) - parseFloat(account.last_equity),
           margin_multiplier: parseFloat(account.multiplier),
         };
-        
+
         // Process positions
         positions.forEach((position: any) => {
           portfolio.positions[position.symbol] = {
@@ -190,62 +162,71 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
             realized_pnl: parseFloat(position.realized_pl || '0'),
           };
         });
-        
+
+        // Cache the portfolio
+        try {
+          localStorage.setItem(`Alpaca:portfolio`, JSON.stringify({
+            data: portfolio,
+            timestamp: Date.now()
+          }));
+        } catch (e) {
+          console.error('Failed to cache portfolio:', e);
+        }
+
         return portfolio;
       },
-      config,
-      // Primary fallback - backend API
-      async () => {
-        console.log('Using primary fallback (backend API) for portfolio');
-        const response = await backendClient.get('/portfolio');
-        return response.data.portfolio;
-      },
-      // Secondary fallback - cached portfolio with price updates
-      async () => {
-        console.log('Using secondary fallback (cached with updates) for portfolio');
-        // Try to get cached portfolio data
-        const cachedPortfolio = await getCachedPortfolio();
-        if (!cachedPortfolio) throw new Error('No cached portfolio available');
-        
-        // Update prices for positions if possible
-        try {
-          for (const symbol of Object.keys(cachedPortfolio.positions)) {
-            try {
-              // Get market price from a market data service or API
-              const currentPrice = await fetchMarketPrice(symbol, client);
-              if (currentPrice && cachedPortfolio.positions[symbol]) {
-                const position = cachedPortfolio.positions[symbol];
-                position.current_price = currentPrice;
-                position.market_value = position.quantity * currentPrice;
-                position.unrealized_pnl = position.market_value - (position.quantity * position.entry_price);
+      'Alpaca',
+      'GET_PORTFOLIO',
+      {
+        primaryFallback: async () => {
+          console.log('Using primary fallback (backend API) for portfolio');
+          const response = await backendClient.get('/portfolio');
+          return response.data.portfolio;
+        },
+        secondaryFallback: async () => {
+          console.log('Using secondary fallback (cached with updates) for portfolio');
+          // Try to get cached portfolio data
+          const cachedPortfolio = await getCachedPortfolio();
+          if (!cachedPortfolio) throw new Error('No cached portfolio available');
+
+          // Update prices for positions if possible
+          try {
+            for (const symbol of Object.keys(cachedPortfolio.positions)) {
+              try {
+                // Get market price from a market data service or API
+                const currentPrice = await fetchMarketPrice(symbol, dataClient);
+                if (currentPrice && cachedPortfolio.positions[symbol]) {
+                  const position = cachedPortfolio.positions[symbol];
+                  position.current_price = currentPrice;
+                  position.market_value = position.quantity * currentPrice;
+                  position.unrealized_pnl = position.market_value - (position.quantity * position.entry_price);
+                }
+              } catch (e) {
+                console.warn(`Failed to update price for ${symbol}:`, e);
+                // Continue with other positions
               }
-            } catch (e) {
-              console.warn(`Failed to update price for ${symbol}:`, e);
-              // Continue with other positions
             }
+
+            // Recalculate total value
+            let positionsValue = 0;
+            Object.values(cachedPortfolio.positions).forEach(position => {
+              positionsValue += position.market_value;
+            });
+            cachedPortfolio.total_value = cachedPortfolio.cash + positionsValue;
+
+            return cachedPortfolio;
+          } catch (e) {
+            console.error('Failed to update cached portfolio:', e);
+            return cachedPortfolio; // Return original cached data
           }
-          
-          // Recalculate total value
-          let positionsValue = 0;
-          Object.values(cachedPortfolio.positions).forEach(position => {
-            positionsValue += position.market_value;
-          });
-          cachedPortfolio.total_value = cachedPortfolio.cash + positionsValue;
-          
-          return cachedPortfolio;
-        } catch (e) {
-          console.error('Failed to update cached portfolio:', e);
-          return cachedPortfolio; // Return original cached data
+        },
+        cacheRetrieval: getCachedPortfolio,
+        validator: (portfolio: Portfolio) => {
+          return !!portfolio &&
+            typeof portfolio.cash === 'number' &&
+            typeof portfolio.total_value === 'number' &&
+            !!portfolio.positions;
         }
-      },
-      // Cache retrieval function
-      getCachedPortfolio,
-      // Validate portfolio data
-      (portfolio: Portfolio) => {
-        return !!portfolio && 
-               typeof portfolio.cash === 'number' && 
-               typeof portfolio.total_value === 'number' && 
-               !!portfolio.positions;
       }
     );
   };
@@ -255,13 +236,12 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
     async getPortfolio(): Promise<Portfolio> {
       return getPortfolio();
     },
-    
+
     async getPositions(): Promise<Record<string, Position>> {
-      return executeAlpacaCall(
-        'getPositions',
+      return executeTrading<Record<string, Position>>(
         async () => {
           const { data: alpacaPositions } = await client.get('/v2/positions');
-          
+
           // Convert positions to our format
           const positions: Record<string, Position> = {};
           alpacaPositions.forEach((pos: any) => {
@@ -275,28 +255,30 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
               realized_pnl: parseFloat(pos.realized_pl || '0'),
             };
           });
-          
+
           return positions;
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          try {
-            const { data } = await backendClient.get('/positions');
-            return data.positions;
-          } catch {
-            return {};
+        'Alpaca',
+        'GET_POSITIONS',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            try {
+              const { data } = await backendClient.get('/positions');
+              return data.positions;
+            } catch {
+              return {};
+            }
           }
         }
       );
     },
-    
+
     async getBalance(asset?: string): Promise<number> {
-      return executeAlpacaCall(
-        'getBalance',
+      return executeTrading<number>(
         async () => {
           const { data: account } = await client.get('/v2/account');
-          
+
           if (asset) {
             // Alpaca doesn't have a direct way to get balance for a specific asset
             // We need to check positions
@@ -304,26 +286,28 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
             const position = positions[asset];
             return position ? position.market_value : 0;
           }
-          
+
           return parseFloat(account.cash);
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          try {
-            const { data } = await backendClient.get('/balance');
-            return data.balance;
-          } catch {
-            return 0;
+        'Alpaca',
+        'GET_ACCOUNT_INFO',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            try {
+              const { data } = await backendClient.get('/balance');
+              return data.balance;
+            } catch {
+              return 0;
+            }
           }
         }
       );
     },
-    
+
     // Order management methods
     async createOrder(orderRequest: OrderRequest): Promise<Order> {
-      return executeAlpacaCall(
-        'createOrder',
+      return executeTrading<Order>(
         async () => {
           // Convert our order format to Alpaca format
           const alpacaOrder: Record<string, any> = {
@@ -333,17 +317,17 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
             type: orderRequest.order_type,
             time_in_force: 'day',
           };
-          
+
           // Add price for limit orders
           if (orderRequest.order_type === 'limit' && orderRequest.price) {
             alpacaOrder.limit_price = orderRequest.price.toString();
           }
-          
+
           // Add stop price for stop orders
           if (orderRequest.order_type === 'stop' && orderRequest.stop_price) {
             alpacaOrder.stop_price = orderRequest.stop_price.toString();
           }
-          
+
           // Add both prices for stop limit orders
           if (orderRequest.order_type === 'stop_limit') {
             if (orderRequest.stop_price) {
@@ -353,150 +337,171 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
               alpacaOrder.limit_price = orderRequest.price.toString();
             }
           }
-          
+
           // Send order to Alpaca
           const { data } = await client.post('/v2/orders', alpacaOrder);
-          
+
           // Convert Alpaca order to our format
           return convertAlpacaOrder(data);
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          const { data } = await backendClient.post('/orders', orderRequest);
-          return data.order;
+        'Alpaca',
+        'CREATE_ORDER',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            const { data } = await backendClient.post('/orders', orderRequest);
+            return data.order;
+          },
+          isRetryable: (error: Error) => {
+            // Don't retry order submission errors that might lead to duplicate orders
+            if (error instanceof ApiError) {
+              // Only retry on network errors or server overload
+              return error.status >= 500;
+            }
+            return error instanceof NetworkError;
+          }
         }
       );
     },
-    
+
     async cancelOrder(orderId: string): Promise<boolean> {
-      return executeAlpacaCall(
-        'cancelOrder',
+      return executeTrading<boolean>(
         async () => {
           await client.delete(`/v2/orders/${orderId}`);
           return true;
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          try {
-            await backendClient.delete(`/orders/${orderId}`);
-            return true;
-          } catch {
-            return false;
-          }
+        'Alpaca',
+        'CANCEL_ORDER',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            try {
+              await backendClient.delete(`/orders/${orderId}`);
+              return true;
+            } catch {
+              return false;
+            }
+          },
+          maxRetries: 5 // Try more times for cancel operations since they're important
         }
       );
     },
-    
+
     async getOrders(status?: string): Promise<Order[]> {
-      return executeAlpacaCall(
-        'getOrders',
+      return executeTrading<Order[]>(
         async () => {
           // Default to open orders
           const params: Record<string, any> = {};
-          
+
           if (status) {
             params.status = status;
           }
-          
+
           const { data: alpacaOrders } = await client.get('/v2/orders', { params });
-          
+
           // Convert to our format
           return alpacaOrders.map(convertAlpacaOrder);
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          const { data } = await backendClient.get('/orders');
-          return data.orders;
+        'Alpaca',
+        'GET_ORDERS',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            const { data } = await backendClient.get('/orders');
+            return data.orders;
+          }
         }
       );
     },
-    
+
     async getOrder(orderId: string): Promise<Order | null> {
-      return executeAlpacaCall(
-        'getOrder',
+      return executeTrading<Order | null>(
         async () => {
           const { data } = await client.get(`/v2/orders/${orderId}`);
           return convertAlpacaOrder(data);
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          try {
-            const { data } = await backendClient.get(`/orders/${orderId}`);
-            return data.order;
-          } catch {
-            return null;
+        'Alpaca',
+        'GET_ORDERS',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            try {
+              const { data } = await backendClient.get(`/orders/${orderId}`);
+              return data.order;
+            } catch {
+              return null;
+            }
           }
         }
       );
     },
-    
+
     // Market data methods
     async getMarketPrice(symbol: string): Promise<number> {
-      return executeAlpacaCall(
-        'getMarketPrice',
+      return executeTrading<number>(
         async () => {
           const { data } = await dataClient.get(`/v2/stocks/${symbol}/quotes/latest`);
           return (parseFloat(data.quote.ap) + parseFloat(data.quote.bp)) / 2;
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          try {
-            const { data } = await backendClient.get(`/market/price/${symbol}`);
-            return data.price;
-          } catch {
-            return 0;
+        'Alpaca',
+        'GET_MARKET_DATA',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            try {
+              const { data } = await backendClient.get(`/market/price/${symbol}`);
+              return data.price;
+            } catch {
+              return 0;
+            }
           }
         }
       );
     },
-    
+
     async getOrderBook(symbol: string, limit: number = 10): Promise<{ bids: any[], asks: any[] }> {
-      return executeAlpacaCall(
-        'getOrderBook',
+      return executeTrading<{ bids: any[], asks: any[] }>(
         async () => {
           // Alpaca doesn't have a direct orderbook API for most symbols
           // We'll use the quotes API to get the best bid/ask
           const { data } = await dataClient.get(`/v2/stocks/${symbol}/quotes/latest`);
-          
+
           // Create a simple order book with just the best bid/ask
           const bids = [{ price: parseFloat(data.quote.bp), size: parseFloat(data.quote.bs) }];
           const asks = [{ price: parseFloat(data.quote.ap), size: parseFloat(data.quote.as) }];
-          
+
           return { bids, asks };
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          try {
-            const { data } = await backendClient.get(`/market/orderbook/${symbol}`);
-            return data.orderBook;
-          } catch {
-            return { bids: [], asks: [] };
+        'Alpaca',
+        'GET_MARKET_DATA',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            try {
+              const { data } = await backendClient.get(`/market/orderbook/${symbol}`);
+              return data.orderBook;
+            } catch {
+              return { bids: [], asks: [] };
+            }
           }
         }
       );
     },
-    
+
     async getTicker(symbol: string): Promise<{ price: number, volume: number, change: number }> {
-      return executeAlpacaCall(
-        'getTicker',
+      return executeTrading<{ price: number, volume: number, change: number }>(
         async () => {
           // Get latest trade
           const { data: tradeData } = await dataClient.get(`/v2/stocks/${symbol}/trades/latest`);
-          
+
           // Get daily bar for change calculation
           const now = new Date();
           const yesterday = new Date(now);
           yesterday.setDate(yesterday.getDate() - 1);
-          
+
           const startDate = yesterday.toISOString().split('T')[0];
           const endDate = now.toISOString().split('T')[0];
-          
+
           const { data: barData } = await dataClient.get(`/v2/stocks/${symbol}/bars`, {
             params: {
               start: startDate,
@@ -504,10 +509,10 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
               timeframe: '1D',
             },
           });
-          
+
           const price = parseFloat(tradeData.trade.p);
           const volume = barData.bars.length > 0 ? parseFloat(barData.bars[0].v) : 0;
-          
+
           // Calculate change percentage
           let change = 0;
           if (barData.bars.length > 0) {
@@ -515,38 +520,40 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
             const openPrice = parseFloat(bar.o);
             change = (price - openPrice) / openPrice;
           }
-          
+
           return { price, volume, change };
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          try {
-            const { data } = await backendClient.get(`/market/ticker/${symbol}`);
-            return data.ticker;
-          } catch {
-            return { price: 0, volume: 0, change: 0 };
+        'Alpaca',
+        'GET_MARKET_DATA',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            try {
+              const { data } = await backendClient.get(`/market/ticker/${symbol}`);
+              return data.ticker;
+            } catch {
+              return { price: 0, volume: 0, change: 0 };
+            }
           }
         }
       );
     },
-    
+
     // Exchange info methods
     async getExchangeInfo(): Promise<any> {
-      return executeAlpacaCall(
-        'getExchangeInfo',
+      return executeTrading<any>(
         async () => {
           // Alpaca doesn't have a direct equivalent to exchange info
           // We'll create a basic version with the assets we can trade
-          
+
           // Get account to check if we're in paper mode
           const { data: account } = await client.get('/v2/account');
-          
+
           // Get assets
           const { data: assets } = await client.get('/v2/assets', {
             params: { status: 'active' },
           });
-          
+
           return {
             name: account.account_blocked ? 'Alpaca Paper Trading' : 'Alpaca',
             symbols: assets.map((asset: any) => asset.symbol),
@@ -555,54 +562,58 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
             serverTime: Date.now(),
           };
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          try {
-            const { data } = await backendClient.get('/market/exchange-info');
-            return data.exchangeInfo;
-          } catch {
-            return {
-              name: 'Alpaca',
-              symbols: [],
-              tradingFees: 0,
-              withdrawalFees: {},
-              serverTime: Date.now(),
-            };
+        'Alpaca',
+        'GET_MARKET_DATA',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            try {
+              const { data } = await backendClient.get('/market/exchange-info');
+              return data.exchangeInfo;
+            } catch {
+              return {
+                name: 'Alpaca',
+                symbols: [],
+                tradingFees: 0,
+                withdrawalFees: {},
+                serverTime: Date.now(),
+              };
+            }
           }
         }
       );
     },
-    
+
     async getSymbols(): Promise<string[]> {
-      return executeAlpacaCall(
-        'getSymbols',
+      return executeTrading<string[]>(
         async () => {
           const { data: assets } = await client.get('/v2/assets', {
             params: { status: 'active' },
           });
-          
+
           return assets.map((asset: any) => asset.symbol);
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          try {
-            const { data } = await backendClient.get('/market/symbols');
-            return data.symbols;
-          } catch {
-            return [];
+        'Alpaca',
+        'GET_MARKET_DATA',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            try {
+              const { data } = await backendClient.get('/market/symbols');
+              return data.symbols;
+            } catch {
+              return [];
+            }
           }
         }
       );
     },
-    
+
     async getAssetInfo(symbol: string): Promise<any> {
-      return executeAlpacaCall(
-        'getAssetInfo',
+      return executeTrading<any>(
         async () => {
           const { data } = await client.get(`/v2/assets/${symbol}`);
-          
+
           return {
             symbol: data.symbol,
             baseAsset: data.symbol,
@@ -615,24 +626,27 @@ export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
             tickSize: 0.01,
           };
         },
-        config,
-        async () => {
-          // Fallback to our backend
-          try {
-            const { data } = await backendClient.get(`/market/asset-info/${symbol}`);
-            return data.assetInfo;
-          } catch {
-            return {
-              symbol,
-              baseAsset: symbol,
-              quoteAsset: 'USD',
-              minQuantity: 1,
-              maxQuantity: 1000000,
-              quantityPrecision: 0,
-              pricePrecision: 2,
-              minNotional: 1,
-              tickSize: 0.01,
-            };
+        'Alpaca',
+        'GET_MARKET_DATA',
+        {
+          primaryFallback: async () => {
+            // Fallback to our backend
+            try {
+              const { data } = await backendClient.get(`/market/asset-info/${symbol}`);
+              return data.assetInfo;
+            } catch {
+              return {
+                symbol,
+                baseAsset: symbol,
+                quoteAsset: 'USD',
+                minQuantity: 1,
+                maxQuantity: 1000000,
+                quantityPrecision: 0,
+                pricePrecision: 2,
+                minNotional: 1,
+                tickSize: 0.01,
+              };
+            }
           }
         }
       );

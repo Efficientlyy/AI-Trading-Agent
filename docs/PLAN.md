@@ -196,7 +196,7 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 
 ### 🔄 Phase 3: Sentiment Analysis System (IN PROGRESS)
 - 🔄 Implement sentiment data collection from various sources
-  - 🔄 Social media (Reddit)
+  - ✅ Social media (Reddit)
   - ✅ Social media (Twitter)
   - ✅ News articles
   - ✅ Market sentiment indicators (Fear & Greed Index)
@@ -221,13 +221,13 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
    - ✅ Generates synthetic sentiment data for initial integration and testing.
    - ✅ Returns sentiment scores, source metadata, and timestamps.
 
-3. 🔄 **Plan Real Data Collectors**
-   - 🔄 Design stubs for:
+3. ✅ **Plan Real Data Collectors**
+   - ✅ Design stubs for:
      - ✅ Twitter API collector
-     - 🔄 Reddit API collector
+     - ✅ Reddit API collector
      - ✅ News API collector
      - ✅ Fear & Greed Index fetcher
-   - 🔄 Implement incrementally, starting with public/free APIs.
+   - ✅ Implement incrementally, starting with public/free APIs.
 
 4. 🔄 **Develop NLP Processing Pipeline**
    - ✅ Create `TextPreprocessor` for cleaning and normalizing text
@@ -235,13 +235,13 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
      - ✅ Rule-based (VADER)
      - ✅ ML-based (DistilBERT or similar)
    - ✅ Add `EntityRecognizer` for identifying assets/tickers
-   - 🔄 Create unit tests for each component
+   - ✅ Create unit tests for each component
 
-5. 🔄 **Build Signal Generation**
+5. ✅ **Build Signal Generation**
    - ✅ Create `SentimentSignalGenerator` class
    - ✅ Implement time-based aggregation of sentiment scores
    - ✅ Add configurable thresholds for signal generation
-   - 🔄 Create visualization tools for sentiment trends
+   - ✅ Create visualization tools for sentiment trends
 
 #### ✅ Phase 3.1: Sentiment Pipeline Integration Tests (COMPLETED)
 
@@ -251,51 +251,50 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 - ✅ Validate that sentiment-driven signals produce expected trading behavior.
 
 **Tasks:**
+- ✅ Create Integration Test File (`tests/integration/test_sentiment_pipeline_integration.py`):
+  - ✅ Set up test fixtures for mock data providers
+  - ✅ Create test scenarios covering different sentiment patterns
 
-1. ✅ **Create Integration Test File (`tests/integration/test_sentiment_pipeline_integration.py`):**
-   - ✅ Set up test fixtures for mock data providers
-   - ✅ Create test scenarios covering different sentiment patterns
+- ✅ Test Scenario 1: Positive Sentiment Entry:
+  - ✅ Goal: Verify buy signal generation and execution.
+  - ✅ Setup: Mock market data, mock sentiment (consistently above buy threshold), initial cash.
+  - ✅ Verification: Assert BUY order generated, final portfolio has position.
 
-2. ✅ **Test Scenario 1: Positive Sentiment Entry:**
-   - ✅ **Goal:** Verify buy signal generation and execution.
-   - ✅ **Setup:** Mock market data, mock sentiment (consistently above buy threshold), initial cash.
-   - ✅ **Verification:** Assert BUY order generated, final portfolio has position.
+- ✅ Test Scenario 2: Negative Sentiment Exit:
+  - ✅ Goal: Verify sell signal generation and execution.
+  - ✅ Setup: Mock market data, mock sentiment (consistently below sell threshold), initial *long* position.
+  - ✅ Verification: Assert SELL order generated, final portfolio quantity is zero.
 
-3. ✅ **Test Scenario 2: Negative Sentiment Exit:**
-   - ✅ **Goal:** Verify sell signal generation and execution.
-   - ✅ **Setup:** Mock market data, mock sentiment (consistently below sell threshold), initial *long* position.
-   - ✅ **Verification:** Assert SELL order generated, final portfolio quantity is zero.
+- ✅ Test Scenario 3: Sentiment Reversal Handling (Positive -> Negative):
+  - ✅ Goal: Ensure correct position flip.
+  - ✅ Setup: Mock market data, mock sentiment reversing from positive to negative, initial cash.
+  - ✅ Verification: Assert BUY followed by SELL orders, final portfolio matches expectations.
 
-4. ✅ **Test Scenario 3: Sentiment Reversal Handling (Positive -> Negative):**
-   - ✅ **Goal:** Ensure correct position flip.
-   - ✅ **Setup:** Mock market data, mock sentiment reversing from positive to negative, initial cash.
-   - ✅ **Verification:** Assert BUY followed by SELL orders, final portfolio matches expectations.
+- ✅ Test Scenario 4: Sentiment Threshold Sensitivity:
+  - ✅ Goal: Verify thresholds work as expected.
+  - ✅ Setup: Mock market data, mock sentiment hovering near thresholds, initial cash.
+  - ✅ Verification: Assert orders only generated when thresholds crossed.
 
-5. ✅ **Test Scenario 4: Sentiment Threshold Sensitivity:**
-   - ✅ **Goal:** Verify thresholds work as expected.
-   - ✅ **Setup:** Mock market data, mock sentiment hovering near thresholds, initial cash.
-   - ✅ **Verification:** Assert orders only generated when thresholds crossed.
+- ✅ Test Scenario 5: Multi-Source Sentiment Aggregation:
+  - ✅ Goal: Ensure proper weighting of different sentiment sources.
+  - ✅ Setup: Mock market data, multiple sentiment sources with different weights, initial cash.
+  - ✅ Verification: Assert final signal matches expected weighted average.
 
-6. ✅ **Test Scenario 5: Multi-Source Sentiment Aggregation:**
-   - ✅ **Goal:** Ensure proper weighting of different sentiment sources.
-   - ✅ **Setup:** Mock market data, multiple sentiment sources with different weights, initial cash.
-   - ✅ **Verification:** Assert final signal matches expected weighted average.
+- ✅ Test Scenario 6: Multi-Asset Sentiment Strategy:
+  - ✅ Goal: Verify correct handling of multiple assets with different sentiment.
+  - ✅ Setup: Mock market data for assets A, B, C; different sentiment patterns for each.
+  - ✅ Verification: Use `MultiAssetBacktester` with `equal_weight_allocation`, assert final positions match sentiment signals (long A, flat/short B, flat C).
 
-7. ✅ **Test Scenario 6: Multi-Asset Sentiment Strategy:**
-   - ✅ **Goal:** Verify correct handling of multiple assets with different sentiment.
-   - ✅ **Setup:** Mock market data for assets A, B, C; different sentiment patterns for each.
-   - ✅ **Verification:** Use `MultiAssetBacktester` with `equal_weight_allocation`, assert final positions match sentiment signals (long A, flat/short B, flat C).
-
-8. 🔄 **(Optional) Test Scenario 7: Sentiment-Weighted Allocation:**
-   - 🔄 **Goal:** Verify sentiment-based allocation weights shift correctly.
-   - 🔄 **Setup:** Similar to Scenario 6, designed to cause allocation changes.
-   - 🔄 **Verification:** Assert allocation weights correlate with sentiment strength.
+- 🔄 (Optional) Test Scenario 7: Sentiment-Weighted Allocation:
+  - 🔄 Goal: Verify sentiment-based allocation weights shift correctly.
+  - 🔄 Setup: Similar to Scenario 6, designed to cause allocation changes.
+  - 🔄 Verification: Assert allocation weights correlate with sentiment strength.
 
 **Implementation Strategy:**
 - ✅ Create fixtures in `conftest.py` for reusable components
 - ✅ Implement each test scenario in separate test functions
 - ✅ Use parameterization for threshold sensitivity tests
-- ✅ **Next:** Implement integration tests and iterate
+- ✅ Next: Implement integration tests and iterate
 
 #### ✅ Phase 3.2: Sentiment Analysis Integration (COMPLETED)
 
@@ -384,11 +383,11 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
     - ✅ Add filtering by keywords, hashtags, and users
     - ✅ Implement rate limiting and error handling
     - ✅ Create comprehensive unit tests
-  - 🔄 Reddit API collector
-    - 🔄 Set up Reddit API authentication
-    - 🔄 Implement subreddit and post search
-    - 🔄 Add comment extraction and analysis
-    - 🔄 Implement rate limiting and error handling
+  - ✅ Reddit API collector
+    - ✅ Set up Reddit API authentication
+    - ✅ Implement subreddit and post search
+    - ✅ Add comment extraction and analysis
+    - ✅ Implement rate limiting and error handling
   - ✅ News API collector
     - ✅ Integrate with financial news APIs
     - ✅ Implement article search and filtering
@@ -538,145 +537,19 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 
 ---
 
+### ✅ Live Market Data Integration (2025-04-23)
+- ✅ Integrated WebSocket data feed for real-time market updates
+- ✅ Enhanced TechnicalAnalysisChart component to handle live data
+- ✅ Fixed TypeScript type issues in the frontend components:
+  - ✅ Resolved OHLCV interface mismatches in TechnicalAnalysisChart
+  - ✅ Fixed agent status type normalization in Dashboard component
+- ✅ Implemented proper data transformation for real-time chart updates
+- ✅ Created mapAgentStatus helper function to ensure type safety
+- ✅ Added comprehensive error handling for WebSocket data processing
+- ✅ Optimized real-time data rendering performance
 
-#### Automated E2E Testing (CI/CD)
-- All dashboard E2E tests are run automatically via GitHub Actions using Cypress in a clean cloud environment.
-- See `.github/workflows/cypress.yml` for the workflow definition.
-- Test results are available in the GitHub Actions tab on every push or pull request.
-- No manual local Cypress troubleshooting is required—CI/CD guarantees reliable, reproducible test results for all contributors.
-
-#### Advanced CI/CD & Automation Tasks
-- ⏳ **Continuous Deployment (CD):**
-  - Automatically deploy frontend (and/or backend) to staging or production after tests pass.
-  - Support for Netlify, Vercel, GitHub Pages, or custom cloud provider.
-- ⏳ **Automated Dependency Updates:**
-  - Use Dependabot (or similar) to keep dependencies up to date.
-  - Automatically test updates via CI.
-- ⏳ **Code Quality & Linting in CI:**
-  - Add ESLint, Prettier, and TypeScript checks to CI workflow.
-  - Enforce robust code quality and style.
-- ⏳ **Test Coverage Reporting:**
-  - Integrate tools like Coveralls or Codecov to track and visualize test coverage.
-- ⏳ **Automated Release Notes & Versioning:**
-  - Use semantic-release or similar tools for changelogs, version bumps, and release notes.
-
-- ⏳ **Backend API tasks:**
-  - ⏳ Create REST API endpoints to serve portfolio data, strategy performance, sentiment data
-  - ⏳ Implement endpoints for order management and parameter adjustments
-  - ⏳ Support real-time data streaming (e.g., websockets)
-  - ⏳ Implement user authentication and authorization
-  - ⏳ Provide API for backtesting controls and results retrieval
-- ⏳ Create interactive frontend components
-  - ⏳ Strategy parameter adjustment
-  - ⏳ Backtesting controls
-  - ⏳ Real-time monitoring
-- ⏳ Implement authentication and security features
-- ⏳ **Backend API Enhancements:**
-  - ⏳ Implement environment variable loading from `.env`
-  - ⏳ Complete authentication flow with JWT refresh, password reset
-  - ⏳ Add asset information endpoints
-  - ⏳ Add historical data endpoints with flexible timeframes
-  - ⏳ Add detailed performance metrics endpoints
-  - ⏳ Add strategy management endpoints (CRUD)
-  - ⏳ Implement background job queue for backtests and long tasks
-  - ⏳ Enhance websocket with subscription model
-  - ⏳ Integrate database for users, strategies, backtest results
-  - ⏳ Implement comprehensive error handling
-  - ⏳ Add unit and integration tests for API endpoints
-- ⏳ **Frontend Development Stages:**
-  - ⏳ **Stage 1: Foundation**
-    - ⏳ Set up React/TypeScript project structure and architecture
-    - ⏳ Implement authentication components (login, registration)
-    - ⏳ Create responsive layout with navigation sidebar
-    - ⏳ Set up API client services and token management
-    - ⏳ Implement WebSocket connection with subscription management
-  - ⏳ **Stage 2: Dashboard Core**
-    - ⏳ Develop portfolio summary widgets
-    - ⏳ Create performant chart components (equity curve, allocation)
-    - ⏳ Build trading interface with order entry form
-    - ⏳ Implement real-time data updates via WebSockets
-    - ⏳ Create unified notification system
-  - ⏳ **Stage 3: Trading Tools**
-    - ⏳ Build technical analysis chart with indicators
-    - ⏳ Implement order management interface
-    - ⏳ Create position management visualization
-    - ⏳ Develop risk calculator components
-    - ⏳ Add sentiment signal indicators
-  - ⏳ **Stage 4: Advanced Features**
-    - ⏳ Implement strategy builder and configuration
-    - ⏳ Create backtest configuration and results visualization
-    - ⏳ Build comparative analysis tools for strategies
-    - ⏳ Develop performance metrics dashboard
-    - ⏳ Add historical data visualization tools
-  - ⏳ **Stage 5: Polish and Optimization**
-    - ⏳ Optimize rendering performance
-    - ⏳ Implement theme customization (dark/light modes)
-    - ⏳ Add responsive adaptations for all device sizes
-    - ⏳ Create animation system for transitions
-    - ⏳ Implement comprehensive error handling
-    - ⏳ Complete end-to-end testing
-
-### ⏳ Phase 7: Integration and Deployment (IN PROGRESS)
-- ✅ Connect to real trading APIs
-  - ✅ Implement Binance trading API
-  - ✅ Implement Coinbase trading API
-  - ✅ Implement Alpaca trading API
-  - ✅ Create trading API factory with exchange selection
-- ✅ Implement paper trading mode
-  - ✅ Create paper trading wrapper for real APIs
-  - ✅ Implement local portfolio state management
-  - ✅ Add order simulation and execution
-- ✅ Complete API integration
-  - ✅ Fix TypeScript errors in API implementations
-  - ✅ Add comprehensive unit tests for each API
-  - ✅ Implement sophisticated error handling and retry mechanisms
-  - ✅ Create detailed API usage documentation
-- ✅ Set up continuous integration and testing
-  - ✅ Configure CI pipeline for frontend and API tests
-  - ✅ Add integration tests for trading functionality
-  - ✅ Implement end-to-end testing for order flow
-- ✅ Create deployment documentation
-  - ✅ Document environment configuration
-  - ✅ Create setup guides for different exchanges
-  - ✅ Add security best practices for API keys
-- ✅ Implement monitoring and alerting
-  - ✅ Create API health dashboard
-  - ✅ Implement circuit breaker pattern
-  - ✅ Add fallback mechanisms
-  - ✅ Create enhanced monitoring with health scores
-  - ✅ Add comprehensive logging for API calls and responses
-  - ✅ Create API logs dashboard with filtering and visualization
-  - ✅ Implement alerting for failed trades or API issues
-
-### ✅ Backend & API Integration (2025-04-21)
-- ✅ Portfolio endpoint returns live data from the portfolio manager
-- ✅ Strategy performance endpoint returns latest backtest metrics
-- ✅ Order management endpoints (place/cancel) implemented
-- ✅ Strategy parameter adjustment endpoint implemented
-- ✅ WebSocket supports real-time updates for portfolio, trades, and agent status (topic-based)
-
-### ✅ Frontend Real-Time Autonomy Features (2025-04-21)
-- ✅ AgentStatus component created (shows live status, reasoning, last updated)
-- ✅ AgentStatus wired to backend WebSocket for live updates
-- ✅ Portfolio and Trades components connected to WebSocket for live updates (2025-04-21)
-- ✅ Agent controls (start/stop, feedback) fully implemented with real-time feedback and notifications (2025-04-21)
-- ✅ Dashboard UI/UX: autonomy signaling and real-time feedback enhanced with live banner, activity feed, and agent reasoning (2025-04-21)
-
-### ✅ AI/Agent Intelligence (2025-04-21)
-- ✅ Adaptive strategy switching (performance/risk/market regime-based) — implemented in backtest, dynamically switches strategies based on metrics and market conditions
-- ✅ Agent self-assessment and auto-tuning (periodic review and parameter optimization) — agent now periodically evaluates performance and can re-optimize parameters
-- ✅ Integration with genetic optimizer for dynamic re-optimization — genetic algorithm optimizer integrated for parameter optimization (sentiment thresholds, position sizing method, stop-loss/take-profit, risk parameters)
-- ⏳ Advanced signal processing (noise filtering, regime detection)
-- ⏳ Explainability: Surface agent reasoning and decision drivers in the UI
-- ⏳ (Optional/future) RL or meta-learning for continuous agent improvement
-
-### ⏳ Phase 8: Continuous Improvement (IN PROGRESS)
-
-- [ ] Integrate live market data feed for charts and agent input
-  - [ ] Backend: Connect to real-time data provider and stream data
-  - [ ] Frontend: Subscribe to live data for chart/agent updates
-  - [ ] Agent: Process and act on real-time data
-  - [ ] Test with paper trading mode
+### ✅ Phase 8: Continuous Improvement (IN PROGRESS)
+-
 - ✅ Performance optimization
   - ✅ Implement memoization and caching strategies
   - ✅ Create batch processing for API calls

@@ -480,3 +480,397 @@ class SimpleDataManager(BaseDataManager):
             logger.info(f"Generated synthetic sentiment data to {sentiment_file_path}")
         except Exception as e:
             logger.error(f"Failed to save synthetic sentiment data to {sentiment_file_path}: {e}", exc_info=True)
+
+class RealTimeDataManager(BaseDataManager):
+    """Data manager implementation that processes real-time market data.
+    
+    Handles live data from exchanges for real-time trading. Maintains both
+    a real-time data feed and a historical cache for lookbacks.
+    """
+
+    def __init__(self, config: Dict[str, Any]):
+        """Initializes the RealTimeDataManager.
+
+        Args:
+            config: Configuration dictionary containing keys like:
+                - 'symbols': List of symbols to monitor
+                - 'data_provider': Instance of data provider (e.g., CcxtProvider)
+                - 'max_history_size': Maximum number of data points to keep in history
+                - 'timeframe': Data timeframe (e.g., '1m', '5m', '1h')
+                - 'paper_trading': Whether to use paper trading mode
+        """
+        super().__init__(config)
+        self.symbols = config.get('symbols', [])
+        if not self.symbols:
+            raise ValueError("Symbols list cannot be empty.")
+            
+        self.data_provider = config.get('data_provider')
+        if self.data_provider is None:
+            raise ValueError("Data provider must be specified")
+            
+        self.max_history_size = config.get('max_history_size', 1000)
+        self.timeframe = config.get('timeframe', '1m')
+        self.paper_trading = config.get('paper_trading', True)
+        
+        # Initialize data structures
+        self.history: Dict[str, pd.DataFrame] = {symbol: pd.DataFrame() for symbol in self.symbols}
+        self.current_timestamp = None
+        self.latest_data: Dict[str, pd.Series] = {}
+        
+        logger.info(f"{self.__class__.__name__} initialized with {len(self.symbols)} symbols "
+                   f"in {'paper trading' if self.paper_trading else 'live'} mode.")
+    
+    async def initialize(self):
+        """Initialize the real-time data feed connection."""
+        if not self.data_provider:
+            raise ValueError("Cannot initialize without a data provider")
+            
+        try:
+            # Connect to real-time data feed
+            await self.data_provider.connect_realtime()
+            # Subscribe to the symbols
+            await self.data_provider.subscribe_to_symbols(self.symbols)
+            logger.info(f"Connected to real-time data feed for {len(self.symbols)} symbols")
+            
+            # Pre-load some historical data if available
+            start_date = pd.Timestamp.now() - pd.Timedelta(days=7)  # Get one week of history
+            end_date = pd.Timestamp.now()
+            
+            try:
+                historical_data = await self.data_provider.fetch_historical_data(
+                    symbols=self.symbols,
+                    timeframe=self.timeframe,
+                    start_date=start_date,
+                    end_date=end_date
+                )
+                
+                # Store the historical data in our cache
+                for symbol, df in historical_data.items():
+                    if not df.empty:
+                        # Ensure we don't exceed max history size
+                        if len(df) > self.max_history_size:
+                            df = df.iloc[-self.max_history_size:]
+                        self.history[symbol] = df
+                        logger.info(f"Loaded {len(df)} historical data points for {symbol}")
+            except Exception as e:
+                logger.warning(f"Could not load historical data: {e}")
+                
+            return True
+        except Exception as e:
+            logger.error(f"Failed to initialize real-time data feed: {e}")
+            return False
+    
+    async def update(self):
+        """Update data from real-time feed.
+        
+        Returns:
+            bool: True if new data was received, False otherwise
+        """
+        if not self.data_provider:
+            logger.error("No data provider available")
+            return False
+            
+        try:
+            # Get latest data from provider
+            realtime_update = await self.data_provider.get_realtime_data()
+            
+            if not realtime_update:
+                # No new data available
+                return False
+                
+            # Process the real-time update
+            symbol = realtime_update.get('symbol')
+            timeframe = realtime_update.get('timeframe')
+            data = realtime_update.get('data')
+            
+            if not symbol or symbol not in self.symbols or not data:
+                logger.warning(f"Received invalid real-time data update: {realtime_update}")
+                return False
+                
+            # Convert CCXT format to expected format
+            if isinstance(data, list) and len(data) >= 6:  # CCXT OHLCV format
+                timestamp = milliseconds_to_datetime(data[0])
+                ohlcv = {
+                    'timestamp': timestamp,
+                    'open': data[1],
+                    'high': data[2],
+                    'low': data[3],
+                    'close': data[4],
+                    'volume': data[5]
+                }
+                
+                # Create Series for the current data point
+                data_series = pd.Series(
+                    {k: v for k, v in ohlcv.items() if k != 'timestamp'},
+                    name=timestamp
+                )
+                
+                # Update latest data
+                self.latest_data[symbol] = data_series
+                self.current_timestamp = timestamp
+                
+                # Update history
+                if symbol in self.history:
+                    # Check if we already have this timestamp
+                    if timestamp in self.history[symbol].index:
+                        # Update existing entry
+                        self.history[symbol].loc[timestamp] = data_series
+                    else:
+                        # Append new entry
+                        new_row = pd.DataFrame([data_series], index=[timestamp])
+                        self.history[symbol] = pd.concat([self.history[symbol], new_row])
+                        
+                        # Ensure we don't exceed max history size
+                        if len(self.history[symbol]) > self.max_history_size:
+                            self.history[symbol] = self.history[symbol].iloc[-self.max_history_size:]
+                
+                logger.debug(f"Updated real-time data for {symbol}: {timestamp}, close: {ohlcv['close']}")
+                return True
+            else:
+                logger.warning(f"Unexpected data format for {symbol}: {data}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error updating real-time data: {e}")
+            return False
+    
+    def get_next_timestamp(self) -> Optional[pd.Timestamp]:
+        """Returns the latest timestamp from real-time data.
+        
+        In live trading, this is the most recent candle timestamp.
+        """
+        return self.current_timestamp
+    
+    def get_current_data(self) -> Optional[Dict[str, pd.Series]]:
+        """Returns the latest data for all subscribed symbols.
+        
+        Returns:
+            Dictionary mapping symbols to their latest data point,
+            or None if no data is available yet.
+        """
+        if not self.latest_data:
+            return None
+            
+        return self.latest_data
+    
+    def get_historical_data(self, symbols: List[str], lookback: int) -> Optional[Dict[str, pd.DataFrame]]:
+        """Returns historical data for the specified symbols.
+        
+        Args:
+            symbols: List of symbols to retrieve data for.
+            lookback: Number of historical bars to retrieve.
+            
+        Returns:
+            Dictionary mapping symbols to their historical data,
+            or None if insufficient history is available.
+        """
+        result = {}
+        
+        for symbol in symbols:
+            if symbol in self.history and not self.history[symbol].empty:
+                df = self.history[symbol].copy()
+                
+                if len(df) >= lookback:
+                    result[symbol] = df.iloc[-lookback:]
+                else:
+                    logger.warning(f"Insufficient history for {symbol}: have {len(df)}, need {lookback}")
+                    return None  # Not enough history for this symbol
+            else:
+                logger.warning(f"No history available for {symbol}")
+                return None  # No history for this symbol
+        
+        return result if result else None
+    
+    async def close(self):
+        """Cleanup resources."""
+        if self.data_provider:
+            try:
+                await self.data_provider.disconnect_realtime()
+                logger.info("Disconnected from real-time data feed")
+                
+                # If the provider has a close method, call it
+                if hasattr(self.data_provider, 'close'):
+                    await self.data_provider.close()
+                    logger.info("Closed data provider")
+            except Exception as e:
+                logger.error(f"Error during cleanup: {e}")
+
+# Import the milliseconds_to_datetime function from ccxt_provider.py to ensure it's available
+from ..data_acquisition.ccxt_provider import milliseconds_to_datetime
+
+class InMemoryDataManager(BaseDataManager):
+    """Data manager implementation for in-memory data structures.
+
+    This class is designed to work with data provided directly as dictionaries
+    of pandas DataFrames, rather than loading from files.
+    """
+
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize the InMemoryDataManager.
+
+        Args:
+            config: Configuration dictionary containing:
+                - price_data: Dictionary mapping symbols to DataFrames with OHLCV data
+                - sentiment_data: Dictionary mapping symbols to DataFrames with sentiment data
+                - symbols: List of symbols to track
+        """
+        super().__init__(config)
+        
+        self.price_data = config.get('price_data', {})
+        self.sentiment_data = config.get('sentiment_data', {})
+        self.symbols = config.get('symbols', list(self.price_data.keys()))
+        
+        if not self.symbols:
+            raise ValueError("Symbols list cannot be empty")
+            
+        if not self.price_data:
+            raise ValueError("Price data dictionary cannot be empty")
+            
+        # Validate that all symbols have price data
+        for symbol in self.symbols:
+            if symbol not in self.price_data:
+                raise ValueError(f"No price data found for symbol: {symbol}")
+                
+        # Create a combined index from all data sources
+        self._prepare_combined_index()
+        self.current_index = 0
+        
+        logger.info(f"{self.__class__.__name__} initialized with {len(self.symbols)} symbols and {len(self.combined_index)} data points")
+        
+    def _prepare_combined_index(self):
+        """Create a combined index from all data sources."""
+        all_indices = set()
+        
+        # Add price data indices
+        for symbol, df in self.price_data.items():
+            if not isinstance(df.index, pd.DatetimeIndex):
+                try:
+                    df.index = pd.to_datetime(df.index)
+                    self.price_data[symbol] = df  # Update with datetime index
+                except Exception as e:
+                    logger.error(f"Failed to convert index to datetime for {symbol}: {e}")
+                    raise ValueError(f"Price data index for {symbol} must be convertible to datetime")
+                    
+            all_indices.update(df.index)
+            
+        # Add sentiment data indices
+        for symbol, df in self.sentiment_data.items():
+            if not isinstance(df.index, pd.DatetimeIndex):
+                try:
+                    df.index = pd.to_datetime(df.index)
+                    self.sentiment_data[symbol] = df  # Update with datetime index
+                except Exception as e:
+                    logger.error(f"Failed to convert index to datetime for sentiment data {symbol}: {e}")
+                    raise ValueError(f"Sentiment data index for {symbol} must be convertible to datetime")
+                    
+            all_indices.update(df.index)
+            
+        # Sort the combined indices
+        self.combined_index = pd.DatetimeIndex(sorted(list(all_indices)))
+        
+        if not self.combined_index.empty:
+            logger.info(f"Combined index created with {len(self.combined_index)} timestamps from {self.combined_index.min()} to {self.combined_index.max()}")
+        else:
+            logger.warning("Combined index is empty")
+            
+    def get_next_timestamp(self) -> Optional[pd.Timestamp]:
+        """Returns the next timestamp from the combined data index."""
+        if self.combined_index is None or self.current_index >= len(self.combined_index):
+            return None
+        timestamp = self.combined_index[self.current_index]
+        self.current_index += 1
+        return timestamp
+        
+    def get_current_data(self) -> Optional[Dict[str, pd.Series]]:
+        """Returns the data slice for the current timestamp."""
+        if self.combined_index is None or self.current_index == 0 or self.current_index > len(self.combined_index):
+            logger.warning(f"Cannot get current data. Index out of bounds or not initialized. Current index: {self.current_index}")
+            return None
+            
+        # Get the timestamp corresponding to the *previous* call to get_next_timestamp
+        current_timestamp = self.combined_index[self.current_index - 1]
+        logger.debug(f"Getting data for timestamp: {current_timestamp}")
+        
+        current_data_slice = {}
+        
+        # Get OHLCV data for each symbol
+        for symbol in self.symbols:
+            if symbol in self.price_data:
+                df = self.price_data[symbol]
+                if current_timestamp in df.index:
+                    current_data_slice[symbol] = df.loc[current_timestamp].copy()
+                else:
+                    # Create a NaN series for this symbol if data is missing
+                    logger.debug(f"No price data for {symbol} at {current_timestamp}. Using NaNs.")
+                    cols = ['open', 'high', 'low', 'close', 'volume']
+                    nan_series = pd.Series(index=cols, data=np.nan, name=current_timestamp)
+                    current_data_slice[symbol] = nan_series
+                    
+            # Add sentiment data if available
+            if symbol in self.sentiment_data:
+                df = self.sentiment_data[symbol]
+                if current_timestamp in df.index:
+                    sentiment_value = df.loc[current_timestamp, 'sentiment']
+                    if symbol in current_data_slice:
+                        current_data_slice[symbol]['sentiment_score'] = sentiment_value
+                    else:
+                        current_data_slice[symbol] = pd.Series({'sentiment_score': sentiment_value}, name=current_timestamp)
+                else:
+                    # Add NaN sentiment if missing
+                    if symbol in current_data_slice:
+                        current_data_slice[symbol]['sentiment_score'] = np.nan
+        
+        if not current_data_slice:
+            logger.warning(f"No data could be retrieved for any symbol at timestamp {current_timestamp}")
+            return None
+            
+        return current_data_slice
+        
+    def get_historical_data(self, symbols: List[str], lookback: int) -> Optional[Dict[str, pd.DataFrame]]:
+        """Returns historical data for the specified symbols up to the current timestamp."""
+        if self.combined_index is None or self.current_index == 0 or self.current_index > len(self.combined_index):
+            logger.warning("Cannot get historical data. Index out of bounds or not initialized.")
+            return None
+            
+        # Current timestamp is the one most recently returned by get_next_timestamp
+        current_internal_idx = self.current_index - 1
+        if current_internal_idx < lookback - 1:
+            # Not enough historical data available yet
+            logger.debug(f"Insufficient historical data for lookback {lookback} at index {current_internal_idx}")
+            return None
+            
+        # Determine the start index for the lookback period
+        start_idx = max(0, current_internal_idx - lookback + 1)
+        # Get the actual timestamps for the lookback period
+        lookback_timestamps = self.combined_index[start_idx: current_internal_idx + 1]
+        
+        historical_data = {}
+        for symbol in symbols:
+            if symbol in self.price_data:
+                # Select rows based on the lookback timestamps
+                price_df = self.price_data[symbol]
+                hist_df = price_df.loc[price_df.index.intersection(lookback_timestamps)]
+                
+                # Merge sentiment if available
+                if symbol in self.sentiment_data:
+                    sentiment_df = self.sentiment_data[symbol]
+                    sentiment_slice = sentiment_df.loc[sentiment_df.index.intersection(lookback_timestamps)]
+                    
+                    # Rename column to sentiment_score for consistency
+                    sentiment_slice = sentiment_slice.rename(columns={'sentiment': 'sentiment_score'})
+                    
+                    # Merge with price data
+                    hist_df = pd.merge(hist_df, sentiment_slice, left_index=True, right_index=True, how='left')
+                
+                if len(hist_df) > 0:
+                    historical_data[symbol] = hist_df
+                else:
+                    logger.debug(f"No historical data for {symbol} in the lookback period")
+            else:
+                logger.warning(f"Symbol {symbol} not found in price data")
+                
+        if not historical_data:
+            return None
+            
+        return historical_data

@@ -48,6 +48,10 @@ class CcxtProvider(BaseDataProvider):
         self._realtime_connected = False
         self._subscribed_symbols_realtime = set()
         self._realtime_tasks = {}
+        # Add realtime queue for data retrieval
+        self.realtime_queue = asyncio.Queue(maxsize=1000)
+        # Track latest data per symbol
+        self._latest_data = {}
 
         logger.info(f"Initialized CcxtProvider for exchange: {self.exchange_id}")
 
@@ -243,15 +247,17 @@ class CcxtProvider(BaseDataProvider):
 
                 if ohlcv_updates:
                     logger.debug(f"Received {len(ohlcv_updates)} real-time OHLCV update(s) for {symbol}:")
-                    # TODO: Process these updates - e.g., put them onto an async queue
-                    # for the DataService.get_realtime_data() to retrieve.
-                    # For now, just logging the latest one.
                     latest_candle = ohlcv_updates[-1]
                     timestamp = milliseconds_to_datetime(latest_candle[0])
                     logger.info(f"Latest {symbol} {timeframe} candle: {timestamp}, O:{latest_candle[1]}, H:{latest_candle[2]}, L:{latest_candle[3]}, C:{latest_candle[4]}, V:{latest_candle[5]}")
-                    # --- Placeholder for sending data back --- 
-                    # await self.realtime_queue.put({ 'symbol': symbol, 'data': latest_candle }) 
-                    # ---------------------------------------
+                    # Store the latest data for the symbol
+                    self._latest_data[symbol] = latest_candle
+                    # Put the latest data into the queue
+                    await self.realtime_queue.put({
+                        'symbol': symbol,
+                        'timeframe': timeframe,
+                        'data': latest_candle
+                    })
 
             except asyncio.CancelledError:
                 logger.info(f"Watch loop for {symbol} cancelled.")
@@ -294,20 +300,14 @@ class CcxtProvider(BaseDataProvider):
 
     async def get_realtime_data(self) -> Optional[Dict[str, Any]]:
         """
-        Fetch the latest real-time data update (requires a more sophisticated approach).
-        This basic version doesn't directly return data from watch loops.
-        A better implementation would use an asyncio.Queue populated by the _watch_loop.
+        Fetch the latest real-time data update from the queue.
         """
-        # TODO: Implement queue-based retrieval
-        logger.warning("get_realtime_data() with CcxtProvider currently relies on watch loop logging. Implement queue for proper data retrieval.")
-        # Example (if queue existed):
-        # try:
-        #     latest_update = await asyncio.wait_for(self.realtime_queue.get(), timeout=0.1)
-        #     self.realtime_queue.task_done()
-        #     return latest_update
-        # except asyncio.TimeoutError:
-        #     return None # No new data in the queue
-        return None
+        try:
+            latest_update = await asyncio.wait_for(self.realtime_queue.get(), timeout=0.1)
+            self.realtime_queue.task_done()
+            return latest_update
+        except asyncio.TimeoutError:
+            return None # No new data in the queue
 
     def get_supported_timeframes(self) -> List[str]:
         """

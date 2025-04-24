@@ -32,7 +32,7 @@ const initializeMetrics = (exchange: string, method: string): void => {
   if (!metricsStore[exchange]) {
     metricsStore[exchange] = {};
   }
-  
+
   if (!metricsStore[exchange][method]) {
     metricsStore[exchange][method] = {
       totalCalls: 0,
@@ -55,21 +55,21 @@ export const recordApiCall = (
   error?: Error
 ): void => {
   initializeMetrics(exchange, method);
-  
+
   const metrics = metricsStore[exchange][method];
-  
+
   // Only increment total calls on attempt to avoid double counting
   if (status === 'attempt') {
     metrics.totalCalls += 1;
     metrics.lastCallTime = Date.now();
     return;
   }
-  
+
   // Update metrics for success or failure
   metrics.totalDuration += duration;
   metrics.minDuration = Math.min(metrics.minDuration, duration);
   metrics.maxDuration = Math.max(metrics.maxDuration, duration);
-  
+
   if (status === 'success') {
     metrics.successCalls += 1;
   } else if (status === 'failure') {
@@ -86,7 +86,7 @@ export const getApiCallMetrics = (
   if (!metricsStore[exchange] || !metricsStore[exchange][method]) {
     initializeMetrics(exchange, method);
   }
-  
+
   return metricsStore[exchange][method];
 };
 
@@ -101,11 +101,11 @@ export const getSuccessRate = (
   method: string
 ): number | null => {
   const metrics = getApiCallMetrics(exchange, method);
-  
+
   if (!metrics || metrics.totalCalls === 0) {
     return null;
   }
-  
+
   return metrics.successCalls / metrics.totalCalls;
 };
 
@@ -115,11 +115,11 @@ export const getAverageDuration = (
   method: string
 ): number | null => {
   const metrics = getApiCallMetrics(exchange, method);
-  
+
   if (!metrics || metrics.totalCalls === 0) {
     return null;
   }
-  
+
   return metrics.totalDuration / metrics.totalCalls;
 };
 
@@ -133,11 +133,11 @@ export const isApiHealthy = (
   if (method) {
     // Check specific method
     const metrics = getApiCallMetrics(exchange, method);
-    
+
     if (!metrics || metrics.totalCalls === 0) {
       return true; // No data, assume healthy
     }
-    
+
     const successRate = metrics.successCalls / metrics.totalCalls;
     return (
       successRate >= thresholdSuccessRate ||
@@ -146,18 +146,18 @@ export const isApiHealthy = (
   } else {
     // Check all methods for the exchange
     const exchangeMethods = metricsStore[exchange];
-    
+
     if (!exchangeMethods) {
       return true; // No data, assume healthy
     }
-    
+
     // Check if any method is unhealthy
     for (const method in exchangeMethods) {
       if (!isApiHealthy(exchange, method, thresholdSuccessRate, maxAllowedFailures)) {
         return false;
       }
     }
-    
+
     return true;
   }
 };
@@ -169,6 +169,10 @@ interface CircuitBreakerState {
     failureCount: number;
     lastFailureTime: number;
     nextAttemptTime: number;
+    halfOpenCallCount: number;  // Track calls in half-open state
+    halfOpenSuccessCount: number; // Track successful calls in half-open state
+    openCount: number; // Track how many times circuit has opened
+    lastStateChangeTime: number; // When the state last changed
   };
 }
 
@@ -179,12 +183,14 @@ export interface CircuitBreakerConfig {
   failureThreshold: number;
   resetTimeoutMs: number;
   halfOpenMaxCalls: number;
+  halfOpenSuccessThreshold?: number; // Require multiple successes to close circuit
 }
 
 const defaultCircuitBreakerConfig: CircuitBreakerConfig = {
   failureThreshold: 5,
   resetTimeoutMs: 30000, // 30 seconds
   halfOpenMaxCalls: 1,
+  halfOpenSuccessThreshold: 1, // Default: one success to close circuit
 };
 
 // Initialize circuit breaker
@@ -195,7 +201,39 @@ const initializeCircuitBreaker = (key: string): void => {
       failureCount: 0,
       lastFailureTime: 0,
       nextAttemptTime: 0,
+      halfOpenCallCount: 0,
+      halfOpenSuccessCount: 0,
+      openCount: 0,
+      lastStateChangeTime: Date.now(),
     };
+  }
+};
+
+// Change circuit breaker state with tracking
+const changeCircuitBreakerState = (
+  key: string,
+  newState: 'closed' | 'open' | 'half-open',
+  nextAttemptTime: number = 0
+): void => {
+  const breaker = circuitBreakers[key];
+
+  if (breaker.state !== newState) {
+    const now = Date.now();
+
+    // Track state change
+    breaker.lastStateChangeTime = now;
+
+    // Reset state-specific counters
+    if (newState === 'half-open') {
+      breaker.halfOpenCallCount = 0;
+      breaker.halfOpenSuccessCount = 0;
+    } else if (newState === 'open') {
+      breaker.openCount += 1;
+    }
+
+    // Set state and next attempt time
+    breaker.state = newState;
+    breaker.nextAttemptTime = nextAttemptTime;
   }
 };
 
@@ -207,32 +245,36 @@ export const canMakeApiCall = (
 ): boolean => {
   const key = `${exchange}:${method}`;
   initializeCircuitBreaker(key);
-  
+
   const breaker = circuitBreakers[key];
-  const { failureThreshold, resetTimeoutMs } = {
+  const { halfOpenMaxCalls } = {
     ...defaultCircuitBreakerConfig,
     ...config,
   };
-  
+
   const now = Date.now();
-  
+
   // Check circuit breaker state
   switch (breaker.state) {
     case 'closed':
       return true;
-      
+
     case 'open':
       // Check if it's time to transition to half-open
       if (now >= breaker.nextAttemptTime) {
-        breaker.state = 'half-open';
+        changeCircuitBreakerState(key, 'half-open');
         return true;
       }
       return false;
-      
+
     case 'half-open':
       // Allow limited calls in half-open state
-      return true;
-      
+      if (breaker.halfOpenCallCount < halfOpenMaxCalls) {
+        breaker.halfOpenCallCount++;
+        return true;
+      }
+      return false;
+
     default:
       return true;
   }
@@ -247,62 +289,80 @@ export const recordCircuitBreakerResult = (
 ): void => {
   const key = `${exchange}:${method}`;
   initializeCircuitBreaker(key);
-  
+
   const breaker = circuitBreakers[key];
-  const { failureThreshold, resetTimeoutMs } = {
+  const { failureThreshold, resetTimeoutMs, halfOpenSuccessThreshold } = {
     ...defaultCircuitBreakerConfig,
     ...config,
   };
-  
+
   const now = Date.now();
-  
+
   if (success) {
     // Success case
     if (breaker.state === 'half-open') {
-      // Reset on success in half-open state
-      breaker.state = 'closed';
-      breaker.failureCount = 0;
+      // Increment success count in half-open state
+      breaker.halfOpenSuccessCount++;
+
+      // If we have enough successes, close the circuit
+      if (breaker.halfOpenSuccessCount >= halfOpenSuccessThreshold!) {
+        changeCircuitBreakerState(key, 'closed');
+        breaker.failureCount = 0;
+      }
     } else if (breaker.state === 'closed') {
-      // Reset failure count on success
+      // Reset failure count on success in closed state
       breaker.failureCount = 0;
     }
   } else {
     // Failure case
     breaker.lastFailureTime = now;
-    
+
     if (breaker.state === 'closed') {
       breaker.failureCount += 1;
-      
+
       // Check if threshold exceeded
       if (breaker.failureCount >= failureThreshold) {
-        breaker.state = 'open';
-        breaker.nextAttemptTime = now + resetTimeoutMs;
+        changeCircuitBreakerState(key, 'open', now + resetTimeoutMs);
       }
     } else if (breaker.state === 'half-open') {
-      // Transition back to open on failure
-      breaker.state = 'open';
-      breaker.nextAttemptTime = now + resetTimeoutMs;
+      // Transition back to open on failure in half-open state
+      changeCircuitBreakerState(key, 'open', now + resetTimeoutMs);
     }
   }
 };
 
-// Get circuit breaker state
+// Get circuit breaker state with detailed information
 export const getCircuitBreakerState = (
   exchange: string,
   method: string
-): { state: string; remainingTimeMs: number } | null => {
+): {
+  state: string;
+  failureCount: number;
+  remainingTimeMs: number;
+  halfOpenCallCount?: number;
+  halfOpenSuccessCount?: number;
+  openCount?: number;
+  lastStateChangeTime?: number;
+  timeSinceLastChange?: number;
+} | null => {
   const key = `${exchange}:${method}`;
-  
+
   if (!circuitBreakers[key]) {
     return null;
   }
-  
+
   const breaker = circuitBreakers[key];
   const now = Date.now();
-  
+
   return {
     state: breaker.state,
+    failureCount: breaker.failureCount,
     remainingTimeMs: Math.max(0, breaker.nextAttemptTime - now),
+    halfOpenCallCount: breaker.halfOpenCallCount,
+    halfOpenSuccessCount: breaker.halfOpenSuccessCount,
+    openCount: breaker.openCount,
+    lastStateChangeTime: breaker.lastStateChangeTime,
+    timeSinceLastChange: now - breaker.lastStateChangeTime
   };
 };
 
@@ -312,10 +372,11 @@ export const resetCircuitBreaker = (
   method: string
 ): void => {
   const key = `${exchange}:${method}`;
-  
+
   if (circuitBreakers[key]) {
-    circuitBreakers[key].state = 'closed';
+    changeCircuitBreakerState(key, 'closed');
     circuitBreakers[key].failureCount = 0;
+    circuitBreakers[key].openCount = 0;
   }
 };
 
@@ -328,10 +389,10 @@ export const getApiHealthDashboard = (): any => {
     successRate: 1,
     averageDuration: 0,
   };
-  
+
   let totalSuccessCalls = 0;
   let totalDuration = 0;
-  
+
   // Process each exchange
   for (const exchange in metricsStore) {
     dashboard.exchanges[exchange] = {
@@ -344,73 +405,73 @@ export const getApiHealthDashboard = (): any => {
       averageDuration: 0,
       circuitBreakerStates: {},
     };
-    
+
     const exchangeData = dashboard.exchanges[exchange];
-    
+
     // Process each method
     for (const method in metricsStore[exchange]) {
       const metrics = metricsStore[exchange][method];
       const circuitBreakerState = getCircuitBreakerState(exchange, method);
-      
+
       // Method data
       exchangeData.methods[method] = {
         ...metrics,
-        successRate: metrics.totalCalls > 0 
-          ? metrics.successCalls / metrics.totalCalls 
+        successRate: metrics.totalCalls > 0
+          ? metrics.successCalls / metrics.totalCalls
           : 1,
-        averageDuration: metrics.totalCalls > 0 
-          ? metrics.totalDuration / metrics.totalCalls 
+        averageDuration: metrics.successCalls > 0
+          ? metrics.totalDuration / metrics.successCalls
           : 0,
         circuitBreaker: circuitBreakerState,
       };
-      
+
       // Update exchange totals
       exchangeData.totalCalls += metrics.totalCalls;
       exchangeData.successCalls += metrics.successCalls;
       exchangeData.failedCalls += metrics.failedCalls;
-      
+      exchangeData.totalDuration = (exchangeData.totalDuration || 0) + metrics.totalDuration;
+
       // Check method health
       const methodHealth = isApiHealthy(exchange, method);
       if (!methodHealth) {
         exchangeData.health = false;
       }
-      
+
       // Add circuit breaker state
       if (circuitBreakerState) {
         exchangeData.circuitBreakerStates[method] = circuitBreakerState;
       }
     }
-    
+
     // Calculate exchange metrics
     if (exchangeData.totalCalls > 0) {
-      exchangeData.successRate = 
+      exchangeData.successRate =
         exchangeData.successCalls / exchangeData.totalCalls;
-      exchangeData.averageDuration = 
-        exchangeData.methods.reduce(
-          (sum: number, m: any) => sum + m.totalDuration, 
-          0
-        ) / exchangeData.totalCalls;
     }
-    
+
+    if (exchangeData.successCalls > 0) {
+      exchangeData.averageDuration = exchangeData.totalDuration / exchangeData.successCalls;
+    }
+
     // Update overall totals
     dashboard.totalCalls += exchangeData.totalCalls;
     totalSuccessCalls += exchangeData.successCalls;
-    totalDuration += exchangeData.methods.reduce(
-      (sum: number, m: any) => sum + m.totalDuration, 
-      0
-    );
-    
+    totalDuration += exchangeData.totalDuration;
+
     // Update overall health
     if (!exchangeData.health) {
       dashboard.overallHealth = false;
     }
   }
-  
+
   // Calculate overall metrics
   if (dashboard.totalCalls > 0) {
     dashboard.successRate = totalSuccessCalls / dashboard.totalCalls;
-    dashboard.averageDuration = totalDuration / dashboard.totalCalls;
   }
-  
+
+  if (totalSuccessCalls > 0) {
+    dashboard.averageDuration = totalDuration / totalSuccessCalls;
+  }
+
   return dashboard;
 };

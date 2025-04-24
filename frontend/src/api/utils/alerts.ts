@@ -1,5 +1,5 @@
-import { getEnhancedApiMetrics, EnhancedApiMetrics, getApiHealthDashboard } from './enhancedMonitoring';
-import { LogLevel, getLogs, addLogEntry } from './enhancedLogging';
+import { LogLevel, addLogEntry, getLogs } from './enhancedLogging';
+import { getApiHealthDashboard } from './enhancedMonitoring';
 
 // Define log function to match enhancedLogging.log
 const log = (entry: {
@@ -445,37 +445,37 @@ export const checkMetricsAgainstThresholds = (): void => {
   try {
     // Get all exchanges with metrics
     const dashboard = getApiHealthDashboard(60); // Use getApiHealthDashboard which returns a summary of all API health
-    
+
     if (!dashboard) {
       console.warn('No API health dashboard data available');
       return;
     }
-    
+
     // Check each exchange's metrics against thresholds
     Object.keys(dashboard).forEach(exchange => {
       const exchangeData = dashboard[exchange];
-      
+
       if (!exchangeData || typeof exchangeData !== 'object') {
         return;
       }
-      
+
       // Check each method's metrics
       Object.keys(exchangeData).forEach(method => {
         const methodSummary = exchangeData[method];
-        
+
         if (!methodSummary) {
           return;
         }
-        
+
         // Get applicable thresholds for this exchange and method
         const applicableThresholds = getAlertThresholds(exchange, method);
-        
+
         // Check each threshold
         applicableThresholds.forEach(threshold => {
           if (!threshold.enabled) {
             return;
           }
-          
+
           // Check different metric types based on the dashboard data structure
           switch (threshold.metric) {
             case 'successRate':
@@ -492,7 +492,7 @@ export const checkMetricsAgainstThresholds = (): void => {
                 );
               }
               break;
-              
+
             case 'circuitBreakerState':
               // The dashboard provides circuitState directly
               const circuitState = methodSummary.circuitState;
@@ -508,13 +508,13 @@ export const checkMetricsAgainstThresholds = (): void => {
                 );
               }
               break;
-              
+
             // Note: responseTime and errorRate are not directly available in the dashboard
             // We would need to fetch detailed metrics for these
             // For now, we'll skip these checks to prevent errors
           }
         });
-        
+
         // Check health score against a default threshold
         const healthScore = methodSummary.healthScore || 0;
         if (healthScore < 50) { // Default threshold for health score
@@ -544,16 +544,16 @@ export const checkLogsForTradeFailures = (): void => {
     level: LogLevel.ERROR,
     startTime: Date.now() - 15 * 60 * 1000, // Last 15 minutes
   });
-  
+
   // Filter for trade-related errors
   const tradeMethods = ['placeOrder', 'cancelOrder', 'modifyOrder'];
-  const tradeFailureLogs = recentLogs.filter(log => 
+  const tradeFailureLogs = recentLogs.filter(log =>
     tradeMethods.some(method => log.method.includes(method))
   );
-  
+
   // Group by exchange and method to avoid duplicate alerts
   const groupedFailures: Record<string, any> = {};
-  
+
   tradeFailureLogs.forEach(log => {
     const key = `${log.exchange}:${log.method}`;
     if (!groupedFailures[key]) {
@@ -562,16 +562,16 @@ export const checkLogsForTradeFailures = (): void => {
         logs: []
       };
     }
-    
+
     groupedFailures[key].count++;
     groupedFailures[key].logs.push(log);
   });
-  
+
   // Create alerts for trade failures
   Object.keys(groupedFailures).forEach(key => {
     const [exchange, method] = key.split(':');
     const failures = groupedFailures[key];
-    
+
     // Only alert if there are multiple failures (to reduce noise)
     if (failures.count >= 2) {
       createAlert(
@@ -595,16 +595,16 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
     console.warn('This browser does not support desktop notifications');
     return false;
   }
-  
+
   if (Notification.permission === 'granted') {
     return true;
   }
-  
+
   if (Notification.permission !== 'denied') {
     const permission = await Notification.requestPermission();
     return permission === 'granted';
   }
-  
+
   return false;
 };
 
@@ -617,13 +617,13 @@ export const startAlertChecks = (intervalMs: number = 60000): () => void => {
   // Run initial check
   checkMetricsAgainstThresholds();
   checkLogsForTradeFailures();
-  
+
   // Set up interval for periodic checks
   const intervalId = window.setInterval(() => {
     checkMetricsAgainstThresholds();
     checkLogsForTradeFailures();
   }, intervalMs);
-  
+
   // Return function to stop checks
   return () => window.clearInterval(intervalId);
 };

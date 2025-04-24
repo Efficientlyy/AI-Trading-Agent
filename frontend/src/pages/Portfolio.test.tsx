@@ -62,6 +62,14 @@ jest.mock('../components/dashboard/RecentTrades', () => ({
   ))
 }));
 
+// Mock the API modules
+jest.mock('../api/portfolio', () => ({
+  getPortfolio: jest.fn(),
+  createOrder: jest.fn(),
+  getPortfolioHistory: jest.fn()
+}));
+
+
 describe('Portfolio Page', () => {
   it('renders Portfolio page with all components', async () => {
     // Mock useState to return non-loading state
