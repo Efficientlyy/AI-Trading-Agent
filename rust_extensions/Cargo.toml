@@ -9,3 +9,6 @@ crate-type = ["cdylib"]
 
 [dependencies]
 ta = "0.5.0"
+num-traits = "0.2.15"
+rayon = "1.7.0"
+pyo3 = { version = "0.22.1", features = ["extension-module"] }

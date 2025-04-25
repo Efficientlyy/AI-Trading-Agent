@@ -1,5 +1,14 @@
+use pyo3::prelude::*;
+use pyo3::wrap_pyfunction;
 use ta::indicators::SimpleMovingAverage;
 use ta::Next;
+
+// Import feature engineering modules
+mod features;
+pub use features::*;
+
+// Import lag features module
+mod lag_features;
 
 // C-compatible function for calculating SMA
 #[no_mangle]
@@ -47,4 +56,13 @@ pub extern "C" fn free_string(ptr: *mut std::os::raw::c_char) {
             let _ = std::ffi::CString::from_raw(ptr);
         }
     }
+}
+
+/// Python module for rust extensions
+#[pymodule]
+fn rust_extensions(_py: Python, m: &PyModule) -> PyResult<()> {
+    // Register feature engineering functions
+    features::register(_py, m)?;
+    
+    Ok()
 }

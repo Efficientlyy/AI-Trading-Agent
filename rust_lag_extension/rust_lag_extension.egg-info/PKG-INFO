@@ -1,0 +1,7 @@
+Metadata-Version: 2.4
+Name: rust_lag_extension
+Version: 0.1.0
+Summary: Rust-accelerated lag features for time series analysis
+Requires-Dist: numpy
+Dynamic: requires-dist
+Dynamic: summary

@@ -4,11 +4,24 @@ Rust-accelerated feature engineering module.
 This module provides Python wrappers for feature engineering functions implemented in Rust.
 """
 import numpy as np
-from typing import Union, List, Optional, Tuple, Dict
+from typing import List, Union, Optional
+from decimal import Decimal
+
+# Import our lag features implementation
+from ..features.lag_features import (
+    lag_feature,
+    diff_feature,
+    pct_change_feature,
+    create_lag_features,
+    create_diff_features,
+    create_pct_change_features,
+    RUST_AVAILABLE
+)
 import pandas as pd
 import logging
 import traceback
 import sys
+from decimal import Decimal, InvalidOperation
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +40,31 @@ except Exception as e:
     logger.warning("Falling back to Python implementations.")
 
 
-def create_lag_features(series: Union[List[float], np.ndarray, pd.Series], lags: List[int]) -> np.ndarray:
+def create_lag_feature(series: Union[List[float], np.ndarray], lag: int) -> List[float]:
+    """
+    Create lag feature from a time series.
+    
+    Args:
+        series: Input time series
+        lag: Lag period
+        
+    Returns:
+        List of lagged values
+    """
+    try:
+        # Convert to list if numpy array
+        if isinstance(series, np.ndarray):
+            series = series.tolist()
+        
+        # Use our lag_feature implementation
+        return lag_feature(series, lag)
+    except Exception as e:
+        logging.error(f"Error in create_lag_feature: {e}")
+        logging.error(traceback.format_exc())
+        return [np.nan] * len(series)
+
+
+def create_lag_features(series: Union[List[Union[float, Decimal]], np.ndarray, pd.Series], lags: List[int]) -> np.ndarray:
     """
     Create lag features from a time series.
     
@@ -51,7 +88,9 @@ def create_lag_features(series: Union[List[float], np.ndarray, pd.Series], lags:
     if isinstance(series, pd.Series):
         series_array = series.values
     elif isinstance(series, list):
-        series_array = np.array(series)
+        # Convert any Decimal values to float for numpy compatibility
+        float_series = [float(x) if isinstance(x, Decimal) else x for x in series]
+        series_array = np.array(float_series)
     else:
         series_array = series
         
@@ -84,7 +123,31 @@ def create_lag_features(series: Union[List[float], np.ndarray, pd.Series], lags:
     return result
 
 
-def create_diff_features(series: Union[List[float], np.ndarray, pd.Series], periods: List[int]) -> np.ndarray:
+def create_diff_feature(series: Union[List[float], np.ndarray], period: int) -> List[float]:
+    """
+    Create difference feature from a time series.
+    
+    Args:
+        series: Input time series
+        period: Period for calculating difference
+        
+    Returns:
+        List of difference values
+    """
+    try:
+        # Convert to list if numpy array
+        if isinstance(series, np.ndarray):
+            series = series.tolist()
+        
+        # Use our diff_feature implementation
+        return diff_feature(series, period)
+    except Exception as e:
+        logging.error(f"Error in create_diff_feature: {e}")
+        logging.error(traceback.format_exc())
+        return [np.nan] * len(series)
+
+
+def create_diff_features(series: Union[List[Union[float, Decimal]], np.ndarray, pd.Series], periods: List[int]) -> np.ndarray:
     """
     Create difference features from a time series.
     
@@ -98,6 +161,8 @@ def create_diff_features(series: Union[List[float], np.ndarray, pd.Series], peri
     Raises:
         ValueError: If series is empty or periods is empty
     """
+    if not isinstance(series, (list, np.ndarray, pd.Series)):
+        raise TypeError("series must be a list, numpy array, or pandas Series")
     # Input validation
     if not isinstance(periods, list) or len(periods) == 0:
         raise ValueError("periods must be a non-empty list of integers")
@@ -106,40 +171,63 @@ def create_diff_features(series: Union[List[float], np.ndarray, pd.Series], peri
     if isinstance(series, pd.Series):
         series_array = series.values
     elif isinstance(series, list):
-        series_array = np.array(series)
+        # Convert any Decimal values to float for numpy compatibility
+        float_series = [float(x) if isinstance(x, Decimal) else x for x in series]
+        series_array = np.array(float_series)
     else:
         series_array = series
         
     if len(series_array) == 0:
         raise ValueError("series must be non-empty")
     
-    # Try to use Rust implementation
-    if RUST_AVAILABLE:
-        try:
-            return rust_extensions.create_diff_features_rs(series_array, periods)
-        except Exception as e:
-            logger.warning(f"Rust extension failed for diff features: {e}")
-            logger.warning(f"Traceback: {traceback.format_exc()}")
-            logger.warning("Using Python implementation as fallback.")
+    # Convert to list for our implementation
+    series_list = series_array.tolist()
     
-    # Python fallback implementation
+    # Create features using our implementation
+    features_list = []
+    for period in periods:
+        if period <= 0:
+            raise ValueError(f"Periods must be positive integers, got {period}")
+        features_list.append(diff_feature(series_list, period))
+    
+    # Convert to numpy array
     n_samples = len(series_array)
     n_features = len(periods)
     result = np.full((n_samples, n_features), np.nan)
     
-    for i, period in enumerate(periods):
-        if period <= 0:
-            raise ValueError(f"Difference periods must be positive integers, got {period}")
-        
-        # For each period, calculate the difference and store in the result array
+    for i, feature in enumerate(features_list):
         for j in range(n_samples):
-            if j >= period:
-                result[j, i] = series_array[j] - series_array[j - period]
+            if j >= periods[i]:
+                result[j, i] = feature[j]
     
     return result
 
 
-def create_pct_change_features(series: Union[List[float], np.ndarray, pd.Series], periods: List[int]) -> np.ndarray:
+def create_pct_change_feature(series: Union[List[float], np.ndarray], period: int) -> List[float]:
+    """
+    Create percentage change feature from a time series.
+    
+    Args:
+        series: Input time series
+        period: Period for calculating percentage change
+        
+    Returns:
+        List of percentage change values
+    """
+    try:
+        # Convert to list if numpy array
+        if isinstance(series, np.ndarray):
+            series = series.tolist()
+        
+        # Use our pct_change_feature implementation
+        return pct_change_feature(series, period)
+    except Exception as e:
+        logging.error(f"Error in create_pct_change_feature: {e}")
+        logging.error(traceback.format_exc())
+        return [np.nan] * len(series)
+
+
+def create_pct_change_features(series: Union[List[Union[float, Decimal]], np.ndarray, pd.Series], periods: List[int]) -> np.ndarray:
     """
     Create percentage change features from a time series.
     
@@ -153,6 +241,8 @@ def create_pct_change_features(series: Union[List[float], np.ndarray, pd.Series]
     Raises:
         ValueError: If series is empty or periods is empty
     """
+    if not isinstance(series, (list, np.ndarray, pd.Series)):
+        raise TypeError("series must be a list, numpy array, or pandas Series")
     # Input validation
     if not isinstance(periods, list) or len(periods) == 0:
         raise ValueError("periods must be a non-empty list of integers")
@@ -161,41 +251,40 @@ def create_pct_change_features(series: Union[List[float], np.ndarray, pd.Series]
     if isinstance(series, pd.Series):
         series_array = series.values
     elif isinstance(series, list):
-        series_array = np.array(series)
+        # Convert any Decimal values to float for numpy compatibility
+        float_series = [float(x) if isinstance(x, Decimal) else x for x in series]
+        series_array = np.array(float_series)
     else:
         series_array = series
         
     if len(series_array) == 0:
         raise ValueError("series must be non-empty")
     
-    # Try to use Rust implementation
-    if RUST_AVAILABLE:
-        try:
-            return rust_extensions.create_pct_change_features_rs(series_array, periods)
-        except Exception as e:
-            logger.warning(f"Rust extension failed for pct change features: {e}")
-            logger.warning(f"Traceback: {traceback.format_exc()}")
-            logger.warning("Using Python implementation as fallback.")
+    # Convert to list for our implementation
+    series_list = series_array.tolist()
     
-    # Python fallback implementation
+    # Create features using our implementation
+    features_list = []
+    for period in periods:
+        if period <= 0:
+            raise ValueError(f"Periods must be positive integers, got {period}")
+        features_list.append(pct_change_feature(series_list, period))
+    
+    # Convert to numpy array
     n_samples = len(series_array)
     n_features = len(periods)
     result = np.full((n_samples, n_features), np.nan)
     
-    for i, period in enumerate(periods):
-        if period <= 0:
-            raise ValueError(f"Periods must be positive integers, got {period}")
-        
-        # For each period, calculate the percentage change and store in the result array
+    for i, feature in enumerate(features_list):
         for j in range(n_samples):
-            if j >= period and series_array[j - period] != 0:
-                result[j, i] = (series_array[j] - series_array[j - period]) / series_array[j - period]
+            if j >= periods[i]:
+                result[j, i] = feature[j]
     
     return result
 
 
 def create_rolling_window_features(
-    series: Union[List[float], np.ndarray, pd.Series], 
+    series: Union[List[Union[float, Decimal]], np.ndarray, pd.Series], 
     window_sizes: List[int],
     feature_type: str = 'mean'
 ) -> np.ndarray:
@@ -225,7 +314,9 @@ def create_rolling_window_features(
     if isinstance(series, pd.Series):
         series_array = series.values
     elif isinstance(series, list):
-        series_array = np.array(series)
+        # Convert any Decimal values to float for numpy compatibility
+        float_series = [float(x) if isinstance(x, Decimal) else x for x in series]
+        series_array = np.array(float_series)
     else:
         series_array = series
         
@@ -270,7 +361,7 @@ def create_rolling_window_features(
 
 
 def create_feature_matrix(
-    series: Union[List[float], np.ndarray, pd.Series],
+    series: Union[List[Union[float, Decimal]], np.ndarray, pd.Series],
     lag_periods: Optional[List[int]] = None,
     diff_periods: Optional[List[int]] = None,
     pct_change_periods: Optional[List[int]] = None,
@@ -297,7 +388,9 @@ def create_feature_matrix(
     if isinstance(series, pd.Series):
         series_array = series.values
     elif isinstance(series, list):
-        series_array = np.array(series)
+        # Convert any Decimal values to float for numpy compatibility
+        float_series = [float(x) if isinstance(x, Decimal) else x for x in series]
+        series_array = np.array(float_series)
     else:
         series_array = series
         
