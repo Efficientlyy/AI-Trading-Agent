@@ -1,23 +1,15 @@
 import { Order, OrderStatus, OrderType, OrderSide } from '../../types';
 
-// Generate a random order ID
-const generateOrderId = (): string => {
-  return Math.random().toString(36).substring(2, 15);
-};
+// Helper function to generate mock data
+function generateOrderId(): string {
+  return `order-${Math.floor(Math.random() * 10000)}`;
+}
 
-// Generate a timestamp within the last 24 hours
-const generateTimestamp = (): Date => {
-  const now = new Date();
-  const hoursAgo = Math.floor(Math.random() * 24);
-  const minutesAgo = Math.floor(Math.random() * 60);
-  const secondsAgo = Math.floor(Math.random() * 60);
-  
-  now.setHours(now.getHours() - hoursAgo);
-  now.setMinutes(now.getMinutes() - minutesAgo);
-  now.setSeconds(now.getSeconds() - secondsAgo);
-  
-  return now;
-};
+function generateTimestamp(): Date {
+  const now = Date.now();
+  const randomOffset = Math.floor(Math.random() * 1000 * 60 * 60 * 24); // Random time in the last 24 hours
+  return new Date(now - randomOffset);
+}
 
 // Mock active orders data
 export const mockActiveOrders: Order[] = [
@@ -29,6 +21,7 @@ export const mockActiveOrders: Order[] = [
     quantity: 0.5,
     price: 58750.25,
     status: OrderStatus.NEW,
+    created_at: generateTimestamp().toISOString(), // Added required field
     createdAt: generateTimestamp(),
     updatedAt: generateTimestamp(),
     clientOrderId: 'client-order-1',
@@ -42,6 +35,7 @@ export const mockActiveOrders: Order[] = [
     quantity: 2.5,
     status: OrderStatus.PARTIALLY_FILLED,
     filledQuantity: 1.2,
+    created_at: generateTimestamp().toISOString(), // Added required field
     createdAt: generateTimestamp(),
     updatedAt: generateTimestamp(),
     clientOrderId: 'client-order-2',
@@ -55,6 +49,7 @@ export const mockActiveOrders: Order[] = [
     quantity: 10,
     stopPrice: 175.50,
     status: OrderStatus.NEW,
+    created_at: generateTimestamp().toISOString(), // Added required field
     createdAt: generateTimestamp(),
     updatedAt: generateTimestamp(),
     clientOrderId: 'client-order-3',
@@ -69,6 +64,7 @@ export const mockActiveOrders: Order[] = [
     stopPrice: 380.00,
     limitPrice: 382.50,
     status: OrderStatus.NEW,
+    created_at: generateTimestamp().toISOString(), // Added required field
     createdAt: generateTimestamp(),
     updatedAt: generateTimestamp(),
     clientOrderId: 'client-order-4',
@@ -97,6 +93,7 @@ export const createMockOrder = (orderData: Partial<Order>): Order => {
     stopPrice: orderData.stopPrice,
     limitPrice: orderData.limitPrice,
     status: OrderStatus.NEW,
+    created_at: new Date().toISOString(), // Added required field
     createdAt: new Date(),
     updatedAt: new Date(),
     clientOrderId: `client-order-${Math.floor(Math.random() * 1000)}`,

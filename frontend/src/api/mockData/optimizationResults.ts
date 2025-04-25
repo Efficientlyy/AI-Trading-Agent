@@ -1,6 +1,7 @@
 import { BacktestMetrics } from '../../components/dashboard/BacktestingInterface';
 import { OptimizationParams, OptimizationResult, ParameterConfig } from '../../components/dashboard/StrategyOptimizer';
 import { runMockBacktest } from './backtestResults';
+import { BacktestParams } from '../../types';
 
 /**
  * Generate mock optimization results based on parameter ranges
@@ -16,14 +17,14 @@ export const runStrategyOptimization = (params: OptimizationParams): Optimizatio
   
   // Run backtest for each parameter combination
   parameterCombinations.forEach(paramCombo => {
-    // Create backtest params with the current parameter combination
-    const backtestParams = {
-      symbol,
-      strategy,
-      startDate,
-      endDate,
-      initialCapital,
-      parameters: paramCombo // Add the parameters property
+    // Create parameter set for this run
+    const backtestParams: BacktestParams = {
+      symbol: 'BTC/USDT',
+      strategy_name: String(paramCombo.strategy),  // Convert to string
+      start_date: String(paramCombo.startDate),    // Convert to string
+      end_date: String(paramCombo.endDate),        // Convert to string
+      initial_capital: 10000,
+      parameters: typeof paramCombo.parameters === 'number' ? { value: paramCombo.parameters } : paramCombo.parameters  // Handle numeric parameters
     };
     
     // Run a mock backtest with these parameters

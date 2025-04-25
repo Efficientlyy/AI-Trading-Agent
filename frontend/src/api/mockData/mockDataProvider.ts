@@ -53,6 +53,7 @@ const mockOrders: Order[] = [
     quantity: 0.1,
     price: 47500,
     status: OrderStatus.FILLED,
+    created_at: new Date(Date.now() - 86400000).toISOString(), // Added required field
     createdAt: new Date(Date.now() - 86400000), // 1 day ago
     updatedAt: new Date(Date.now() - 86390000),
     clientOrderId: 'client-1',
@@ -67,6 +68,7 @@ const mockOrders: Order[] = [
     quantity: 1,
     price: 3300,
     status: OrderStatus.NEW,
+    created_at: new Date(Date.now() - 3600000).toISOString(), // Added required field
     createdAt: new Date(Date.now() - 3600000), // 1 hour ago
     updatedAt: new Date(Date.now() - 3600000),
     clientOrderId: 'client-2',

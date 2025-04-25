@@ -1,6 +1,7 @@
 import { OptimizationParams, OptimizationResult, ParameterConfig } from '../../components/dashboard/StrategyOptimizer';
 import { BacktestMetrics } from '../../components/dashboard/BacktestingInterface';
 import { runMockBacktest } from './backtestResults';
+import { BacktestParams } from '../../types';
 
 // Generate parameter combinations for optimization
 const generateParameterCombinations = (params: OptimizationParams): Record<string, any>[] => {
@@ -83,12 +84,12 @@ const runBacktestsForCombinations = (
   
   combinations.forEach(paramCombination => {
     // Create a backtest params object with the current parameter combination
-    const backtestParams = {
-      symbol: params.symbol,
-      strategy: params.strategy,
-      startDate: params.startDate,
-      endDate: params.endDate,
-      initialCapital: params.initialCapital,
+    const backtestParams: BacktestParams = {
+      symbol: 'BTC/USDT', 
+      strategy_name: params.strategy,
+      start_date: params.startDate,
+      end_date: params.endDate,
+      initial_capital: params.initialCapital,
       parameters: paramCombination
     };
     

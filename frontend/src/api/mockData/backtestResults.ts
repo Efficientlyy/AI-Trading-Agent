@@ -1,25 +1,29 @@
-import { BacktestParams, BacktestResult, BacktestMetrics } from '../../components/dashboard/BacktestingInterface';
+import { BacktestResult, BacktestMetrics } from '../../components/dashboard/BacktestingInterface';
+import { BacktestParams } from '../../types'; // Import BacktestParams from types instead
 import { Trade } from '../../components/dashboard/TradeStatistics';
 import { generateMockTrades } from './tradeData';
 
 // Generate mock backtest results
 export const generateMockBacktestResults = (params: BacktestParams): BacktestResult[] => {
-  const { startDate, endDate, initialCapital } = params;
+  // Map snake_case to camelCase for compatibility
+  const startDate = params.start_date;
+  const endDate = params.end_date;
+  const initialCapital = params.initial_capital;
+  const strategy = params.strategy_name;
   
   // Parse dates
   const startDateObj = new Date(startDate);
   const endDateObj = new Date(endDate);
   
-  // Generate daily results
+  // Initialize curve data
   const results: BacktestResult[] = [];
-  
   let currentDate = new Date(startDateObj);
   let equity = initialCapital;
   let benchmark = initialCapital;
-  let highWatermark = equity;
+  let peak = initialCapital;
   
   // Generate random daily returns based on strategy
-  const strategyVolatility = getStrategyVolatility(params.strategy);
+  const strategyVolatility = getStrategyVolatility(strategy);
   const benchmarkVolatility = 0.01; // 1% daily volatility for benchmark
   
   while (currentDate <= endDateObj) {
@@ -34,11 +38,11 @@ export const generateMockBacktestResults = (params: BacktestParams): BacktestRes
       equity = equity * (1 + dailyReturn);
       benchmark = benchmark * (1 + benchmarkReturn);
       
-      // Update high watermark
-      highWatermark = Math.max(highWatermark, equity);
+      // Update peak
+      peak = Math.max(peak, equity);
       
       // Calculate drawdown
-      const drawdown = ((highWatermark - equity) / highWatermark) * 100;
+      const drawdown = ((peak - equity) / peak) * 100;
       
       results.push({
         date: currentDate.toISOString().split('T')[0],
@@ -95,8 +99,8 @@ export const generateMockBacktestMetrics = (params: BacktestParams, results: Bac
   const totalReturn = ((finalValue - initialValue) / initialValue) * 100;
   
   // Calculate annualized return
-  const startDate = new Date(params.startDate);
-  const endDate = new Date(params.endDate);
+  const startDate = new Date(params.start_date);
+  const endDate = new Date(params.end_date);
   const daysDiff = Math.floor((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
   const years = daysDiff / 365;
   
@@ -106,7 +110,7 @@ export const generateMockBacktestMetrics = (params: BacktestParams, results: Bac
   const maxDrawdown = Math.max(...results.map(r => r.drawdown || 0));
   
   // Generate random metrics based on strategy
-  const winRate = getStrategyWinRate(params.strategy);
+  const winRate = getStrategyWinRate(params.strategy_name);
   const profitFactor = 1 + (totalReturn / 100);
   
   // Generate trade metrics
@@ -114,8 +118,8 @@ export const generateMockBacktestMetrics = (params: BacktestParams, results: Bac
   const tradesPerMonth = Math.round((totalTrades / (daysDiff / 30)) * 10) / 10;
   
   // Calculate average win and loss
-  const averageWin = (params.initialCapital * 0.02) * (1 + Math.random()); // 2-4% of initial capital
-  const averageLoss = (params.initialCapital * 0.01) * (1 + Math.random()); // 1-2% of initial capital
+  const averageWin = (params.initial_capital * 0.02) * (1 + Math.random()); // 2-4% of initial capital
+  const averageLoss = (params.initial_capital * 0.01) * (1 + Math.random()); // 1-2% of initial capital
   
   return {
     totalReturn: Math.round(totalReturn * 100) / 100,

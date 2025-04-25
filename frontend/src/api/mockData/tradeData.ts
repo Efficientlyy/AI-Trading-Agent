@@ -1,9 +1,14 @@
 import { Trade } from '../../components/dashboard/TradeStatistics';
-import { BacktestParams } from '../../components/dashboard/BacktestingInterface';
+import { BacktestParams } from '../../types'; // Import from central types file instead
 
 // Generate mock trade data for backtesting
 export const generateMockTrades = (params: BacktestParams): Trade[] => {
-  const { symbol, strategy, startDate, endDate, initialCapital } = params;
+  // Map snake_case to camelCase for compatibility
+  const symbol = params.symbol || (params.symbols?.[0] || 'BTC/USDT'); // Use first symbol if symbols array is provided
+  const strategy = params.strategy_name;
+  const startDate = params.start_date;
+  const endDate = params.end_date;
+  const initialCapital = params.initial_capital;
   
   // Parse dates
   const startDateObj = new Date(startDate);
