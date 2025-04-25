@@ -1,0 +1,13 @@
+vaderSentiment
+pandas
+fastapi<0.116.0,>=0.115.12
+uvicorn<0.35.0,>=0.34.2
+websockets<16.0.0,>=15.0.1
+python-jose<4.0.0,>=3.4.0
+passlib<2.0.0,>=1.7.4
+sqlalchemy<3.0.0,>=2.0.40
+pydantic[email]<3.0.0,>=2.11.3
+python-multipart<0.0.21,>=0.0.20
+
+[:python_version >= "3.11" and python_version < "4.0"]
+praw<8.0.0,>=7.8.1

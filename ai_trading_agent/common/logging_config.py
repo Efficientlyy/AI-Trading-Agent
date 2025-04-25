@@ -59,4 +59,4 @@ def setup_logging(config=None, log_level=None):
     return logger
 
 # Export the logger instance for use throughout the application
-logger = setup_logging()
+logger = setup_logging(log_level="DEBUG") # Set to DEBUG for detailed output

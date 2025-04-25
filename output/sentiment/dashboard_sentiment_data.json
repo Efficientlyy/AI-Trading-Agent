@@ -1,0 +1,40 @@
+{
+  "sentimentSummary": {
+    "sentimentData": {
+      "BTC": {
+        "symbol": "BTC",
+        "signal": "hold",
+        "strength": 0.0,
+        "score": 0.0,
+        "trend": 0.0,
+        "volatility": 0.0,
+        "timestamp": "2025-04-25T04:24:58.659979"
+      },
+      "ETH": {
+        "symbol": "ETH",
+        "signal": "hold",
+        "strength": 0.0,
+        "score": 0.0,
+        "trend": 0.0,
+        "volatility": 0.0,
+        "timestamp": "2025-04-25T04:25:22.685948"
+      },
+      "SOL": {
+        "symbol": "SOL",
+        "signal": "hold",
+        "strength": 0.0,
+        "score": 0.0,
+        "trend": 0.0,
+        "volatility": 0.0,
+        "timestamp": "2025-04-25T04:25:46.854759"
+      }
+    },
+    "timestamp": "2025-04-25T04:25:46.854781"
+  },
+  "historicalSentiment": {
+    "BTC": [],
+    "ETH": [],
+    "SOL": []
+  },
+  "generatedAt": "2025-04-25T04:26:58.671638"
+}
