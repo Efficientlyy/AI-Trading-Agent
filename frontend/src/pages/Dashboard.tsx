@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useMemo } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { getMockTrades } from '../api/mockData/mockTrades';
 import { useNotification } from '../components/common/NotificationSystem';
@@ -24,6 +24,7 @@ import { useSelectedAsset } from '../context/SelectedAssetContext';
 import useHistoricalData from '../hooks/useHistoricalData';
 import { useRenderLogger } from '../hooks/useRenderLogger';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { Strategy } from '../types'; // Add missing Strategy import
 
 const MOCK_SYMBOL = 'AAPL';
 const MOCK_STRATEGY = 'Moving Average Crossover';
@@ -52,6 +53,51 @@ const Dashboard: React.FC = () => {
   const handleSymbolSelect = useCallback((symbol: string) => {
     setSelectedSymbol(symbol);
   }, [setSelectedSymbol]);
+
+  const [strategies, setStrategies] = useState<Strategy[]>([
+    {
+      id: '1',
+      name: 'Moving Average Crossover',
+      description: 'A strategy that uses two moving averages to determine trends.',
+      parameters: {
+        fastPeriod: 10,
+        slowPeriod: 50,
+        signalPeriod: 9
+      },
+      asset_class: 'crypto', 
+      timeframe: '1h',
+      created_at: new Date().toISOString(), // Add required field
+      updated_at: new Date().toISOString()  // Add required field
+    },
+    {
+      id: '2',
+      name: 'RSI Oscillator',
+      description: 'A strategy that trades based on RSI oversold and overbought conditions.',
+      parameters: {
+        period: 14,
+        overbought: 70,
+        oversold: 30
+      },
+      asset_class: 'crypto',
+      timeframe: '1h',
+      created_at: new Date().toISOString(), // Add required field
+      updated_at: new Date().toISOString()  // Add required field
+    },
+    {
+      id: '3',
+      name: 'MACD Divergence',
+      description: 'A strategy that trades based on MACD histogram divergence.',
+      parameters: {
+        fastPeriod: 12,
+        slowPeriod: 26,
+        signalPeriod: 9
+      },
+      asset_class: 'crypto',
+      timeframe: '1h',
+      created_at: new Date().toISOString(), // Add required field
+      updated_at: new Date().toISOString()  // Add required field
+    },
+  ]);
 
   // Memoize the navigation links to prevent unnecessary re-renders
   const navigationLinks = useMemo(() => (

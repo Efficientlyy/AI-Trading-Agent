@@ -1,0 +1,59 @@
+{
+  "sentimentData": {
+    "BTC": {
+      "symbol": "BTC",
+      "signal": "hold",
+      "strength": 0.0,
+      "score": 0.0,
+      "trend": 0.0,
+      "volatility": 0.0,
+      "timestamp": "2025-04-25T04:47:48.490763"
+    },
+    "ETH": {
+      "symbol": "ETH",
+      "signal": "hold",
+      "strength": 0.0,
+      "score": 0.0,
+      "trend": 0.0,
+      "volatility": 0.0,
+      "timestamp": "2025-04-25T04:48:12.481612"
+    },
+    "XRP": {
+      "symbol": "XRP",
+      "signal": "hold",
+      "strength": 0.0,
+      "score": 0.0,
+      "trend": 0.0,
+      "volatility": 0.0,
+      "timestamp": "2025-04-25T04:48:36.664012"
+    },
+    "ADA": {
+      "symbol": "ADA",
+      "signal": "hold",
+      "strength": 0.0,
+      "score": 0.0,
+      "trend": 0.0,
+      "volatility": 0.0,
+      "timestamp": "2025-04-25T04:49:00.484553"
+    },
+    "SOL": {
+      "symbol": "SOL",
+      "signal": "hold",
+      "strength": 0.0,
+      "score": 0.0,
+      "trend": 0.0,
+      "volatility": 0.0,
+      "timestamp": "2025-04-25T04:49:24.503031"
+    },
+    "DOGE": {
+      "symbol": "DOGE",
+      "signal": "hold",
+      "strength": 0.0,
+      "score": 0.0,
+      "trend": 0.0,
+      "volatility": 0.0,
+      "timestamp": "2025-04-25T04:49:48.479374"
+    }
+  },
+  "timestamp": "2025-04-25T04:49:48.479388"
+}
