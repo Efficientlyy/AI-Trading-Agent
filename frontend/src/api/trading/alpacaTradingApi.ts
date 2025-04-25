@@ -57,11 +57,14 @@ const convertAlpacaOrder = (alpacaOrder: any): Order => {
     quantity: parseFloat(alpacaOrder.qty),
     price: parseFloat(alpacaOrder.limit_price || alpacaOrder.filled_avg_price || '0'),
     status: alpacaOrder.status,
+    created_at: alpacaOrder.created_at,
     createdAt: new Date(alpacaOrder.created_at),
+    updated_at: alpacaOrder.updated_at,
     updatedAt: new Date(alpacaOrder.updated_at),
     clientOrderId: alpacaOrder.client_order_id,
     timeInForce: alpacaOrder.time_in_force,
     filledQuantity: parseFloat(alpacaOrder.filled_qty || '0'),
+    filled_quantity: parseFloat(alpacaOrder.filled_qty || '0'),
   };
 };
 

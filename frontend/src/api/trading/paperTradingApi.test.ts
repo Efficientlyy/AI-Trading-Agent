@@ -124,8 +124,9 @@ describe('Paper Trading API', () => {
       // Create a market buy order
       const orderRequest = {
         symbol: 'BTC/USDT',
-        side: 'buy' as 'buy', // Type assertion to match OrderRequest type
-        order_type: 'market' as 'market', // Type assertion to match OrderRequest type
+        side: 'buy' as const,
+        order_type: 'market',
+        type: OrderType.MARKET, // Add the required 'type' property
         quantity: 0.2,
       };
       
@@ -185,8 +186,9 @@ describe('Paper Trading API', () => {
       // Create a market sell order
       const orderRequest = {
         symbol: 'BTC/USDT',
-        side: 'sell' as 'sell', // Type assertion to match OrderRequest type
-        order_type: 'market' as 'market', // Type assertion to match OrderRequest type
+        side: 'sell' as const,
+        order_type: 'market',
+        type: OrderType.MARKET, // Add the required 'type' property
         quantity: 0.2,
       };
       
@@ -218,8 +220,9 @@ describe('Paper Trading API', () => {
       // Create a limit buy order
       const orderRequest = {
         symbol: 'BTC/USDT',
-        side: 'buy' as 'buy', // Type assertion to match OrderRequest type
-        order_type: 'limit' as 'limit', // Type assertion to match OrderRequest type
+        side: 'buy' as const,
+        order_type: 'limit',
+        type: OrderType.LIMIT, // Add the required 'type' property
         quantity: 0.2,
         price: 50000, // Limit price
       };
@@ -260,8 +263,9 @@ describe('Paper Trading API', () => {
       // Create a market buy order with insufficient funds
       const largeOrderRequest = {
         symbol: 'BTC/USDT',
-        side: 'buy' as 'buy', // Type assertion to match OrderRequest type
-        order_type: 'market' as 'market', // Type assertion to match OrderRequest type
+        side: 'buy' as const,
+        order_type: 'market',
+        type: OrderType.MARKET, // Add the required 'type' property
         quantity: 3, // 3 BTC at $50,000 = $150,000 (exceeds $100,000 cash)
       };
       
@@ -290,8 +294,9 @@ describe('Paper Trading API', () => {
       // Create a limit buy order that won't fill immediately
       const orderRequest = {
         symbol: 'BTC/USDT',
-        side: 'buy' as 'buy', // Type assertion to match OrderRequest type
-        order_type: 'limit' as 'limit', // Type assertion to match OrderRequest type
+        side: 'buy' as const,
+        order_type: 'limit',
+        type: OrderType.LIMIT, // Add the required 'type' property
         quantity: 0.2,
         price: 50000,
       };
@@ -324,8 +329,9 @@ describe('Paper Trading API', () => {
       // Create a market order that fills immediately
       const orderRequest = {
         symbol: 'BTC/USDT',
-        side: 'buy' as 'buy', // Type assertion to match OrderRequest type
-        order_type: 'market' as 'market', // Type assertion to match OrderRequest type
+        side: 'buy' as const,
+        order_type: 'market',
+        type: OrderType.MARKET, // Add the required 'type' property
         quantity: 0.2,
       };
       

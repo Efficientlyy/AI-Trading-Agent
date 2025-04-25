@@ -107,11 +107,14 @@ const convertCoinbaseOrder = (coinbaseOrder: any): Order => {
     quantity: parseFloat(coinbaseOrder.size),
     price: parseFloat(coinbaseOrder.price || coinbaseOrder.executed_value || '0'),
     status: coinbaseOrder.status.toUpperCase() as OrderStatus,
+    created_at: coinbaseOrder.created_at,
     createdAt: new Date(coinbaseOrder.created_at),
+    updated_at: coinbaseOrder.done_at || coinbaseOrder.created_at,
     updatedAt: new Date(coinbaseOrder.done_at || coinbaseOrder.created_at),
     clientOrderId: coinbaseOrder.client_oid || '',
     timeInForce: coinbaseOrder.time_in_force || 'GTC',
     filledQuantity: parseFloat(coinbaseOrder.filled_size || '0'),
+    filled_quantity: parseFloat(coinbaseOrder.filled_size || '0'),
   };
 };
 

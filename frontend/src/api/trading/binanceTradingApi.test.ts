@@ -448,9 +448,10 @@ describe('Binance Trading API', () => {
       const api = binanceTradingApi('paper', mockConfig);
       const orderRequest = {
         symbol: 'BTC/USDT',
-        side: 'buy' as 'buy', // Type assertion to match OrderRequest type
-        order_type: 'market' as 'market', // Type assertion to match OrderRequest type
-        quantity: 0.1,
+        side: 'buy' as const,
+        order_type: 'market',
+        type: OrderType.MARKET, // Add required 'type' property
+        quantity: 1
       };
       
       const order = await api.createOrder(orderRequest);
@@ -547,6 +548,7 @@ describe('Binance Trading API', () => {
         symbol: 'BTC/USDT',
         side: 'buy' as 'buy', // Type assertion to match OrderRequest type
         order_type: 'market' as 'market', // Type assertion to match OrderRequest type
+        type: OrderType.MARKET, // Add required 'type' property
         quantity: 0.1,
       };
       

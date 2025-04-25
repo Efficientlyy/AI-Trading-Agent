@@ -360,6 +360,8 @@ export const createPaperTradingApi = (baseApi: TradingApi): TradingApi => {
       
       // Calculate realized P&L
       const realizedPnl = (price - position.entry_price) * quantity;
+      // Initialize realized_pnl if undefined
+      position.realized_pnl = position.realized_pnl || 0;
       position.realized_pnl += realizedPnl;
       
       // Update position
@@ -489,14 +491,17 @@ export const createPaperTradingApi = (baseApi: TradingApi): TradingApi => {
         type: orderType,
         side: orderSide,
         quantity: orderRequest.quantity,
-        price: orderRequest.price || marketPrice,
+        price: marketPrice,
         stopPrice: orderRequest.stop_price,
         status: ORDER_STATUS.NEW,
-        createdAt: now,
-        updatedAt: now,
-        clientOrderId: uuidv4(), // Generate a unique client order ID
-        timeInForce: 'GTC', // Default to Good Till Canceled
+        created_at: new Date().toISOString(),
+        createdAt: new Date(),
+        updated_at: new Date().toISOString(),
+        updatedAt: new Date(),
+        clientOrderId: `paper-${Date.now()}`,
+        timeInForce: 'GTC',
         filledQuantity: 0,
+        filled_quantity: 0
       };
       
       // Add to orders list

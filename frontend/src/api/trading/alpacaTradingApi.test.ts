@@ -352,20 +352,21 @@ describe('Alpaca Trading API', () => {
       // Create API and call method
       const api = alpacaTradingApi('paper', mockConfig);
       const orderRequest = {
-        symbol: 'AAPL',
-        side: 'buy' as 'buy', // Type assertion to match OrderRequest type
-        order_type: 'market' as 'market', // Type assertion to match OrderRequest type
-        quantity: 10,
+        symbol: 'BTC/USDT',
+        side: 'buy' as const,
+        order_type: 'market',
+        type: OrderType.MARKET, // Add the required 'type' property
+        quantity: 1
       };
       
       const order = await api.createOrder(orderRequest);
       
       // Assertions
       expect(mockClient.post).toHaveBeenCalledWith('/v2/orders', {
-        symbol: 'AAPL',
+        symbol: 'BTC/USDT',
         side: 'buy',
         type: 'market',
-        qty: 10,
+        qty: 1,
         time_in_force: 'day',
       });
       

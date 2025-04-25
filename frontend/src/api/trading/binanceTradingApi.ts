@@ -90,6 +90,55 @@ const generateSignature = (queryString: string, config: BinanceConfig): string =
     .digest('hex');
 };
 
+/**
+ * Convert Binance status to our standard OrderStatus
+ */
+function convertBinanceStatus(status: string): OrderStatus {
+  switch (status.toUpperCase()) {
+    case 'NEW':
+      return OrderStatus.NEW;
+    case 'PARTIALLY_FILLED':
+      return OrderStatus.PARTIALLY_FILLED;
+    case 'FILLED':
+      return OrderStatus.FILLED;
+    case 'CANCELED':
+    case 'CANCELLED':
+      return OrderStatus.CANCELED;
+    case 'REJECTED':
+      return OrderStatus.REJECTED;
+    case 'EXPIRED':
+      return OrderStatus.CANCELED; // Return CANCELED instead of EXPIRED (which doesn't exist in the enum)
+    default:
+      return OrderStatus.NEW;
+  }
+}
+
+// Convert Binance order to our Order type
+const convertBinanceOrder = (binanceOrder: any): Order => {
+  const side = (binanceOrder.side || '').toUpperCase() as OrderSide;
+  const type = (binanceOrder.type || '').toUpperCase() as OrderType;
+  const status = convertBinanceStatus(binanceOrder.status || '');
+  const timestamp = binanceOrder.time || binanceOrder.updateTime || Date.now();
+
+  return {
+    id: binanceOrder.orderId || binanceOrder.clientOrderId,
+    symbol: binanceOrder.symbol,
+    type: type,
+    side: side,
+    quantity: parseFloat(binanceOrder.origQty),
+    price: binanceOrder.price ? parseFloat(binanceOrder.price) : undefined,
+    status: status,
+    created_at: new Date(timestamp).toISOString(),
+    createdAt: new Date(timestamp),
+    updated_at: new Date(timestamp).toISOString(),
+    updatedAt: new Date(timestamp),
+    clientOrderId: binanceOrder.clientOrderId,
+    timeInForce: binanceOrder.timeInForce || 'GTC',
+    filledQuantity: parseFloat(binanceOrder.executedQty || '0'),
+    filled_quantity: parseFloat(binanceOrder.executedQty || '0'),
+  };
+};
+
 // Create Binance trading API
 export const binanceTradingApi = (tradingMode: TradingMode, config: BinanceConfig): TradingApi => {
   // Create Binance client
@@ -343,7 +392,7 @@ export const binanceTradingApi = (tradingMode: TradingMode, config: BinanceConfi
           const params: Record<string, any> = {
             symbol,
             side: orderRequest.side.toUpperCase(),
-            type: orderRequest.order_type.toUpperCase(),
+            type: orderRequest.type?.toUpperCase() || orderRequest.order_type?.toUpperCase() || 'MARKET',
             quantity: orderRequest.quantity,
             timestamp: Date.now(),
           };
@@ -379,20 +428,7 @@ export const binanceTradingApi = (tradingMode: TradingMode, config: BinanceConfi
           );
 
           // Convert Binance order to our format
-          return {
-            id: data.orderId.toString(),
-            symbol: orderRequest.symbol,
-            type: data.type as OrderType,
-            side: data.side as OrderSide,
-            quantity: parseFloat(data.origQty),
-            price: parseFloat(data.price) || undefined,
-            status: data.status as OrderStatus,
-            createdAt: new Date(data.transactTime),
-            updatedAt: new Date(data.transactTime),
-            clientOrderId: data.clientOrderId,
-            timeInForce: data.timeInForce,
-            filledQuantity: parseFloat(data.executedQty),
-          };
+          return convertBinanceOrder(data);
         },
         'Binance',
         'CREATE_ORDER',
@@ -496,20 +532,7 @@ export const binanceTradingApi = (tradingMode: TradingMode, config: BinanceConfi
           });
 
           // Combine and convert to our format
-          const allOrders = [...openOrders, ...orderHistory].map((order: any) => ({
-            id: order.orderId.toString(),
-            symbol: order.symbol,
-            type: order.type as OrderType,
-            side: order.side as OrderSide,
-            quantity: parseFloat(order.origQty),
-            price: parseFloat(order.price) || undefined,
-            status: order.status as OrderStatus,
-            createdAt: new Date(order.time || order.transactTime || Date.now()),
-            updatedAt: new Date(order.updateTime || order.transactTime || Date.now()),
-            clientOrderId: order.clientOrderId,
-            timeInForce: order.timeInForce,
-            filledQuantity: parseFloat(order.executedQty),
-          }));
+          const allOrders = [...openOrders, ...orderHistory].map((order: any) => convertBinanceOrder(order));
 
           // Filter by status if provided
           if (status) {
@@ -559,20 +582,7 @@ export const binanceTradingApi = (tradingMode: TradingMode, config: BinanceConfi
               signature,
             },
           });
-          return {
-            id: data.orderId.toString(),
-            symbol: order.symbol,
-            type: data.type as OrderType,
-            side: data.side as OrderSide,
-            quantity: parseFloat(data.origQty),
-            price: parseFloat(data.price) || undefined,
-            status: data.status as OrderStatus,
-            createdAt: new Date(data.time || data.transactTime || Date.now()),
-            updatedAt: new Date(data.updateTime || data.transactTime || Date.now()),
-            clientOrderId: data.clientOrderId,
-            timeInForce: data.timeInForce,
-            filledQuantity: parseFloat(data.executedQty),
-          };
+          return convertBinanceOrder(data);
         },
         'Binance',
         'GET_ORDERS',
