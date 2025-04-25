@@ -76,11 +76,11 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
   - 🔄 Phase 3.4: Real Data Collectors Implementation - IN PROGRESS
   - 🔄 Phase 3.5: Advanced NLP Processing Pipeline - IN PROGRESS
   - 🔄 Phase 3.6: Advanced Trading Strategy Features - IN PROGRESS
-- ⏳ **Phase 4: Genetic Algorithm Optimizer** - PENDING
-- 🔄 **Phase 5: Multi-Asset Backtesting Framework** - PARTIALLY IMPLEMENTED
-- ⏳ **Phase 6: Modern Dashboard Interface** - PENDING
+- ✅ **Phase 4: Genetic Algorithm Optimizer** - COMPLETED
+- ✅ **Phase 5: Multi-Asset Backtesting Framework** - COMPLETED
+- ✅ **Phase 6: Modern Dashboard Interface** - COMPLETED
 - ⏳ **Phase 7: Integration and Deployment** - PENDING
-- ⏳ **Phase 8: Continuous Improvement** - PENDING
+- 🔄 **Phase 8: Continuous Improvement** - IN PROGRESS
 
 ---
 
@@ -129,11 +129,13 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 3. ✅ **Implement Trading Engine Core:**
    - ✅ Define core data models (`Order`, `Trade`, `Position`, `Portfolio`) using Pydantic (`src/trading_engine/models.py`).
    - ✅ Implement robust validation within models (Pydantic v2 compatible).
-   - ✅ Create `OrderManager` for handling order lifecycle (`src/trading_engine/order_manager.py`).
-   - ✅ Implement `PortfolioManager` for tracking positions and P&L (`src/trading_engine/portfolio_manager.py`).
-   - ✅ Develop `ExecutionHandler` for simulating order execution (`src/trading_engine/execution_handler.py`).
-   - ✅ Add unit tests for OrderManager (`tests/unit/trading_engine/test_order_manager.py`).
-   - ⏳ Add unit tests for other managers and handlers.
+   - ✅ Implement `PortfolioManager` (`src/trading_engine/portfolio_manager.py`).
+   - ✅ **Refactor Trading Engine for Decimal Precision:**
+     - ✅ Models (`Position`, `Portfolio`) updated to use `Decimal`.
+     - ✅ `PortfolioManager` updated to use `Decimal`.
+     - ✅ Fixed compatibility issues in `Portfolio.update_from_trade`.
+   - ✅ Implement basic order execution logic.
+   - ✅ Add unit tests for trading engine components.
 
 4. ✅ **Develop Backtesting Framework:**
    - ✅ Implement basic backtesting loop (`src/backtesting/backtester.py`).
@@ -455,7 +457,7 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 - ✅ Develop performance metrics for portfolio evaluation
 - ✅ Create visualization tools for portfolio performance
 
-### ⏳ Phase 6: Modern Dashboard Interface (IN PROGRESS)
+### ✅ Phase 6: Modern Dashboard Interface (COMPLETED)
 
 #### Dashboard & Frontend
 - ✅ Design and implement a modular dashboard
@@ -507,49 +509,187 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 - **Frontend:** 100% complete, tested, and deployed. All dashboard features, technical analysis, E2E testing, and CI/CD (deploy, lint, typecheck, release) are fully automated.
 - **Backend:** Core APIs (auth, strategies, basic trading) and WebSocket support are running. Advanced endpoints (portfolio, sentiment, advanced order management, backtesting controls/results) and backend CI/CD automation (auto-deploy, strict lint/coverage enforcement) are still in progress/planned.
 - **CI/CD:** Frontend fully automated; backend test/coverage CI is present, but automated deployment and strict enforcement are in progress/planned.
-
 - Dashboard/frontend and E2E testing: **100% complete**
 - Backend API (portfolio, sentiment, advanced order management, backtesting) and advanced CI/CD: **in progress/planned**
 - Overall Phase 6 completion: **~85–90%**
 
 ---
 
-### CI/CD & Automation Details
+### Crypto Trading Implementation Plan (Twelve Data & Alpha Vantage)
 
-- **Windsurf/Netlify Continuous Deployment:**
-  - Frontend is automatically deployed via Windsurf (Netlify AI-native IDE integration).
-  - All build and publish settings in `netlify.toml` are respected by Windsurf/Netlify.
-  - No manual GitHub Actions deploy workflow is needed—deployment is managed natively by the Windsurf integration.
-- **Dependabot:**
-  - Automated weekly dependency update PRs for both frontend (npm) and backend (pip).
-  - Config: `.github/dependabot.yml`
-- **Lint, Type Check, and Coverage:**
-  - Every push/PR runs ESLint, Prettier, TypeScript, and test coverage checks.
-  - Workflow: `.github/workflows/lint-typecheck-coverage.yml`
-- **Codecov Integration:**
-  - (Optional) Connect repo to [Codecov.io](https://codecov.io/) for full test coverage reporting.
-- **semantic-release:**
-  - Automated changelogs and versioning for frontend. Config: `frontend/release.config.json`
+This plan details the implementation of a crypto-focused trading strategy using specific external APIs for data ingestion and analysis.
 
-#### Next Backend/API Steps
-- Prioritize REST API endpoints, WebSocket support, authentication, and backtesting controls.
-- Backend automation and CI can be added next (test coverage, deploy, linting, etc.).
+#### API Selection
+*   **Twelve Data:** Use this for real-time crypto prices, live charts, and technical indicators (e.g., RSI, MACD). It’s ideal for the chart analysis agent due to its crypto-specific features and WebSocket support for low-latency updates.
+    *   *Details:* Aggregates data from 180+ exchanges, offers extensive indicators.
+    *   *Cost:* Starts at $29/month (free tier available with limits).
+*   **Alpha Vantage:** Use this for sentiment analysis via its News Sentiment API, powering the sentiment agent. It also provides additional crypto data if needed.
+    *   *Details:* Offers real-time sentiment data from financial news, key for gauging market mood.
+    *   *Cost:* Free tier (750 calls/month, no intraday data) or $49.99/month for premium access.
+
+#### Integration Strategy
+*   **Real-Time Data (Twelve Data):** Implement WebSocket connections (`wss://ws.twelvedata.com`) to stream live crypto prices and chart updates. This ensures the chart analysis agent has the freshest data.
+*   **Sentiment Data (Alpha Vantage):** Use REST APIs to fetch sentiment data periodically (e.g., every 5-15 minutes, depending on trading frequency). Sentiment changes slower than price data, so real-time streaming isn’t critical.
+
+#### Development Steps
+Follow these steps to build and integrate the system:
+1.  **API Key Acquisition**
+    *   Sign up for Twelve Data and Alpha Vantage to obtain API keys.
+    *   Store keys securely using environment variables or a secrets manager.
+2.  **Data Ingestion**
+    *   **Twelve Data (WebSocket):**
+        *   Implement a WebSocket client to connect to `wss://ws.twelvedata.com`.
+        *   Subscribe to relevant crypto pairs (e.g., BTC/USD, ETH/USD).
+        *   Handle real-time price updates and indicator calculations.
+    *   **Alpha Vantage (REST):**
+        *   Set up a REST client to call the News Sentiment API.
+        *   Schedule periodic requests (e.g., every 15 minutes) to fetch sentiment scores for key crypto assets.
+3.  **Data Processing**
+    *   **Chart Analysis:**
+        *   Parse real-time data from Twelve Data for live charting.
+        *   Compute technical indicators (e.g., moving averages, RSI) using built-in API functions or a library like TA-Lib.
+    *   **Sentiment Analysis:**
+        *   Extract sentiment scores from Alpha Vantage’s API responses.
+        *   Aggregate sentiment data over time to identify trends (e.g., bullish or bearish shifts).
+4.  **Agent Development**
+    *   **Chart Analysis Agent:**
+        *   Use Twelve Data’s real-time feeds to monitor price movements and trigger alerts based on technical indicators (e.g., crossovers, breakouts).
+        *   Implement logic for generating buy/sell signals based on indicator thresholds.
+    *   **Sentiment Agent:**
+        *   Use Alpha Vantage’s sentiment data to assess market mood.
+        *   Combine sentiment scores with technical signals to refine trading decisions (e.g., avoid buying during negative sentiment spikes).
+5.  **System Integration**
+    *   Combine outputs from both agents to make informed trading decisions.
+    *   Define rules for how sentiment and technical signals interact (e.g., require both to align for a trade).
+    *   Ensure the system handles asynchronous data updates (real-time prices vs. periodic sentiment).
+
+#### Key Considerations
+*   **API Limits:**
+    *   Monitor usage to avoid hitting rate limits (e.g., Alpha Vantage’s free tier has 750 calls/month).
+    *   Upgrade to premium plans if higher frequency or intraday data is needed.
+*   **Data Consistency:**
+    *   Align timestamps between Twelve Data and Alpha Vantage to avoid mismatched signals.
+*   **Error Handling:**
+    *   Add retry logic for API failures.
+    *   Set up alerts for downtime or degraded performance.
+*   **Scalability:**
+    *   Ensure the system can handle multiple crypto pairs if expanded.
+    *   Batch sentiment requests to optimize API usage.
+
+#### Testing
+*   **Historical Data Simulation:**
+    *   Use historical data from Twelve Data to backtest the chart analysis agent’s signals.
+    *   Validate sentiment analysis by comparing past sentiment scores with market movements.
+*   **Live Testing:**
+    *   Run the system in a paper trading environment to simulate real trades without financial risk.
+    *   Check for discrepancies between live and historical performance.
+
+#### Deployment
+*   **Monitoring:**
+    *   Set up logging for API response times and system health.
+    *   Use tools like Prometheus or Grafana to track performance metrics.
+*   **Failover Mechanisms:**
+    *   Implement fallback logic (e.g., switch to cached data if an API fails).
+    *   Schedule regular health checks for API connectivity.
 
 ---
 
-### ✅ Live Market Data Integration (2025-04-23)
-- ✅ Integrated WebSocket data feed for real-time market updates
-- ✅ Enhanced TechnicalAnalysisChart component to handle live data
-- ✅ Fixed TypeScript type issues in the frontend components:
-  - ✅ Resolved OHLCV interface mismatches in TechnicalAnalysisChart
-  - ✅ Fixed agent status type normalization in Dashboard component
-- ✅ Implemented proper data transformation for real-time chart updates
-- ✅ Created mapAgentStatus helper function to ensure type safety
-- ✅ Added comprehensive error handling for WebSocket data processing
-- ✅ Optimized real-time data rendering performance
+### ⏳ Phase 7: Integration and Deployment (PENDING)
+**Goal:** Create a fully integrated system that combines all components and deploy it to production environments.
+
+#### 7.1 System Integration
+
+1. ⏳ **Trading Agent Service Integration**
+   - ⏳ Connect backend API with trading agent core
+   - ⏳ Add request/response mapping between API models and core domain models
+   - ⏳ Implement proper error handling and logging
+   - ⏳ Create integration tests for API-to-agent flow
+
+2. ⏳ **Live Trading Bridge**
+   - ⏳ Implement bridge between backtesting and live trading
+   - ⏳ Create unified interface for market/limit/stop order placement
+   - ⏳ Add support for both paper trading and real trading modes
+   - ⏳ Implement proper trading safeguards (max position size, max loss, etc.)
+   - ⏳ Create thorough testing in paper trading mode
+
+3. ⏳ **Data Pipeline Integration**
+   - ⏳ Connect sentiment analysis system with data acquisition module
+   - ⏳ Set up scheduled tasks for data collection and processing
+   - ⏳ Implement caching layer for performance optimization
+   - ⏳ Add data validation and error recovery mechanisms
+
+4. ⏳ **Dashboard-Backend Integration**
+   - ⏳ Finalize WebSocket implementation for real-time updates
+   - ⏳ Complete authentication and authorization flow
+   - ⏳ Add proper error handling and status reporting
+   - ⏳ Create end-to-end tests for dashboard-backend communication
+
+#### 7.2 Containerization
+
+1. ⏳ **Docker Containerization**
+   - ⏳ Create Dockerfile for backend services
+   - ⏳ Create Dockerfile for frontend application
+   - ⏳ Add multi-stage builds for optimization
+   - ⏳ Implement proper environment variable management
+   - ⏳ Setup Docker Compose for local development
+
+2. ⏳ **Container Orchestration**
+   - ⏳ Configure Kubernetes deployment manifests
+   - ⏳ Set up health checks and readiness probes
+   - ⏳ Implement auto-scaling configuration
+   - ⏳ Configure resource limits and requests
+   - ⏳ Add persistent volume claims for data storage
+
+#### 7.3 CI/CD Pipeline Completion
+
+1. ⏳ **Backend CI/CD Implementation**
+   - ⏳ Set up automated testing in CI
+   - ⏳ Implement code quality checks (linting, type checking)
+   - ⏳ Add test coverage reporting
+   - ⏳ Create automated deployment workflow
+   - ⏳ Configure staging and production environments
+   - ✅ Integrate automated security testing with OWASP ZAP in CI pipeline
+
+2. ⏳ **Monitoring and Observability**
+   - ⏳ Implement application metrics collection
+   - ⏳ Set up centralized logging
+   - ⏳ Add distributed tracing for request flow
+   - ⏳ Create dashboards for system monitoring
+   - ⏳ Configure alerts for critical conditions
+
+#### 7.4 Security and Compliance
+
+1. 🔄 **Security Measures**
+   - ✅ Implement robust Content Security Policy (CSP) with reporting 
+   - ✅ Add comprehensive security audit logging system
+   - ✅ Implement automated security testing with OWASP ZAP
+   - ⏳ Add API rate limiting
+   - ⏳ Add API key rotation mechanism
+   - ⏳ Set up secure storage for credentials
+   - ⏳ Perform security audit and penetration testing
+   - ⏳ Implement proper CORS policy
+
+2. ⏳ **Data Protection**
+   - ⏳ Ensure GDPR compliance for user data
+   - ⏳ Implement data encryption at rest and in transit
+   - ⏳ Add data backup and recovery procedures
+   - ⏳ Create data retention and purging policies
+
+#### 7.5 Documentation and Handover
+
+1. ⏳ **System Documentation**
+   - ⏳ Create deployment guides for different environments
+   - ⏳ Document system architecture and component interactions
+   - ⏳ Add troubleshooting guides and FAQs
+   - ⏳ Create API documentation with examples
+
+2. ⏳ **User Documentation**
+   - ⏳ Create user guides for the dashboard
+   - ⏳ Add documentation for strategy configuration
+   - ⏳ Create trading and backtesting tutorials
+   - ⏳ Document risk management features
 
 ### ✅ Phase 8: Continuous Improvement (IN PROGRESS)
--
 - ✅ Performance optimization
   - ✅ Implement memoization and caching strategies
   - ✅ Create batch processing for API calls
