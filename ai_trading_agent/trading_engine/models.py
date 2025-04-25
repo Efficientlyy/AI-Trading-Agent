@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator, Validat
 from typing import Optional, Dict, List, Any, ClassVar
 from datetime import datetime, timezone
 import uuid
+from decimal import Decimal, InvalidOperation
 import logging
 
 # Import enums from the enums module using absolute import instead of relative
@@ -20,19 +21,19 @@ def utcnow() -> datetime:
     """Return naive UTC timestamp."""
     return to_utc_naive(datetime.now(timezone.utc))
 
-def calculate_position_pnl(position: 'Position', current_market_price: float) -> None:
+def decimal_zero() -> Decimal:
+    """Return Decimal('0') for default factory."""
+    return Decimal('0')
+
+def calculate_position_pnl(position: 'Position', current_market_price: Decimal) -> None:
     """Calculates unrealized PnL for a given position object."""
-    if position.quantity == 0:
-        position.unrealized_pnl = 0.0
+    price_dec = Decimal(str(current_market_price)) if not isinstance(current_market_price, Decimal) else current_market_price
+    if position.quantity == Decimal('0'):
+        position.unrealized_pnl = Decimal('0')
     elif position.side == PositionSide.LONG:
-        # Unrealized P&L for long positions:
-        # (Current Price - Entry Price) * Quantity
-        position.unrealized_pnl = (current_market_price - position.entry_price) * position.quantity
+        position.unrealized_pnl = (price_dec - position.entry_price) * position.quantity
     else: # Short position
-         # Unrealized P&L for short positions:
-         # (Entry Price - Current Price) * Quantity
-        position.unrealized_pnl = (position.entry_price - current_market_price) * position.quantity
-    # Update timestamp AFTER PnL calculation
+        position.unrealized_pnl = (position.entry_price - price_dec) * position.quantity
     position.last_update_time = utcnow()
 
 # --- Core Models ---
@@ -437,10 +438,10 @@ class Position(BaseModel):
     """
     symbol: str
     side: PositionSide
-    quantity: float = Field(ge=0) # Position quantity (absolute value)
-    entry_price: float = Field(ge=0) # Average entry price
-    unrealized_pnl: float = 0.0
-    realized_pnl: float = 0.0
+    quantity: Decimal = Field(default=Decimal('0')) # Position quantity (absolute value)
+    entry_price: Decimal = Field(default=Decimal('0')) # Average entry price
+    unrealized_pnl: Decimal = Field(default=Decimal('0'))
+    realized_pnl: Decimal = Field(default=Decimal('0'))
     last_update_time: datetime = Field(default_factory=utcnow)
     # Add more fields as needed: leverage, margin, liquidation price, etc.
     
@@ -465,38 +466,40 @@ class Position(BaseModel):
 
     @field_validator('quantity')
     @classmethod
-    def quantity_non_negative(cls, v: float) -> float:
+    def quantity_non_negative(cls, v: Decimal) -> Decimal:
         # Internal quantity should always be positive; side determines direction
-        if v < 0:
+        if v < Decimal('0'):
             raise ValueError("Position quantity must be non-negative.")
         return v
         
     @model_validator(mode='after')
     def validate_entry_price(self) -> 'Position':
         """Validate that entry_price is positive when position has quantity."""
-        if self.quantity > 0 and self.entry_price <= 0:
+        if self.quantity > Decimal('0') and self.entry_price <= Decimal('0'):
             raise ValueError("Entry price must be positive for non-zero positions")
         return self
 
-    def update_market_price(self, current_price: float) -> None:
+    def update_market_price(self, current_price: Decimal) -> None:
         """
         Update the position's unrealized profit/loss based on the current market price.
         
         Args:
             current_price: The current market price of the asset
         """
-        if self.quantity <= 0:
+        if self.quantity <= Decimal('0'):
+            self.unrealized_pnl = Decimal('0')
             return
             
         # Calculate unrealized P&L
+        current_price_dec = Decimal(str(current_price)) if not isinstance(current_price, Decimal) else current_price
         if self.side == PositionSide.LONG:
-            self.unrealized_pnl = (current_price - self.entry_price) * self.quantity
+            self.unrealized_pnl = (current_price_dec - self.entry_price) * self.quantity
         else:  # SHORT
-            self.unrealized_pnl = (self.entry_price - current_price) * self.quantity
+            self.unrealized_pnl = (self.entry_price - current_price_dec) * self.quantity
             
         self.last_update_time = utcnow()
 
-    def update_position(self, trade_qty: Optional[float], trade_price: Optional[float], trade_side: OrderSide, current_market_price: float) -> None:
+    def update_position(self, trade_qty: Optional[Decimal], trade_price: Optional[Decimal], trade_side: OrderSide, current_market_price: Decimal) -> None:
         """
         Updates the position based on a new trade and current market price.
         
@@ -513,67 +516,79 @@ class Position(BaseModel):
             trade_side: Buy or sell
             current_market_price: Current market price for PnL calculation
         """
-        if trade_qty is None or trade_price is None:
-            raise ValueError("Both trade_qty and trade_price must be provided (not None)")
+        if trade_qty is None or trade_qty == Decimal('0'):
+            logging.warning("Attempted to update position with zero or None quantity.")
+            return
+        if trade_price is None or trade_price <= Decimal('0'):
+             logging.warning("Attempted to update position with zero, negative or None price.")
+             return
+
+        # Ensure inputs are Decimal
+        trade_qty_dec = Decimal(str(trade_qty)) if not isinstance(trade_qty, Decimal) else trade_qty
+        trade_price_dec = Decimal(str(trade_price)) if not isinstance(trade_price, Decimal) else trade_price
         
-        if self.quantity == 0: # Opening a new position
+        if self.quantity == Decimal('0'): # Opening a new position
             self.side = PositionSide.LONG if trade_side == OrderSide.BUY else PositionSide.SHORT
-            self.entry_price = trade_price
-            self.quantity = abs(trade_qty)
-            self.realized_pnl = 0 # Reset realized PnL for new position
+            self.entry_price = trade_price_dec
+            self.quantity = abs(trade_qty_dec)
+            self.realized_pnl = Decimal('0') # Reset realized PnL for new position
 
         elif (self.side == PositionSide.LONG and trade_side == OrderSide.BUY) or \
              (self.side == PositionSide.SHORT and trade_side == OrderSide.SELL): # Increasing position size
             # Update average entry price
             current_value = self.entry_price * self.quantity
-            trade_value = trade_price * abs(trade_qty)
-            self.quantity += abs(trade_qty)
+            trade_value = trade_price_dec * abs(trade_qty_dec)
+            self.quantity += abs(trade_qty_dec)
             self.entry_price = (current_value + trade_value) / self.quantity
 
         else: # Reducing or closing position (or flipping)
-            reduction_qty = min(self.quantity, abs(trade_qty))
-            trade_pnl = 0
-            if self.side == PositionSide.LONG: # Selling to reduce/close long
-                trade_pnl = (trade_price - self.entry_price) * reduction_qty
-            else: # Buying to reduce/close short
-                trade_pnl = (self.entry_price - trade_price) * reduction_qty
+            reduction_qty = min(self.quantity, abs(trade_qty_dec))
+            trade_pnl = Decimal('0')
+            if self.side == PositionSide.LONG:
+                trade_pnl = (trade_price_dec - self.entry_price) * reduction_qty
+            else: # Short position
+                trade_pnl = (self.entry_price - trade_price_dec) * reduction_qty
 
             self.realized_pnl += trade_pnl
             self.quantity -= reduction_qty
 
-            remaining_trade_qty = abs(trade_qty) - reduction_qty
+            if self.quantity == Decimal('0'): # Position closed
+                self.entry_price = Decimal('0')
 
-            if self.quantity < 1e-9: # Position closed
-                self.quantity = 0
-                self.entry_price = 0
-                self.side = PositionSide.LONG # Reset side, doesn't matter when quantity is 0
-                # If trade was larger than position, open new position in opposite direction
-                if remaining_trade_qty > 1e-9:
-                    self.side = PositionSide.LONG if trade_side == OrderSide.BUY else PositionSide.SHORT
-                    self.entry_price = trade_price
-                    self.quantity = remaining_trade_qty
-            # Else: Position reduced, entry price remains the same
+            if self.quantity.is_zero() or abs(self.quantity) < Decimal('1e-10'):
+                self.quantity = Decimal('0')
+                self.entry_price = Decimal('0')
 
-        # Update unrealized PnL based on current market price
-        self.update_market_price(current_market_price)
+            if abs(trade_qty_dec) > reduction_qty: # Position flipped
+                self.side = PositionSide.SHORT if self.side == PositionSide.LONG else PositionSide.LONG
+                self.entry_price = trade_price_dec
+                self.quantity = abs(trade_qty_dec) - reduction_qty # Remaining quantity after flip
 
-    def get_position_value(self, current_market_price: Optional[float] = None) -> float:
+        # Update unrealized P&L based on current market price AFTER position changes
+        current_market_price_dec = Decimal(str(current_market_price)) if not isinstance(current_market_price, Decimal) else current_market_price
+        self.update_market_price(current_market_price_dec)
+        self.last_update_time = utcnow()
+
+    @property
+    def value(self) -> Decimal:
         """
         Calculate the current market value of the position.
         
-        Args:
-            current_market_price: The current market price of the asset (optional)
-                                 If not provided, uses the entry price
-        
         Returns:
-            float: The current market value
+            The quantity * entry_price
         """
-        if current_market_price is None:
-            # Use entry price as fallback
-            return self.quantity * self.entry_price
-        return self.quantity * current_market_price
+        return self.quantity * self.entry_price
 
-    def get_total_pnl(self) -> float:
+    def get_position_value(self, current_market_price: Optional[Decimal] = None) -> Decimal:
+        """Calculate the current market value of the position."""
+        price = current_market_price if current_market_price is not None else self.entry_price
+        price_dec = Decimal(str(price)) if not isinstance(price, Decimal) else price # Ensure Decimal
+        if price_dec is None or price_dec <= Decimal('0'):
+            return Decimal('0') # Cannot value if price is unknown or zero
+        return self.quantity * price_dec
+
+    @property
+    def total_pnl(self) -> Decimal:
         """
         Get the total profit/loss (realized + unrealized).
         
@@ -603,14 +618,14 @@ class Portfolio(BaseModel):
         total_realized_portfolio_pnl: Accumulated realized PnL from closed positions
     """
     account_id: str = "default_account"
-    starting_balance: float
-    current_balance: float # Cash balance
+    starting_balance: Decimal
+    current_balance: Decimal # Cash balance
     positions: Dict[str, Position] = Field(default_factory=dict) # Keyed by symbol
     orders: Dict[str, Order] = Field(default_factory=dict) # Keyed by internal order_id
     trades: List[Trade] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=utcnow)
-    total_realized_portfolio_pnl: float = 0.0
-    total_value: float = 0.0
+    total_realized_portfolio_pnl: Decimal = Field(default_factory=decimal_zero)
+    total_value: Decimal = Field(default_factory=decimal_zero)
     # Add equity, margin used, etc. later
 
     logger: ClassVar[logging.Logger] = logging.getLogger(__name__)
@@ -622,10 +637,12 @@ class Portfolio(BaseModel):
     }
     
     def __init__(self, **data):
+        initial_capital = data.pop('initial_capital', None)
         # Handle aliases for backward compatibility
-        if 'initial_capital' in data and 'starting_balance' not in data:
-            data['starting_balance'] = data['initial_capital']
-            data['current_balance'] = data['initial_capital']
+        if initial_capital is not None and 'starting_balance' not in data:
+            initial_capital_dec = Decimal(str(initial_capital)) if not isinstance(initial_capital, Decimal) else initial_capital
+            data['starting_balance'] = initial_capital_dec
+            data['current_balance'] = initial_capital_dec
             
         super().__init__(**data)
 
@@ -641,7 +658,7 @@ class Portfolio(BaseModel):
         """
         return self.positions.get(symbol)
 
-    def update_from_trade(self, trade: Trade, current_market_prices: Dict[str, float]) -> None:
+    def update_from_trade(self, trade: Trade, current_market_prices: Dict[str, Decimal]) -> None:
         """
         Updates portfolio state based on an executed trade.
         
@@ -655,6 +672,9 @@ class Portfolio(BaseModel):
             trade: The Trade object representing the fill.
             current_market_prices: Dictionary of current market prices keyed by symbol
         """
+        if trade.quantity == Decimal('0'): # Ignore zero quantity trades
+            return
+        
         # Ensure trade timestamp is a Python datetime object
         from ..common.time_utils import to_utc_naive
         try:
@@ -666,83 +686,98 @@ class Portfolio(BaseModel):
             
         symbol = trade.symbol
         current_price = current_market_prices.get(symbol)
+        
+        # Ensure trade quantity and price are Decimal
+        trade_qty_dec = Decimal(str(trade.quantity)) if not isinstance(trade.quantity, Decimal) else trade.quantity
+        trade_price_dec = Decimal(str(trade.price)) if not isinstance(trade.price, Decimal) else trade.price
+        trade_value = trade_qty_dec * trade_price_dec # Decimal * Decimal
+        
         if current_price is None:
              # Cannot update PnL without current price, log warning?
              # Or use trade price as approximation for this update cycle?
              self.logger.warning(f"Missing current market price for {symbol} in update_from_trade. Using trade price {trade.price} as fallback.")
-             current_price = trade.price 
-
+             current_price_dec = trade_price_dec # Already Decimal
+        else:
+            current_price_dec = Decimal(str(current_price)) if not isinstance(current_price, Decimal) else current_price
+        
         # 1. Update/Create Position
         position = self.positions.get(symbol)
+        
         if position:
             self.logger.info(f"Calling position.update_position for {symbol} with current_price: {current_price}")
-            position.update_position(trade.quantity, trade.price, trade.side, current_price)
-            if position.quantity == 0:
+            position.update_position(trade_qty_dec, trade_price_dec, trade.side, current_price_dec)
+            if position.quantity == Decimal('0'):
                 # Accumulate realized PnL from the closed position before deleting
                 self.total_realized_portfolio_pnl += position.realized_pnl
                 del self.positions[symbol] # Remove closed position
         else:
             # Create new position if it doesn't exist (should only happen if it was closed before)
+            
+            # If the trade closes a non-existent position (e.g. selling when no long position),
+            # it effectively opens a position in the opposite direction.
             new_side: PositionSide = PositionSide.LONG if trade.side == OrderSide.BUY else PositionSide.SHORT
             new_position = Position(
                 symbol=symbol,
                 side=new_side,
-                quantity=trade.quantity, 
-                entry_price=trade.price, 
+                quantity=trade_qty_dec, # Ensured to be Decimal
+                entry_price=trade_price_dec, # Ensured to be Decimal
             )
-            self.logger.info(f"Calling calculate_position_pnl for new {symbol} with current_price: {current_price}")
-            calculate_position_pnl(new_position, current_price)
-
+            self.logger.info(f"Calling calculate_position_pnl for new {symbol} with current_price: {current_price_dec}")
+            calculate_position_pnl(new_position, current_price_dec)
+ 
             # Now add the potentially updated position to the portfolio
             self.positions[symbol] = new_position
-
-        # 2. Update Cash Balance (simplistic, ignoring margin for now)
-        trade_value = trade.quantity * trade.price
-        commission = trade.commission or 0
+            
+        # 2. Update Cash Balance
         if trade.side == OrderSide.BUY:
-            self.current_balance -= trade_value
-        else: # Sell
-            self.current_balance += trade_value
-        self.current_balance -= commission # Assume commission deducted from base currency
-
-        # 3. Update Unrealized PnL for all *other* open positions based on current market prices
-        # The position involved in the trade already had its PnL updated within update_position/creation
-        self.update_all_unrealized_pnl(current_market_prices) # This might re-update the traded symbol, consider optimizing later if needed
-
+            self.current_balance -= trade_value # Decrease cash on buy
+        else: # SELL
+            self.current_balance += trade_value # Increase cash on sell
+        
+        # Handle commission deduction if necessary (assuming commission is in quote asset)
+        if trade.commission is not None and trade.commission > 0:
+            commission_dec = Decimal(str(trade.commission)) if not isinstance(trade.commission, Decimal) else trade.commission
+            self.current_balance -= commission_dec
+ 
+        # 3. Update PnL for all positions (using potentially new market prices)
+        self.update_all_unrealized_pnl(current_market_prices)
+        
         # 4. Add trade to history
         self.trades.append(trade)
 
         # 5. Update Portfolio Timestamp
         self.timestamp = utcnow()
 
-    def update_all_unrealized_pnl(self, current_market_prices: Dict[str, float]) -> None:
+    def update_all_unrealized_pnl(self, current_market_prices: Dict[str, Decimal]) -> None:
         """
-        Updates unrealized PnL for all open positions.
+        Updates the unrealized PnL for all open positions based on current prices.
         
         Args:
-            current_market_prices: Dictionary of current market prices keyed by symbol
+            current_market_prices: Dictionary of current market prices keyed by symbol 
+                                      (expected as Decimal or float/str convertible to Decimal).
         """
         for symbol, position in self.positions.items():
             current_price = current_market_prices.get(symbol)
             if current_price is not None:
-                calculate_position_pnl(position, current_price)
+                current_price_dec = Decimal(str(current_price)) if not isinstance(current_price, Decimal) else current_price
+                calculate_position_pnl(position, current_price_dec)
             else:
                 # Keep existing PnL if no current price is available? Log warning?
                 self.logger.warning(f"Missing current market price for {symbol} in update_all_unrealized_pnl. Skipping PnL update for this position.")
-
+ 
     @property
-    def total_equity(self) -> float:
+    def total_equity(self) -> Decimal:
         """
         Calculates total equity (Cash + Value of Positions).
         
         Returns:
             The total portfolio equity value
         """
-        total_unrealized = sum(pos.unrealized_pnl for pos in self.positions.values())
-        return self.current_balance + total_unrealized
-
+        total_unrealized = sum(pos.unrealized_pnl for pos in self.positions.values()) 
+        return self.current_balance + total_unrealized # Decimal + Decimal
+ 
     @property
-    def total_realized_pnl(self) -> float:
+    def total_realized_pnl(self) -> Decimal:
         """
         Calculates total realized PnL across all positions.
         
@@ -753,7 +788,7 @@ class Portfolio(BaseModel):
         """
         pnl_from_open_positions = sum(pos.realized_pnl for pos in self.positions.values())
         return self.total_realized_portfolio_pnl + pnl_from_open_positions
-        
+ 
     def get_open_positions_count(self) -> int:
         """
         Get the number of open positions.
@@ -763,7 +798,7 @@ class Portfolio(BaseModel):
         """
         return len(self.positions)
         
-    def get_position_exposure(self, symbol: str, current_market_price: float) -> float:
+    def get_position_exposure(self, symbol: str, current_market_price: Decimal) -> Decimal:
         """
         Calculate the exposure for a specific position.
         
@@ -774,48 +809,52 @@ class Portfolio(BaseModel):
         Returns:
             The position exposure as a percentage of total equity (0-1)
         """
+        current_price_dec = Decimal(str(current_market_price)) if not isinstance(current_market_price, Decimal) else current_market_price
         position = self.get_position(symbol)
-        if not position or position.quantity == 0 or self.total_equity == 0:
-            return 0.0
+        total_equity = self.total_equity
+        if not position or position.quantity == Decimal('0') or total_equity == Decimal('0'):
+            return Decimal('0')
             
-        position_value = position.quantity * current_market_price
-        return position_value / self.total_equity
-
-    def update_total_value(self, current_market_prices: Dict[str, float]) -> float:
+        position_value = position.quantity * current_price_dec
+        return position_value / total_equity # Decimal / Decimal
+ 
+    def update_total_value(self, current_market_prices: Dict[str, Decimal]) -> Decimal:
         """
         Calculate and update the total portfolio value.
         
         This includes cash balance plus the value of all open positions.
         
         Args:
-            current_market_prices: Dictionary of current market prices keyed by symbol
-            
+            current_market_prices: Dictionary of current market prices keyed by symbol 
+                                      (expected as Decimal or float/str convertible to Decimal).
+        
         Returns:
             The updated total portfolio value
         """
         # Start with cash balance
-        total_value = self.current_balance
+        current_total_value = self.current_balance
         
         # Add value of all positions
         for symbol, position in self.positions.items():
-            if position.quantity > 0:
+            if position.quantity > Decimal('0'):
                 current_price = current_market_prices.get(symbol)
                 if current_price is not None:
-                    position_value = position.get_position_value(current_price)
-                    total_value += position_value
+                    current_price_dec = Decimal(str(current_price)) if not isinstance(current_price, Decimal) else current_price
+                    position_value = position.get_position_value(current_price_dec)
+                    current_total_value += position_value
                 else:
                     # If no current price is available, use the entry price as a fallback
                     position_value = position.get_position_value()
-                    total_value += position_value
+                    current_total_value += position_value
                     self.logger.warning(f"No current market price for {symbol} in update_total_value. Using entry price as fallback.")
         
         # Store the total value
-        self.total_value = total_value
+        self.total_value = current_total_value
         
-        return total_value
-
+        return current_total_value
+ 
     @property
-    def cash(self) -> float:
+    def cash(self) -> Decimal:
         """
         Property that returns the current cash balance.
         

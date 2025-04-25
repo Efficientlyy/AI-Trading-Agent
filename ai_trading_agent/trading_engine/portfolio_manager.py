@@ -9,6 +9,7 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Optional, Union, Any, Tuple
 from datetime import datetime
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from .models import Order, Trade, Position, Portfolio
 from .enums import OrderSide, OrderType, OrderStatus, PositionSide
@@ -25,10 +26,10 @@ class PortfolioManager:
 
     def __init__(
         self,
-        initial_capital: float = 10000.0,
-        risk_per_trade: float = 0.02,
-        max_position_size: float = 0.2,
-        max_correlation: float = 0.7,
+        initial_capital: Decimal = Decimal('10000.0'),
+        risk_per_trade: Decimal = Decimal('0.02'),
+        max_position_size: Decimal = Decimal('0.2'),
+        max_correlation: float = 0.7,  # This can remain float as it's a correlation value
         rebalance_frequency: str = "weekly",
     ):
         """
@@ -41,10 +42,11 @@ class PortfolioManager:
             max_correlation: Maximum allowed correlation between positions
             rebalance_frequency: Frequency for portfolio rebalancing ('daily', 'weekly', 'monthly')
         """
+        # Ensure all monetary values are Decimal
         self.portfolio = Portfolio(initial_capital=initial_capital)
-        self.risk_per_trade = risk_per_trade
-        self.max_position_size = max_position_size
-        self.max_correlation = max_correlation
+        self.risk_per_trade = Decimal(str(risk_per_trade)) if not isinstance(risk_per_trade, Decimal) else risk_per_trade
+        self.max_position_size = Decimal(str(max_position_size)) if not isinstance(max_position_size, Decimal) else max_position_size
+        self.max_correlation = max_correlation  # This remains as float
         self.rebalance_frequency = rebalance_frequency
 
         self.portfolio_history = []
@@ -73,7 +75,7 @@ class PortfolioManager:
             logger.error(f"Portfolio update error for trade {trade.trade_id}: {e}", exc_info=True)
             raise PortfolioUpdateError(f"Failed to update portfolio for trade {trade.trade_id}") from e
 
-    def update_market_prices(self, prices: Dict[str, float], timestamp: pd.Timestamp) -> None:
+    def update_market_prices(self, prices: Dict[str, Decimal], timestamp: pd.Timestamp) -> None:
         """
         Update market prices for all positions.
 
@@ -81,12 +83,15 @@ class PortfolioManager:
             prices: Dictionary mapping symbols to prices
             timestamp: Current timestamp
         """
+        # Convert prices to Decimal if needed
+        decimal_prices = {}
         for symbol, price in prices.items():
+            decimal_prices[symbol] = Decimal(str(price)) if not isinstance(price, Decimal) else price
             if symbol in self.portfolio.positions:
                 position = self.portfolio.positions[symbol]
-                position.update_market_price(price)
+                position.update_market_price(decimal_prices[symbol])
 
-        self.portfolio.update_total_value(prices)
+        self.portfolio.update_total_value(decimal_prices)
         self._record_portfolio_state(timestamp)
 
     def _record_portfolio_state(self, timestamp: pd.Timestamp) -> None:
@@ -116,10 +121,10 @@ class PortfolioManager:
     def calculate_position_size(
         self,
         symbol: str,
-        price: float,
-        stop_loss: Optional[float] = None,
-        risk_pct: Optional[float] = None,
-    ) -> float:
+        price: Decimal,
+        stop_loss: Optional[Decimal] = None,
+        risk_pct: Optional[Decimal] = None,
+    ) -> Decimal:
         """
         Calculate position size based on risk parameters.
 
@@ -130,32 +135,86 @@ class PortfolioManager:
             risk_pct: Risk percentage for this trade (optional, defaults to self.risk_per_trade)
 
         Returns:
-            float: Position size in units of the symbol
+            Decimal: Position size in units of the symbol
         """
-        if risk_pct is None:
-            risk_pct = self.risk_per_trade
+        # Use provided risk_pct or default from manager
+        risk_pct_to_use = risk_pct if risk_pct is not None else self.risk_per_trade
 
-        risk_amount = self.portfolio.total_value * risk_pct
+        logger.debug(f"Calculating position size for {symbol} at price {price}")
 
-        if stop_loss is not None:
-            risk_per_unit = abs(price - stop_loss)
-            if risk_per_unit > 0:
-                position_size = risk_amount / risk_per_unit
+        # Initialize sizes to Decimal 0
+        position_size = Decimal('0')
+        available_position_size = Decimal('0')
+
+        # --- Try calculating risk-based size ---
+        try:
+            # Ensure inputs are Decimal
+            price_dec = Decimal(str(price)) if not isinstance(price, Decimal) else price
+            risk_pct_dec = Decimal(str(risk_pct_to_use)) if not isinstance(risk_pct_to_use, Decimal) else risk_pct_to_use
+
+            # Portfolio value should already be Decimal from Portfolio class
+            portfolio_value = self.portfolio.total_value
+
+            logger.debug(f"Portfolio total value: {portfolio_value}, Risk pct: {risk_pct_dec}")
+            risk_amount = portfolio_value * risk_pct_dec
+            logger.debug(f"Calculated risk amount: {risk_amount}")
+
+            if stop_loss is not None:
+                # Ensure stop_loss is Decimal
+                stop_loss_dec = Decimal(str(stop_loss)) if not isinstance(stop_loss, Decimal) else stop_loss
+                
+                risk_per_unit = abs(price_dec - stop_loss_dec)
+                if risk_per_unit > Decimal('0'):
+                    position_size = risk_amount / risk_per_unit
+                    logger.debug(f"Sizing based on stop_loss {stop_loss_dec}: risk/unit={risk_per_unit}, size={position_size}")
+                else:
+                    # Fallback if stop loss is exactly the price
+                    if price_dec > Decimal('0'):
+                        position_size = (portfolio_value * self.max_position_size) / price_dec # Use max size logic
+                        logger.debug(f"Stop loss invalid (price={price_dec}), using max size logic: size={position_size}")
+                    else:
+                        logger.warning(f"Cannot calculate position size: price is zero or negative.")
             else:
-                position_size = (self.portfolio.total_value * self.max_position_size) / price
-        else:
-            position_size = (self.portfolio.total_value * self.max_position_size) / price
+                if price_dec > Decimal('0'):
+                    position_size = (portfolio_value * self.max_position_size) / price_dec
+                    logger.debug(f"Sizing based on max_position_size ({self.max_position_size}): size={position_size}")
+                else:
+                    logger.warning(f"Cannot calculate position size: price is zero or negative.")
+        except (InvalidOperation, TypeError, ZeroDivisionError) as e:
+            logger.error(f"Error calculating risk-based position size: {e}", exc_info=True)
+            position_size = Decimal('0') # Reset on error
+        # ----------------------------------------
 
-        max_position_value = self.portfolio.total_value * self.max_position_size
-        max_position_size = max_position_value / price
+        # --- Try calculating available size based on cash/max allocation ---
+        try:
+            price_dec = Decimal(str(price)) if not isinstance(price, Decimal) else price
+            if price_dec <= Decimal('0'):
+                logger.warning(f"Cannot calculate available size: price is zero or negative.")
+                available_position_size = Decimal('0')
+            else:
+                # Portfolio value and max_position_size should already be Decimal
+                max_position_value = self.portfolio.total_value * self.max_position_size
+                max_position_size_calc = max_position_value / price_dec
+                logger.debug(f"Max position value: {max_position_value}, Max theoretical position size: {max_position_size_calc}")
 
-        current_position_size = 0
-        if symbol in self.portfolio.positions:
-            current_position_size = self.portfolio.positions[symbol].quantity
+                current_position_size = Decimal('0')
+                if symbol in self.portfolio.positions:
+                    # Position quantity should already be Decimal from Position class
+                    current_position_size = self.portfolio.positions[symbol].quantity
+                    logger.debug(f"Current position size for {symbol}: {current_position_size}")
 
-        available_position_size = max_position_size - current_position_size
+                available_position_size = max_position_size_calc - abs(current_position_size)
+                logger.debug(f"Calculated available position size (max_theoretical - current): {available_position_size}")
+        except (InvalidOperation, TypeError, ZeroDivisionError) as e:
+            logger.error(f"Error calculating available position size: {e}", exc_info=True)
+            available_position_size = Decimal('0') # Reset on error
+        # ----------------------------------------------------------------
 
-        return min(position_size, available_position_size)
+        final_size = min(position_size, available_position_size)
+        logger.debug(f"Risk-based size: {position_size}, Cash-based size: {available_position_size}")
+        logger.debug(f"Returning final size (min of above): {final_size} (type: {type(final_size)})")
+
+        return final_size # Ensure this returns the Decimal
 
     def check_correlation(self, symbol: str, returns: pd.Series) -> bool:
         """
@@ -173,8 +232,8 @@ class PortfolioManager:
 
     def rebalance_portfolio(
         self,
-        target_weights: Dict[str, float],
-        current_prices: Dict[str, float],
+        target_weights: Dict[str, Decimal],
+        current_prices: Dict[str, Decimal],
         timestamp: pd.Timestamp,
     ) -> List[Order]:
         """
@@ -243,7 +302,7 @@ class PortfolioManager:
 
     def apply_risk_management(
         self,
-        current_prices: Dict[str, float],
+        current_prices: Dict[str, Decimal],
         timestamp: pd.Timestamp,
     ) -> List[Order]:
         """
@@ -263,11 +322,13 @@ class PortfolioManager:
                 continue
 
             if position.quantity > 0:
+                # Ensure current_prices are Decimal
+                current_price_dec = Decimal(str(current_prices[symbol])) if not isinstance(current_prices[symbol], Decimal) else current_prices[symbol]
                 entry_value = position.quantity * position.entry_price
-                current_value = position.quantity * current_prices[symbol]
-                drawdown = (entry_value - current_value) / entry_value
+                current_value = position.quantity * current_price_dec
+                drawdown = (entry_value - current_value) / entry_value if entry_value > Decimal('0') else Decimal('0')
 
-                if drawdown > 0.1:
+                if drawdown > Decimal('0.1'):
                     order = Order(
                         symbol=symbol,
                         side=OrderSide.SELL,
@@ -278,11 +339,13 @@ class PortfolioManager:
                     logger.info(f"Generated risk management order: SELL {position.quantity} {symbol} (drawdown: {drawdown:.2%})")
 
             elif position.quantity < 0:
+                # Ensure current_prices are Decimal
+                current_price_dec = Decimal(str(current_prices[symbol])) if not isinstance(current_prices[symbol], Decimal) else current_prices[symbol]
                 entry_value = abs(position.quantity) * position.entry_price
-                current_value = abs(position.quantity) * current_prices[symbol]
-                drawdown = (current_value - entry_value) / entry_value
+                current_value = abs(position.quantity) * current_price_dec
+                drawdown = (current_value - entry_value) / entry_value if entry_value > Decimal('0') else Decimal('0')
 
-                if drawdown > 0.1:
+                if drawdown > Decimal('0.1'):
                     order = Order(
                         symbol=symbol,
                         side=OrderSide.BUY,
@@ -301,6 +364,9 @@ class PortfolioManager:
         Returns:
             Dict[str, Any]: Dictionary containing portfolio state
         """
+        logger.info(f"Current Cash Balance: {self.portfolio.current_balance}")
+        logger.info(f"Total Portfolio Value (Equity): {self.portfolio.total_equity}")
+        logger.info(f"Total Realized PnL: {self.portfolio.total_realized_pnl}")
         return {
             'cash': self.portfolio.current_balance,
             'total_value': self.portfolio.total_value,
@@ -341,10 +407,11 @@ class PortfolioManager:
         portfolio_values = pd.Series(values, index=timestamps)
         returns = portfolio_values.pct_change().fillna(0)
 
-        total_return = (portfolio_values.iloc[-1] / portfolio_values.iloc[0]) - 1
-        annualized_return = (1 + total_return) ** (252 / len(returns)) - 1
-        volatility = returns.std() * np.sqrt(252)
-        sharpe_ratio = annualized_return / volatility if volatility > 0 else 0
+        # Convert to Decimal for precise calculations
+        total_return = Decimal(str((portfolio_values.iloc[-1] / portfolio_values.iloc[0]) - 1))
+        annualized_return = Decimal(str((1 + total_return) ** (252 / len(returns)) - 1))
+        volatility = Decimal(str(returns.std() * np.sqrt(252)))
+        sharpe_ratio = annualized_return / volatility if volatility > Decimal('0') else Decimal('0')
 
         cumulative_returns = (1 + returns).cumprod()
         running_max = cumulative_returns.cummax()
