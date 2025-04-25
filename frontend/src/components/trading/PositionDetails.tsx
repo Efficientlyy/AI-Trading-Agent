@@ -44,8 +44,8 @@ const PositionDetails: React.FC<PositionDetailsProps> = ({ position, symbol }) =
           </tr>
           <tr>
             <td className="font-medium text-gray-700 dark:text-gray-300 pr-2">Realized PnL:</td>
-            <td className={position.realized_pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
-              ${position.realized_pnl.toFixed(2)}
+            <td className={(position.realized_pnl || 0) >= 0 ? 'text-green-600' : 'text-red-600'}>
+              ${(position.realized_pnl || 0).toFixed(2)}
             </td>
           </tr>
         </tbody>

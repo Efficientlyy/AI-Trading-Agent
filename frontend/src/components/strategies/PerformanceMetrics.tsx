@@ -18,7 +18,7 @@ const PerformanceMetricsDisplay: React.FC = () => {
       setLoading(true);
       setError(null);
       backtestApi.getBacktestResults(selectedId)
-        .then(res => setMetrics(res.metrics))
+        .then(res => setMetrics(res.metrics || null))
         .catch(() => setError('Failed to load metrics'))
         .finally(() => setLoading(false));
     } else {
@@ -38,7 +38,10 @@ const PerformanceMetricsDisplay: React.FC = () => {
         >
           <option value="">-- Choose a backtest --</option>
           {results.map(r => (
-            <option key={r.id} value={r.id}>{r.params.strategy_name} ({new Date(r.created_at).toLocaleString()})</option>
+            <option key={r.id} value={r.id}>
+              {r.params?.strategy_name || 'Unnamed Strategy'} 
+              ({r.created_at ? new Date(r.created_at).toLocaleString() : 'Unknown Date'})
+            </option>
           ))}
         </select>
       </div>

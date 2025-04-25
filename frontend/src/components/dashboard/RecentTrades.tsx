@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Trade } from '../../types/index';
+import { Trade, OrderSide } from '../../types/index';
 import { useWebSocket } from '../../hooks/useWebSocket';
 
 interface RecentTradesProps {
@@ -48,7 +48,7 @@ const RecentTrades: React.FC<RecentTradesProps> = ({ trades, symbol, maxCount = 
                 onClick={() => onTradeSymbolSelect && onTradeSymbolSelect(trade.symbol)}
               >
                 <td>{typeof trade.timestamp === 'number' ? new Date(trade.timestamp).toLocaleTimeString() : trade.timestamp}</td>
-                <td className={trade.side === 'buy' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{trade.side.toUpperCase()}</td>
+                <td className={trade.side === OrderSide.BUY || trade.side === 'buy' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{typeof trade.side === 'string' ? trade.side.toUpperCase() : trade.side}</td>
                 <td>${typeof trade.price === 'number' ? trade.price.toFixed(2) : trade.price}</td>
                 <td>{trade.quantity}</td>
                 <td>

@@ -67,7 +67,14 @@ const StrategyBuilder: React.FC<StrategyBuilderProps> = ({ onSave }) => {
       parameters.forEach(p => {
         paramObj[p.name] = p.type === 'select' ? { value: p.value, options: p.options } : p.value;
       });
-      const payload = { name, description, parameters: paramObj };
+      // Create strategy payload with all required fields
+      const payload = { 
+        name, 
+        description, 
+        parameters: paramObj,
+        asset_class: 'crypto',  // Default asset class
+        timeframe: '1h'         // Default timeframe
+      };
       const saved = await strategiesApi.createStrategy(payload);
       setSuccess(true);
       if (onSave) onSave(saved);

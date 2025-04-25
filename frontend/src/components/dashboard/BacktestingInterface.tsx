@@ -2,15 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import TradeStatistics, { Trade } from './TradeStatistics';
 import PerformanceAnalysis from './PerformanceAnalysis';
-
-export interface BacktestParams {
-  symbol: string;
-  strategy: string;
-  startDate: string;
-  endDate: string;
-  initialCapital: number;
-  parameters: Record<string, any>;
-}
+import { BacktestParams } from '../../types';
 
 export interface BacktestResult {
   date: string;
@@ -54,10 +46,10 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
   // State for backtest parameters
   const [backtestParams, setBacktestParams] = useState<BacktestParams>({
     symbol,
-    strategy: availableStrategies[0],
-    startDate: new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0], // Default to 1 year ago
-    endDate: new Date().toISOString().split('T')[0], // Default to today
-    initialCapital: 10000,
+    strategy_name: availableStrategies[0],
+    start_date: new Date(new Date().setFullYear(new Date().getFullYear() - 1)).toISOString().split('T')[0], // Default to 1 year ago
+    end_date: new Date().toISOString().split('T')[0], // Default to today
+    initial_capital: 10000,
     parameters: {}
   });
   
@@ -76,7 +68,7 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
   useEffect(() => {
     let params: Record<string, any> = {};
     
-    switch (backtestParams.strategy) {
+    switch (backtestParams.strategy_name) {
       case 'Moving Average Crossover':
         params = {
           fastPeriod: 10,
@@ -119,7 +111,7 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
       ...prev,
       parameters: params
     }));
-  }, [backtestParams.strategy]);
+  }, [backtestParams.strategy_name]);
   
   // Handle parameter change
   const handleParamChange = (field: keyof BacktestParams, value: any) => {
@@ -131,9 +123,10 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
   
   // Handle strategy parameter change
   const handleStrategyParamChange = (paramName: string, value: any) => {
+    const parameters = backtestParams.parameters || {};
     const updatedParams = {
-      ...backtestParams.parameters,
-      [paramName]: typeof backtestParams.parameters[paramName] === 'number' ? parseFloat(value) : value
+      ...parameters,
+      [paramName]: typeof parameters[paramName] === 'number' ? parseFloat(value) : value
     };
     
     setBacktestParams(prev => ({
@@ -144,11 +137,11 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
   
   // Handle strategy selection change
   const handleStrategyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const strategy = e.target.value;
+    const strategy_name = e.target.value;
     
     setBacktestParams(prev => ({
       ...prev,
-      strategy
+      strategy_name
     }));
   };
   
@@ -172,12 +165,12 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
     if (backtestResults.length > 0) return backtestResults;
     
     const mockResults: BacktestResult[] = [];
-    const startDate = new Date(backtestParams.startDate);
-    const endDate = new Date(backtestParams.endDate);
+    const startDate = new Date(backtestParams.start_date);
+    const endDate = new Date(backtestParams.end_date);
     
     let currentDate = new Date(startDate);
-    let equity = backtestParams.initialCapital;
-    let benchmark = backtestParams.initialCapital;
+    let equity = backtestParams.initial_capital;
+    let benchmark = backtestParams.initial_capital;
     
     while (currentDate <= endDate) {
       if (currentDate.getDay() !== 0 && currentDate.getDay() !== 6) { // Skip weekends
@@ -212,11 +205,11 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
     if (backtestMetrics) return backtestMetrics;
     
     const results = generateMockResults();
-    const initialValue = backtestParams.initialCapital;
+    const initialValue = backtestParams.initial_capital;
     const finalValue = results[results.length - 1].equity;
     const totalReturn = ((finalValue - initialValue) / initialValue) * 100;
     
-    const daysDiff = Math.floor((new Date(backtestParams.endDate).getTime() - new Date(backtestParams.startDate).getTime()) / (1000 * 60 * 60 * 24));
+    const daysDiff = Math.floor((new Date(backtestParams.end_date).getTime() - new Date(backtestParams.start_date).getTime()) / (1000 * 60 * 60 * 24));
     const years = daysDiff / 365;
     
     const annualizedReturn = (Math.pow((finalValue / initialValue), (1 / years)) - 1) * 100;
@@ -269,7 +262,7 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
               </label>
               <select
                 id="backtest-strategy"
-                value={backtestParams.strategy}
+                value={backtestParams.strategy_name}
                 onChange={handleStrategyChange}
                 className="block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               >
@@ -288,8 +281,8 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
                 <input
                   id="backtest-start-date"
                   type="date"
-                  value={backtestParams.startDate}
-                  onChange={(e) => handleParamChange('startDate', e.target.value)}
+                  value={backtestParams.start_date}
+                  onChange={(e) => handleParamChange('start_date', e.target.value)}
                   className="block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
@@ -301,8 +294,8 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
                 <input
                   id="backtest-end-date"
                   type="date"
-                  value={backtestParams.endDate}
-                  onChange={(e) => handleParamChange('endDate', e.target.value)}
+                  value={backtestParams.end_date}
+                  onChange={(e) => handleParamChange('end_date', e.target.value)}
                   className="block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
@@ -318,8 +311,8 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
                 type="number"
                 min="1000"
                 step="1000"
-                value={backtestParams.initialCapital}
-                onChange={(e) => handleParamChange('initialCapital', parseFloat(e.target.value))}
+                value={backtestParams.initial_capital}
+                onChange={(e) => handleParamChange('initial_capital', parseFloat(e.target.value))}
                 className="block w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
               />
             </div>
@@ -331,7 +324,7 @@ const BacktestingInterface: React.FC<BacktestingInterfaceProps> = ({
               </h4>
               
               <div className="space-y-3">
-                {Object.entries(backtestParams.parameters).map(([paramName, paramValue]) => (
+                {backtestParams.parameters && Object.entries(backtestParams.parameters).map(([paramName, paramValue]) => (
                   <div key={paramName} className="grid grid-cols-2 gap-2 items-center">
                     <label htmlFor={`param-${paramName}`} className="text-sm text-gray-600 dark:text-gray-400">
                       {paramName.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Trade } from '../../types';
+import { Trade, OrderSide } from '../../types';
 import { useDataSource } from '../../context/DataSourceContext';
 import { tradesApi } from '../../api/trades';
 import { getMockTrades } from '../../api/mockData/mockTrades';
@@ -128,11 +128,11 @@ const RecentTrades: React.FC<RecentTradesProps> = ({ onSymbolSelect, selectedSym
                   </button>
                 </td>
                 <td className={`px-3 py-2 whitespace-nowrap text-sm ${
-                  trade.side === 'buy' 
+                  trade.side === OrderSide.BUY || trade.side === 'buy' 
                     ? 'text-green-600 dark:text-green-400' 
                     : 'text-red-600 dark:text-red-400'
                 }`}>
-                  {trade.side.toUpperCase()}
+                  {typeof trade.side === 'string' ? trade.side.toUpperCase() : trade.side}
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap text-sm">
                   {trade.quantity.toLocaleString('en-US', { 
@@ -153,16 +153,20 @@ const RecentTrades: React.FC<RecentTradesProps> = ({ onSymbolSelect, selectedSym
                   })}
                 </td>
                 <td className="px-3 py-2 whitespace-nowrap text-sm">
-                  <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                    trade.status === 'filled' 
-                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                      : trade.status === 'partial' 
-                        ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        : trade.status === 'pending'
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium 
+                    ${trade.status === 'filled' || trade.status === 'complete' || trade.status === 'completed' 
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      : trade.status === 'partial' || trade.status === 'partially_filled'
                           ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                          : trade.status === 'pending' || trade.status === 'open' || trade.status === 'new'
+                              ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                              : trade.status === 'cancelled' || trade.status === 'canceled'
+                                  ? 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+                                  : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                   }`}>
-                    {trade.status.charAt(0).toUpperCase() + trade.status.slice(1)}
+                    {trade.status 
+                      ? trade.status.charAt(0).toUpperCase() + trade.status.slice(1)
+                      : 'Unknown'}
                   </span>
                 </td>
               </tr>

@@ -7,7 +7,8 @@ function calculateTradeStats(trades: Order[]) {
   let wins = 0, losses = 0, totalPnL = 0, grossProfit = 0, grossLoss = 0, profitFactor = 0;
   let totalTrades = trades.length;
   trades.forEach(trade => {
-    const pnl = (trade.realized_pnl ?? 0);
+    // Use nullish coalescing to handle undefined realized_pnl
+    const pnl = trade.realized_pnl ?? 0;
     totalPnL += pnl;
     if (pnl > 0) {
       wins++;
@@ -71,7 +72,10 @@ const TradeStatistics: React.FC = () => {
         >
           <option value="">-- Choose a backtest --</option>
           {results.map(r => (
-            <option key={r.id} value={r.id}>{r.params.strategy_name} ({new Date(r.created_at).toLocaleString()})</option>
+            <option key={r.id} value={r.id}>
+              {r.params?.strategy_name || 'Unnamed Strategy'} 
+              ({r.created_at ? new Date(r.created_at).toLocaleString() : 'Unknown Date'})
+            </option>
           ))}
         </select>
       </div>

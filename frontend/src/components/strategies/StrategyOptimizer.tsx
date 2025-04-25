@@ -44,13 +44,18 @@ const StrategyOptimizer: React.FC = () => {
             total_return: 0.23,
             sharpe_ratio: 1.44,
             max_drawdown: 0.08,
-            annualized_return: 0.18,
-            win_rate: 0.62,
-            profit_factor: 1.9,
-            avg_trade: 0.012,
-            volatility: 0.15,
-            beta: 0.9,
-            alpha: 0.02
+            annualized_return: 0.25,
+            win_rate: 0.65,
+            profit_factor: 1.85,
+            avg_trade: 0.02,
+            volatility: 0.18,
+            beta: 0.89,
+            alpha: 0.12,
+            sortino_ratio: 1.6,
+            avg_win: 150,
+            avg_loss: 80,
+            max_consecutive_wins: 5,
+            max_consecutive_losses: 3
           }
         };
         setRuns(runs => [fakeRun, ...runs]);

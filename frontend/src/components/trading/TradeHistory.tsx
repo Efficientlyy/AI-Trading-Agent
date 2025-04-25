@@ -1,10 +1,11 @@
 import React from 'react';
+import { OrderSide } from '../../types';
 
 interface TradeHistoryProps {
   trades: Array<{
     id: string;
     symbol: string;
-    side: 'buy' | 'sell';
+    side: 'buy' | 'sell' | OrderSide;
     quantity: number;
     price: number;
     timestamp: number;
@@ -36,7 +37,10 @@ const TradeHistory: React.FC<TradeHistoryProps> = ({ trades }) => {
                 <tr key={trade.id}>
                   <td className="px-2 py-1">{new Date(trade.timestamp).toLocaleString()}</td>
                   <td className="px-2 py-1">{trade.symbol}</td>
-                  <td className={`px-2 py-1 font-semibold ${trade.side === 'buy' ? 'text-green-600' : 'text-red-600'}`}>{trade.side}</td>
+                  <td className={`px-2 py-1 font-semibold ${
+                    trade.side === OrderSide.BUY || trade.side === 'buy' ? 
+                    'text-green-600' : 'text-red-600'
+                  }`}>{typeof trade.side === 'string' ? trade.side.toUpperCase() : trade.side}</td>
                   <td className="px-2 py-1">{trade.quantity}</td>
                   <td className="px-2 py-1">{trade.price}</td>
                   <td className="px-2 py-1">{trade.status}</td>
