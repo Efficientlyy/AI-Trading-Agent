@@ -76,6 +76,7 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
   - 🔄 Phase 3.4: Real Data Collectors Implementation - IN PROGRESS
   - 🔄 Phase 3.5: Advanced NLP Processing Pipeline - IN PROGRESS
   - 🔄 Phase 3.6: Advanced Trading Strategy Features - IN PROGRESS
+  - 🔄 Phase 3.7: Sentiment-Trading Engine Integration - IN PROGRESS
 - ✅ **Phase 4: Genetic Algorithm Optimizer** - COMPLETED
 - ✅ **Phase 5: Multi-Asset Backtesting Framework** - COMPLETED
 - ✅ **Phase 6: Modern Dashboard Interface** - COMPLETED
@@ -419,22 +420,91 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 - ✅ Implement relationship extraction between entities
 - ✅ Add confidence scoring for entity matching
 
-### ✅ Phase 3.6: Advanced Trading Strategy Features (COMPLETED)
-- ✅ Enhance signal generation
-  - ✅ Implement adaptive sentiment thresholds
-  - ✅ Add time-series analysis of sentiment trends
-  - ✅ Implement sentiment momentum indicators
-  - ✅ Add cross-asset sentiment correlation analysis
-- ✅ Implement advanced position sizing
-  - ✅ Add Kelly criterion position sizing
-  - ✅ Implement volatility-adjusted position sizing
-  - ✅ Add correlation-based portfolio allocation
-  - ✅ Implement risk parity approaches
-- ✅ Add sophisticated risk management
-  - ✅ Implement dynamic stop-loss placement
-  - ✅ Add take-profit optimization
-  - ✅ Implement trailing stop mechanisms
-  - ✅ Add drawdown-based position reduction
+#### 🔄 Phase 3.6: Advanced Trading Strategy Features (IN PROGRESS)
+
+**Goal:** Enhance the trading strategy capabilities with advanced features for improved performance.
+
+**Detailed Steps:**
+
+1. 🔄 **Implement Advanced Technical Indicators:**
+   - 🔄 Add Ichimoku Cloud indicator.
+   - 🔄 Add Bollinger Bands with dynamic settings.
+   - 🔄 Add Fibonacci retracement levels.
+   - 🔄 Add pivot points (standard, Fibonacci, Camarilla, Woodie's).
+   - 🔄 Implement volume profile analysis.
+
+2. 🔄 **Create Multi-Timeframe Analysis:**
+   - 🔄 Implement hierarchical timeframe analysis.
+   - 🔄 Add support for timeframe alignment.
+   - 🔄 Create signal confirmation across timeframes.
+   - 🔄 Implement timeframe-specific parameter optimization.
+
+3. 🔄 **Add Pattern Recognition:**
+   - 🔄 Implement candlestick pattern recognition.
+   - 🔄 Add chart pattern detection (head & shoulders, triangles, etc.).
+   - 🔄 Create divergence detection for oscillators.
+   - 🔄 Implement support/resistance level identification.
+
+4. 🔄 **Enhance Signal Generation:**
+   - 🔄 Add signal strength calculation.
+   - 🔄 Implement signal confirmation requirements.
+   - 🔄 Create signal filtering based on market conditions.
+   - 🔄 Add signal expiration and update logic.
+
+#### 🔄 Phase 3.7: Sentiment-Trading Engine Integration (IN PROGRESS)
+
+**Goal:** Integrate sentiment analysis signals into the trading engine with practical considerations for different timeframes and market conditions.
+
+**Detailed Steps:**
+
+1. 🔄 **Implement Sentiment Signal Processor:**
+   - 🔄 Create `SentimentSignalProcessor` class in `src/trading/signals/sentiment_processor.py`
+   - 🔄 Implement configurable threshold and window size parameters
+   - 🔄 Add methods for processing raw sentiment data into trading signals
+   - 🔄 Create unit tests with various sentiment scenarios
+   - 🔄 Implement signal strength and confidence calculation
+
+2. 🔄 **Develop Timeframe-Aware Integration:**
+   - 🔄 Create `TradingModeSelector` class to adapt sentiment usage based on timeframe
+   - 🔄 Implement automatic disabling for high-frequency trading (1-5 minute charts)
+   - 🔄 Add reduced weighting for intraday timeframes (15-60 minute charts)
+   - 🔄 Configure full sentiment integration for swing trading timeframes (4h-1d)
+   - 🔄 Add unit tests for each trading mode
+
+3. 🔄 **Implement Market Regime Detection:**
+   - 🔄 Create `MarketRegimeDetector` class in `src/trading/market_analysis/`
+   - 🔄 Implement algorithms to detect trending, ranging, and volatile market conditions
+   - 🔄 Add dynamic sentiment weight adjustment based on market regime
+   - 🔄 Create visualization tools for market regime classification
+   - 🔄 Add unit tests with historical data from different market regimes
+
+4. 🔄 **Create Sentiment-Based Trading Strategies:**
+   - 🔄 Implement `SentimentTrendStrategy` class
+   - 🔄 Create `SentimentDivergenceStrategy` class for price-sentiment divergence signals
+   - 🔄 Implement `SentimentShockStrategy` for sudden sentiment changes
+   - 🔄 Add comprehensive strategy configuration options
+   - 🔄 Create unit and integration tests for each strategy
+
+5. 🔄 **Develop Signal Aggregation System:**
+   - 🔄 Create `SignalAggregator` class to combine signals from multiple sources
+   - 🔄 Implement configurable weighting system for different signal types
+   - 🔄 Add conflict resolution logic for contradictory signals
+   - 🔄 Implement signal quality tracking over time
+   - 🔄 Create visualization tools for signal contribution analysis
+
+6. 🔄 **Extend Backtesting Framework:**
+   - 🔄 Modify `Backtester` class to incorporate sentiment data
+   - 🔄 Add sentiment data loading to backtesting pipeline
+   - 🔄 Implement sentiment-specific performance metrics
+   - 🔄 Create visualization tools for sentiment impact analysis
+   - 🔄 Add comprehensive tests with historical sentiment and price data
+
+7. 🔄 **Implement Performance Tracking System:**
+   - 🔄 Create `SignalPerformanceTracker` class
+   - 🔄 Implement metrics for sentiment signal effectiveness
+   - 🔄 Add automatic weight adjustment based on historical performance
+   - 🔄 Create dashboard components for signal performance visualization
+   - 🔄 Implement A/B testing framework for sentiment strategies
 
 ### ✅ Phase 4: Genetic Algorithm Optimizer (COMPLETED)
 - ✅ Implement parameter optimization framework
@@ -447,6 +517,7 @@ This document outlines the phased approach for rebuilding the AI Trading Agent w
 - ✅ Create realistic market condition simulation
   - ✅ Transaction costs
   - ✅ Market biases
+{{ ... }}
   - ✅ Slippage modeling
 
 ### ✅ Phase 5: Multi-Asset Backtesting Framework (COMPLETED)
