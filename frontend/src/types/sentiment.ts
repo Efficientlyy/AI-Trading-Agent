@@ -1,69 +1,54 @@
 /**
- * Sentiment data types
+ * Sentiment Types
  * 
- * These types define the structure of sentiment data used throughout the application.
+ * This file contains type definitions related to sentiment analysis.
  */
 
-/**
- * Signal type - buy, sell, or hold
- */
-export type SignalType = 'buy' | 'sell' | 'hold';
+// Sentiment data from various sources
+export type SentimentSource = 'news' | 'social' | 'market' | 'combined';
 
-/**
- * Sentiment strength level
- */
-export type SentimentStrength = 'strong' | 'moderate' | 'weak';
+// Sentiment strength levels
+export type SentimentStrength = 'weak' | 'moderate' | 'strong';
 
-/**
- * Overall market sentiment
- */
+// Market sentiment types for overall market analysis
 export type MarketSentiment = 'strongly_bullish' | 'bullish' | 'neutral' | 'bearish' | 'strongly_bearish';
 
-/**
- * Sentiment signal for a specific asset
- */
+// Sentiment data structure
+export interface SentimentData {
+  score: number;
+  magnitude: number;
+  source: SentimentSource;
+  timestamp: string;
+  confidence?: number;
+}
+
+// Sentiment signal with trading direction
 export interface SentimentSignal {
   symbol: string;
-  signal: SignalType;
-  strength: number;
   score: number;
-  trend: number;
-  volatility: number;
+  magnitude: number;
+  direction: 'bullish' | 'bearish' | 'neutral';
+  sources: {
+    news?: number;
+    social?: number;
+    market?: number;
+  };
   timestamp: string;
 }
 
-/**
- * Summary of sentiment across multiple assets
- */
-export interface SentimentSummary {
-  sentimentData: Record<string, SentimentSignal>;
-  timestamp: string;
-}
-
-/**
- * Historical sentiment data point
- */
+// Historical sentiment data point
 export interface HistoricalSentiment {
   timestamp: string;
   score: number;
-  raw_score: number;
+  volume: number;
 }
 
-/**
- * Sentiment news article
- */
-export interface SentimentArticle {
-  title: string;
-  url: string;
-  time_published: string;
-  authors?: string[];
-  summary?: string;
-  source: string;
-  overall_sentiment_score: number;
-  overall_sentiment_label: string;
-  ticker_sentiment_score?: number;
-  ticker_sentiment_label?: string;
-  relevance_score?: number;
+// Sentiment summary for dashboard display
+export interface SentimentSummary {
+  symbol: string;
+  currentScore: number;
+  trend: 'up' | 'down' | 'stable';
+  signals: SentimentSignal[];
 }
 
 /**
@@ -80,8 +65,8 @@ export function getSentimentStrength(score: number): SentimentStrength {
  * Helper function to calculate overall market sentiment
  */
 export function calculateMarketSentiment(signals: SentimentSignal[]): MarketSentiment {
-  const buyCount = signals.filter(s => s.signal === 'buy').length;
-  const sellCount = signals.filter(s => s.signal === 'sell').length;
+  const buyCount = signals.filter(s => s.direction === 'bullish').length;
+  const sellCount = signals.filter(s => s.direction === 'bearish').length;
   
   if (buyCount > sellCount * 2) return 'strongly_bullish';
   if (buyCount > sellCount) return 'bullish';

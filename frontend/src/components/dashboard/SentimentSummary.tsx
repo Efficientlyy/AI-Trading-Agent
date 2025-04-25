@@ -49,16 +49,18 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
 
     const signals = Object.entries(sentimentData).map(([symbol, data]) => ({
       symbol,
-      signal: data.signal,
+      signal_type: data.signal_type || data.signal, // Handle both property names
       strength: data.strength,
+      score: data.score || 0
     }));
 
     // Sort by absolute strength (strongest signals first)
-    signals.sort((a, b) => Math.abs(b.strength) - Math.abs(a.strength));
+    signals.sort((a, b) => Math.abs(b.score) - Math.abs(a.score));
 
-    const buyCount = signals.filter(s => s.signal === 'buy').length;
-    const sellCount = signals.filter(s => s.signal === 'sell').length;
-    const holdCount = signals.filter(s => s.signal === 'hold').length;
+    // Count signals by type, handling both property names
+    const buyCount = signals.filter(s => s.signal_type === 'buy').length;
+    const sellCount = signals.filter(s => s.signal_type === 'sell').length;
+    const holdCount = signals.filter(s => s.signal_type === 'hold').length;
 
     return { buyCount, sellCount, holdCount, signals };
   }, [sentimentData]);
@@ -77,10 +79,10 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
   }, [sentimentData, sentimentAnalysis]);
 
   // Get signal icon and color
-  const getSignalDisplay = (signal: 'buy' | 'sell' | 'hold', strength: number) => {
-    const strengthClass = strength > 0.7 ? 'font-bold' : strength > 0.4 ? 'font-medium' : 'font-normal';
+  const getSignalDisplay = (signal_type: 'buy' | 'sell' | 'hold', strength: 'low' | 'medium' | 'high') => {
+    const strengthClass = strength === 'high' ? 'font-bold' : strength === 'medium' ? 'font-medium' : 'font-normal';
 
-    if (signal === 'buy') {
+    if (signal_type === 'buy') {
       return {
         icon: <ArrowUpIcon className="h-4 w-4 text-green-500" />,
         textColor: 'text-green-600 dark:text-green-400',
@@ -88,7 +90,7 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
         label: 'Buy',
         strengthClass
       };
-    } else if (signal === 'sell') {
+    } else if (signal_type === 'sell') {
       return {
         icon: <ArrowDownIcon className="h-4 w-4 text-red-500" />,
         textColor: 'text-red-600 dark:text-red-400',
@@ -202,7 +204,24 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
       ) : (
         <div className="space-y-2">
           {sentimentAnalysis.signals.slice(0, 5).map((signal) => {
-            const display = getSignalDisplay(signal.signal, signal.strength);
+            // Ensure signal_type and strength are of valid types 
+            const signalType = signal.signal_type || 'hold';
+            const safeSignalType = (signalType === 'buy' || signalType === 'sell' || signalType === 'hold') 
+              ? signalType 
+              : 'hold';
+            
+            // Convert strength to string type if it's a number
+            const strengthValue = typeof signal.strength === 'number' 
+              ? (signal.strength > 0.7 ? 'high' : signal.strength > 0.4 ? 'medium' : 'low')
+              : signal.strength;
+            
+            // Ensure strength is one of the expected literal types
+            const safeStrength = (strengthValue === 'low' || strengthValue === 'medium' || strengthValue === 'high') 
+              ? strengthValue 
+              : 'medium';
+              
+            const display = getSignalDisplay(safeSignalType, safeStrength);
+
             return (
               <div
                 key={signal.symbol}
@@ -221,7 +240,7 @@ const SentimentSummary: React.FC<SentimentSummaryProps> = ({ onSymbolSelect, sel
                 </div>
                 <div className="flex justify-between items-center mt-1 text-sm">
                   <span className="text-gray-600 dark:text-gray-400">
-                    Strength: {signal.strength.toFixed(2)}
+                    Strength: {safeStrength}
                   </span>
                 </div>
               </div>

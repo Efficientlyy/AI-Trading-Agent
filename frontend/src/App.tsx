@@ -20,6 +20,7 @@ import ApiLogsPage from './pages/ApiLogsPage';
 import AlertsPage from './pages/AlertsPage';
 import PerformancePage from './pages/PerformancePage';
 import PerformanceTestPage from './pages/PerformanceTestPage';
+import Sentiment from './pages/Sentiment';
 import { SelectedAssetProvider } from './context/SelectedAssetContext';
 import { AlertsProvider } from './context/AlertsContext';
 
@@ -61,7 +62,7 @@ function App() {
                           } />
                           <Route path="backtest" element={<div>Backtest Page (Coming Soon)</div>} />
                           <Route path="strategies" element={<Strategies />} />
-                          <Route path="sentiment" element={<div>Sentiment Page (Coming Soon)</div>} />
+                          <Route path="sentiment" element={<Sentiment />} />
                           <Route path="api-health" element={<ApiHealthPage />} />
                           <Route path="api-logs" element={<ApiLogsPage />} />
                           <Route path="alerts" element={<AlertsPage />} />
