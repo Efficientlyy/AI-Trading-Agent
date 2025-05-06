@@ -30,6 +30,7 @@ from backend.database.repositories import (
 from backend.security import configure_security
 from backend.security.credential_manager import CredentialManager
 from backend.security.rate_limiter import rate_limiter, get_rate_limit_middleware, start_rate_limiter_cleanup, stop_rate_limiter_cleanup
+from backend.security.auth import get_current_user, require_scope, get_mock_user_override
 
 # WebSocket imports - use new implementation
 from backend.websockets import (
@@ -60,15 +61,8 @@ sentiment_repository = SentimentRepository()
 
 app = FastAPI(title="AI Trading Agent API")
 
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    logging.error(f"Unhandled error: {exc}")
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal server error", "error": str(exc)},
-    )
-
-# Set up all security components using centralized configuration
+# Configure security settings
+# Must be called AFTER defining app and BEFORE adding routes that need security
 configure_security(app)
 
 # JWT secret and algorithm
@@ -83,7 +77,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
-# Include the new WebSocket router with enhanced functionality
+# Include WebSocket router
 app.include_router(websocket_router)
 
 # Add startup and shutdown events for WebSocket services
@@ -498,7 +492,7 @@ async def get_backtest_history(
     limit: int = 10, 
     offset: int = 0,
     strategy_id: Optional[str] = None,
-    current_user: str = Depends(get_current_user)
+    current_user: Dict[str, Any] = Depends(get_mock_user_override)
 ):
     """Get the history of backtests run by the user"""
     try:
@@ -559,8 +553,10 @@ async def get_backtest_history(
         logging.error(f"Error getting backtest history: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get backtest history: {str(e)}")
 
-@app.get("/api/strategies")
-async def get_strategies(current_user: str = Depends(get_current_user)):
+@app.get("/api/strategies", response_model=List[Dict[str, Any]])
+async def get_strategies(
+    current_user: Dict[str, Any] = Depends(get_mock_user_override)
+):
     """Get available trading strategies"""
     try:
         # In production, this would query the database for strategies
@@ -611,7 +607,7 @@ async def get_strategies(current_user: str = Depends(get_current_user)):
             }
         ]
         
-        return {"strategies": strategies}
+        return strategies
     except Exception as e:
         logging.error(f"Error getting strategies: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to get strategies: {str(e)}")

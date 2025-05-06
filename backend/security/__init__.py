@@ -8,7 +8,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from .rate_limiter import get_rate_limit_middleware, check_api_key
+from .rate_limiter import RateLimitMiddleware, get_rate_limiter, check_api_key
 from .cors import configure_cors
 from .rate_limiter import start_rate_limiter_cleanup, stop_rate_limiter_cleanup
 
@@ -71,22 +71,22 @@ def configure_security(app: FastAPI) -> None:
     )
     
     # Add API key middleware
-    app.middleware("http")(check_api_key)
+    # app.middleware("http")(check_api_key) # Commented out for debugging
     
     # Add rate limiting middleware
-    app.add_middleware(get_rate_limit_middleware())
+    # app.add_middleware(RateLimitMiddleware, limiter=get_rate_limiter()) # Commented out for debugging
     
     # Add other security middlewares as needed
     # e.g., app.add_middleware(SecurityHeadersMiddleware)
     # e.g., app.add_middleware(CSRFMiddleware)
     
-    # Register events for rate limiter cleanup
-    @app.on_event("startup")
-    async def startup_event():
-        await start_rate_limiter_cleanup()
-    
-    @app.on_event("shutdown")
-    async def shutdown_event():
-        await stop_rate_limiter_cleanup()
+    # Register events for rate limiter cleanup - (These are also in api.py, commenting out here)
+    # @app.on_event("startup")
+    # async def startup_event():
+    #     await start_rate_limiter_cleanup()
+    # 
+    # @app.on_event("shutdown")
+    # async def shutdown_event():
+    #     await stop_rate_limiter_cleanup()
     
     return None

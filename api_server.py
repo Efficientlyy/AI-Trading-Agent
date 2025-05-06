@@ -23,7 +23,7 @@ sys.path.insert(0, project_root)
 
 # Import necessary components
 from ai_trading_agent.common.logging_config import setup_logging
-from ai_trading_agent.api import api_router
+from ai_trading_agent.api import api_router, websocket_router
 
 # Set up logging
 setup_logging()
@@ -51,6 +51,9 @@ def create_app():
     
     # Include API router
     app.include_router(api_router)
+    
+    # Include WebSocket router (mounted at root level, not under /api)
+    app.include_router(websocket_router)
     
     @app.get("/")
     async def root():
