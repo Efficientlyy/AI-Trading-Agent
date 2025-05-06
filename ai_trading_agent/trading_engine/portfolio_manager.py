@@ -7,13 +7,13 @@ including risk management, position sizing, and portfolio rebalancing.
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Union, Any, Tuple
+from typing import Dict, List, Optional, Union, Any
 from datetime import datetime
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from .models import Order, Trade, Position, Portfolio
 from .enums import OrderSide, OrderType, OrderStatus, PositionSide
-from ..common import logger
+from ..common.logging_config import logger
 from .exceptions import PortfolioUpdateError
 
 class PortfolioManager:
@@ -117,6 +117,39 @@ class PortfolioManager:
             }
         }
         self.portfolio_history.append(portfolio_snapshot)
+
+    def get_portfolio_state(self) -> Dict[str, Any]:
+        """
+        Get the current portfolio state.
+        
+        Returns:
+            Dict[str, Any]: Dictionary containing portfolio state
+        """
+        return {
+            "cash": self.portfolio.cash,
+            "total_value": self.portfolio.total_value,
+            "positions": {
+                symbol: {
+                    "quantity": position.quantity,
+                    "entry_price": position.entry_price,
+                    "current_price": position.current_price if hasattr(position, 'current_price') else position.entry_price,
+                    "unrealized_pnl": position.unrealized_pnl,
+                    "realized_pnl": position.realized_pnl,
+                    "market_value": position.quantity * (position.current_price if hasattr(position, 'current_price') else position.entry_price)
+                }
+                for symbol, position in self.portfolio.positions.items()
+            },
+            "last_update": self.portfolio.last_update_time.isoformat() if self.portfolio.last_update_time else None
+        }
+        
+    def get_portfolio_value(self) -> Decimal:
+        """
+        Get the total value of the portfolio (cash + positions).
+        
+        Returns:
+            Decimal: The total portfolio value
+        """
+        return self.portfolio.total_value
 
     def calculate_position_size(
         self,
@@ -408,20 +441,79 @@ class PortfolioManager:
         returns = portfolio_values.pct_change().fillna(0)
 
         # Convert to Decimal for precise calculations
-        total_return = Decimal(str((portfolio_values.iloc[-1] / portfolio_values.iloc[0]) - 1))
-        annualized_return = Decimal(str((1 + total_return) ** (252 / len(returns)) - 1))
-        volatility = Decimal(str(returns.std() * np.sqrt(252)))
-        sharpe_ratio = annualized_return / volatility if volatility > Decimal('0') else Decimal('0')
+        total_return = Decimal(str((portfolio_values.iloc[-1] / portfolio_values.iloc[0]) - 1)) if len(portfolio_values) > 0 else Decimal('0')
+        
+        # Ensure returns series uses float64 for std calculation if necessary, or handle Decimal conversion
+        # Pandas std operates on floats. We need to be careful here.
+        # Option 1: Calculate std dev on float returns, then convert result
+        float_returns = returns.astype(float)
+        volatility_float = float_returns.std() * np.sqrt(252)
+        volatility = Decimal(str(volatility_float)) if not np.isnan(volatility_float) else Decimal('0')
+        
+        # Option 2: Potentially use a Decimal-aware std dev calculation if performance allows (more complex)
+
+        annualized_return = ((Decimal('1') + total_return) ** (Decimal('252') / Decimal(str(len(returns)))) - Decimal('1')) if len(returns) > 0 else Decimal('0')
+        sharpe_ratio = (annualized_return / volatility).quantize(Decimal('0.0001')) if volatility > Decimal('0') else Decimal('0') # Added quantize for consistent precision
 
         cumulative_returns = (1 + returns).cumprod()
         running_max = cumulative_returns.cummax()
         drawdowns = (cumulative_returns - running_max) / running_max
-        max_drawdown = drawdowns.min()
+        max_drawdown = Decimal(str(drawdowns.min())) if not drawdowns.empty else Decimal('0')
 
         return {
-            'total_return': total_return,
-            'annualized_return': annualized_return,
-            'volatility': volatility,
+            'total_return': total_return.quantize(Decimal('0.0001')),
+            'annualized_return': annualized_return.quantize(Decimal('0.0001')),
+            'volatility': volatility.quantize(Decimal('0.0001')),
             'sharpe_ratio': sharpe_ratio,
-            'max_drawdown': max_drawdown,
+            'max_drawdown': max_drawdown.quantize(Decimal('0.0001')),
         }
+
+    def update_portfolio_value(self) -> None:
+        """
+        Update the total value of the portfolio.
+
+        This method iterates over all positions, calculates their market value,
+        and updates the total portfolio value.
+        """
+        total_position_value = Decimal('0')
+        for symbol, position in self.portfolio.positions.items():
+            # Ensure position quantity and entry price are Decimal
+            pos_quantity = Decimal(str(position.quantity))
+            pos_entry_price = Decimal(str(position.entry_price))
+
+            if pos_quantity != Decimal('0'):
+                current_price = self.get_current_price(symbol)
+                if current_price is not None:
+                    # Ensure current_price is Decimal
+                    current_price_dec = Decimal(str(current_price))
+                    # Calculate PnL and update position
+                    self.calculate_position_pnl(position, current_price_dec)
+                    # Calculate market value
+                    market_value = pos_quantity * current_price_dec
+                    total_position_value += market_value
+                else:
+                    # Handle missing price? Use entry price or log warning?
+                    # For now, let's use entry value for total value calculation if price is missing
+                    logger.warning(f"Could not retrieve current price for {symbol}. Using entry value for total value calc.")
+                    total_position_value += pos_quantity * pos_entry_price # Fallback
+
+        # Update total value using Decimal
+        self.portfolio.total_value = self.portfolio.cash + total_position_value
+        self.portfolio.last_update_time = datetime.utcnow()
+
+    def calculate_position_pnl(self, position: Position, current_price: Decimal) -> None:
+        """
+        Calculate the PnL for a position.
+
+        Args:
+            position: Position to calculate PnL for
+            current_price: Current market price of the position
+        """
+        # Ensure position quantity and entry price are Decimal
+        pos_quantity = Decimal(str(position.quantity))
+        pos_entry_price = Decimal(str(position.entry_price))
+
+        if pos_quantity != Decimal('0'):
+            # Calculate unrealized PnL
+            unrealized_pnl = (current_price - pos_entry_price) * pos_quantity
+            position.unrealized_pnl = unrealized_pnl

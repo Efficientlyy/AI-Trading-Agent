@@ -9,31 +9,40 @@ from typing import Dict, List, Optional, Union, Any
 from decimal import Decimal
 from datetime import datetime, timedelta
 import pandas as pd
-
+import numpy as np
+from abc import ABC, abstractmethod
 from ai_trading_agent.sentiment_analysis.sentiment_analyzer import SentimentAnalyzer
-from ai_trading_agent.trading_engine.models import Order, OrderSide, OrderType, Position, Portfolio
+from ai_trading_agent.common.logging_config import logger
+# Import RichSignal and RichSignalsDict from the same module as BaseStrategy
+from ai_trading_agent.agent.strategy import BaseStrategy, RichSignal, RichSignalsDict
+# Import required classes for order generation
 from ai_trading_agent.trading_engine.portfolio_manager import PortfolioManager
+from ai_trading_agent.trading_engine.models import Order, OrderSide, OrderType
 
 logger = logging.getLogger(__name__)
 
-class SentimentStrategy:
+class SentimentStrategy(BaseStrategy):
     """
     Trading strategy based on sentiment analysis.
     
     This strategy uses sentiment analysis to generate trading signals and execute trades.
     """
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
+    def __init__(self, name: str, config: Optional[Dict[str, Any]] = None):
         """
         Initialize the sentiment strategy.
         
         Args:
+            name: Unique name for the strategy instance.
             config: Configuration dictionary for the strategy
         """
-        self.config = config or {}
+        super().__init__(name, config)
         
         # Initialize sentiment analyzer
-        self.sentiment_analyzer = SentimentAnalyzer(config=self.config.get("sentiment_analyzer", {}))
+        sentiment_analyzer_config = self.config.get("sentiment_analyzer", {})
+        if not sentiment_analyzer_config: 
+             logger.warning(f"No configuration provided for SentimentAnalyzer in strategy '{self.name}'. Using defaults.")
+        self.sentiment_analyzer = SentimentAnalyzer(config=sentiment_analyzer_config)
         
         # Strategy parameters
         self.sentiment_threshold = Decimal(str(self.config.get("sentiment_threshold", 0.2)))
@@ -55,6 +64,19 @@ class SentimentStrategy:
         self.sentiment_cache_expiry = {}
         self.cache_expiry_hours = self.config.get("cache_expiry_hours", 24)
     
+    def update_config(self, config_updates: Dict[str, Any]) -> None:
+        """
+        Update the strategy's configuration parameters dynamically.
+        
+        Args:
+            config_updates: A dictionary containing parameters to update.
+        """
+        logger.info(f"Updating {self.name} config. Old: {self.config}, New partial: {config_updates}")
+        self.config.update(config_updates)
+        # TODO: Re-initialize components if necessary based on updated config
+        # e.g., self.sentiment_threshold = Decimal(str(self.config.get(...)))
+        logger.info(f"Updated {self.name} config: {self.config}")
+
     def get_sentiment_data(self, topic_or_asset: str, is_topic: bool = True) -> pd.DataFrame:
         """
         Get sentiment data for a topic or asset.
@@ -132,26 +154,59 @@ class SentimentStrategy:
             "timestamp": timestamp
         }
     
-    def generate_signals(self) -> List[Dict[str, Any]]:
+    def generate_signals(
+        self,
+        data: Union[pd.DataFrame, Dict[str, pd.DataFrame]], # DataManager provided data (currently unused by this logic)
+        current_portfolio: Optional[Dict[str, Any]] = None # Optional portfolio state (currently unused)
+    ) -> RichSignalsDict:
         """
-        Generate trading signals for all topics and assets.
+        Generate rich trading signals based on sentiment analysis for configured assets.
         
+        Implements the abstract method from BaseStrategy.
+
+        Args:
+            data: Market data provided by the DataManager (ignored in this simple version).
+            current_portfolio: Current portfolio state (ignored in this simple version).
+
         Returns:
-            List of dictionaries containing signal information
+            RichSignalsDict mapping each asset symbol to its sentiment-based signal.
         """
-        all_signals = []
+        rich_signals: RichSignalsDict = {}
         
-        # Generate signals for topics
-        for topic in self.topics:
-            signal = self.get_latest_signal(topic, is_topic=True)
-            all_signals.append(signal)
-        
-        # Generate signals for assets
+        # Use self.assets defined during __init__ from config
         for asset in self.assets:
-            signal = self.get_latest_signal(asset, is_topic=False)
-            all_signals.append(signal)
-        
-        return all_signals
+            try:
+                # Get the latest sentiment signal for the asset
+                # Note: This fetches data on-demand, ignoring the 'data' argument from DataManager
+                latest_signal_info = self.get_latest_signal(asset, is_topic=False)
+                
+                # Convert the result from get_latest_signal to RichSignal format
+                signal_strength = float(latest_signal_info.get('weighted_score', 0.0)) # Map weighted score
+                # Confidence could be derived, e.g., based on magnitude or set to a fixed value/related to score variance?
+                # For simplicity, let's use the absolute strength scaled (capped at 1.0)
+                confidence_score = min(abs(signal_strength) * 2.0, 1.0) # Example confidence derivation
+
+                rich_signals[asset] = {
+                    'signal_strength': signal_strength,
+                    'confidence_score': confidence_score,
+                    'signal_type': 'sentiment',
+                    'metadata': {
+                        'timestamp': latest_signal_info.get('timestamp'),
+                        'raw_signal': latest_signal_info.get('signal') # Keep the original 0/1/-1 if needed
+                    }
+                }
+                logger.debug(f"Generated sentiment signal for {asset}: Strength={signal_strength:.4f}, Conf={confidence_score:.4f}")
+                
+            except Exception as e:
+                logger.error(f"Error generating sentiment signal for asset {asset}: {e}", exc_info=True)
+                rich_signals[asset] = {
+                    'signal_strength': 0.0,
+                    'confidence_score': 0.0,
+                    'signal_type': 'sentiment',
+                    'metadata': {'error': str(e)}
+                }
+                
+        return rich_signals
     
     def generate_orders(self, 
                        signals: List[Dict[str, Any]], 
@@ -242,7 +297,7 @@ class SentimentStrategy:
             List of orders to execute
         """
         # Generate signals
-        signals = self.generate_signals()
+        signals = self.generate_signals(None, None)
         
         # Generate orders based on signals
         orders = self.generate_orders(signals, portfolio_manager, market_prices)

@@ -37,3 +37,9 @@ class PositionSide(str, Enum):
     """Position side enum (long or short)."""
     LONG = "long"
     SHORT = "short"
+
+
+class TradingMode(str, Enum):
+    """Trading mode enum (live or paper)."""
+    LIVE = "live"
+    PAPER = "paper"
