@@ -15,6 +15,7 @@ from .base_provider import BaseDataProvider
 from .mock_provider import MockDataProvider
 # Import other providers as they are created
 from .ccxt_provider import CcxtProvider
+from .public_api_provider import PublicApiDataProvider
 # from .yfinance_provider import YFinanceProvider
 
 class DataService:
@@ -22,13 +23,21 @@ class DataService:
     Manages data providers and provides a unified interface for data access.
     """
 
-    def __init__(self):
+    def __init__(self, config=None):
         """
         Initialize the DataService by loading configuration and instantiating
         the appropriate data provider.
+        
+        Args:
+            config: Optional configuration dictionary. If not provided, will load from global config.
         """
-        self.config = get_config()
-        self.data_sources_config = get_config_value('data_sources', {})
+        if config is None:
+            self.config = get_config()
+            self.data_sources_config = get_config_value('data_sources', {})
+        else:
+            self.config = config
+            self.data_sources_config = config.get('data_sources', {})
+            
         self.active_provider_name = self.data_sources_config.get('active_provider', 'mock')
         self.provider_config = self.data_sources_config.get(self.active_provider_name, {})
 
@@ -49,6 +58,9 @@ class DataService:
              logger.info(f"Creating CcxtProvider with config: {self.provider_config}")
              # Ensure necessary config keys are present if needed later (e.g., API keys)
              return CcxtProvider(config=self.provider_config)
+        elif provider_name == 'public_api':
+             logger.info(f"Creating PublicApiDataProvider with config: {self.provider_config}")
+             return PublicApiDataProvider(config=self.provider_config)
         # elif provider_name == 'yfinance':
         #     logger.info(f"Creating YFinanceProvider with config: {self.provider_config}")
         #     return YFinanceProvider(config=self.provider_config)
@@ -122,4 +134,4 @@ class DataService:
             logger.debug(f"Provider {self.active_provider_name} does not have an async close method.")
 
 # Optional: Create a singleton instance for easy access throughout the application
-# data_service = DataService()
+data_service = DataService()

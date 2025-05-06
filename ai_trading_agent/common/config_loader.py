@@ -5,11 +5,15 @@ Provides functionality to load and validate configuration from YAML files.
 import os
 from pathlib import Path
 import yaml
-from dotenv import load_dotenv
-from .logging_config import logger # Use relative import
+from typing import Dict, Any, Optional
+try:
+    from dotenv import load_dotenv
+    # Load environment variables from .env file
+    load_dotenv()
+except ImportError:
+    pass  # dotenv is optional
 
-# Load environment variables from .env file
-load_dotenv()
+from .logging_config import logger  # Use relative import
 
 class ConfigLoader:
     """
@@ -59,8 +63,8 @@ class ConfigLoader:
             with open(self.config_path, 'r') as config_file:
                 self.config = yaml.safe_load(config_file)
             # Pass the loaded config to the logger setup
-            from .logging_config import setup_logging # Re-import to use the loaded config
-            setup_logging(self.config)
+            # from .logging_config import setup_logging # Re-import to use the loaded config
+            # setup_logging(self.config)
             logger.info("Configuration loaded successfully")
             return self.config
         except FileNotFoundError:
@@ -134,3 +138,27 @@ def get_config_value(key_path, default=None):
         The value at the specified path, or the default if not found.
     """
     return config_loader.get_value(key_path, default)
+
+# Function to load configuration from a specific path
+def load_config(config_path: str) -> Dict[str, Any]:
+    """
+    Load configuration from a specific YAML file path.
+    
+    Args:
+        config_path: Path to the configuration file
+    
+    Returns:
+        Dictionary with configuration
+    """
+    try:
+        logger.info(f"Loading configuration from {config_path}")
+        with open(config_path, 'r') as config_file:
+            config = yaml.safe_load(config_file)
+        logger.info("Configuration loaded successfully")
+        return config
+    except FileNotFoundError:
+        logger.error(f"Configuration file not found: {config_path}")
+        raise
+    except yaml.YAMLError as e:
+        logger.error(f"Error parsing YAML configuration: {e}")
+        raise
