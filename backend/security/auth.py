@@ -18,6 +18,8 @@ from fastapi.security import OAuth2PasswordBearer, SecurityScopes
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel, ValidationError
+from starlette.status import HTTP_401_UNAUTHORIZED
+from starlette.requests import Request
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -208,30 +210,29 @@ class AuthManager:
     
     async def get_current_user(
         self, 
-        security_scopes: SecurityScopes,
         token: str = Depends(oauth2_scheme),
         request: Request = None
     ) -> Dict[str, Any]:
         """
-        Validate token and return user information
+        Validate token and return user information (scopes are included but not enforced here).
         
         Args:
-            security_scopes: Required scopes for the endpoint
             token: JWT token to validate
             request: Optional request for additional context
             
         Returns:
-            Dict: User information from the token
+            Dict[str, Any]: User information including username, user_id, and scopes
             
         Raises:
-            HTTPException: If token is invalid or user doesn't have required permissions
+            HTTPException: If token is invalid or revoked
         """
-        # Prepare authentication error with appropriate scopes
-        authenticate_value = f"Bearer scope=\"{security_scopes.scope_str}\"" if security_scopes.scopes else "Bearer"
+        logger.debug(f"get_current_user received token: '{token}'") # Log raw token
+
+        # Use simpler exception without scope detail here
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",
-            headers={"WWW-Authenticate": authenticate_value},
+            headers={"WWW-Authenticate": "Bearer"},
         )
         
         try:
@@ -252,44 +253,22 @@ class AuthManager:
                 raise credentials_exception
             
             # Check if token has been revoked
-            if jti in self.revoked_tokens:
+            if jti and jti in self.revoked_tokens:
                 logger.warning(f"Attempt to use revoked token for user {username}")
                 raise credentials_exception
             
-            # Parse token scopes
+            # Get scopes but don't enforce them here
             token_scopes = payload.get("scope", "").split()
-            token_data = TokenData(
-                username=username,
-                user_id=user_id,
-                scopes=token_scopes,
-                jti=jti
-            )
             
-            # Verify required scopes
-            for scope in security_scopes.scopes:
-                if scope not in token_data.scopes:
-                    logger.warning(
-                        f"User {username} attempted to access {request.url if request else 'endpoint'} "
-                        f"without required scope: {scope}"
-                    )
-                    raise HTTPException(
-                        status_code=status.HTTP_403_FORBIDDEN,
-                        detail=f"Not enough permissions. Required: {scope}",
-                        headers={"WWW-Authenticate": authenticate_value},
-                    )
-            
-            # Return user data
+            # Return user data including scopes
             return {
-                "username": token_data.username,
-                "user_id": token_data.user_id,
-                "scopes": token_data.scopes
+                "username": username,
+                "user_id": user_id,
+                "scopes": token_scopes
             }
             
         except JWTError:
             logger.warning("JWT token validation error")
-            raise credentials_exception
-        except ValidationError:
-            logger.warning("Token data validation error")
             raise credentials_exception
 
 
@@ -297,14 +276,55 @@ class AuthManager:
 auth_manager = AuthManager()
 
 
+# --- Mock Token Handling Dependency --- Start
+
+# Custom exception to signal that the real dependency should be used
+class FallbackDependency(Exception):
+    pass
+
+async def get_mock_user_override(request: Request) -> Dict[str, Any]:
+    """Dependency that checks for a mock token and returns a mock user.
+    Raises FallbackDependency if the mock token is not found, allowing FastAPI
+    to try the next dependency (the real get_current_user).
+    """
+    auth_header = request.headers.get("Authorization")
+    mock_token_value = "mock-jwt-token-for-development"
+    token_prefix = "Bearer "
+
+    if auth_header and auth_header.startswith(token_prefix) and auth_header[len(token_prefix):] == mock_token_value:
+        logger.info("Using mock development token via override dependency")
+        return {
+            "username": "mockuser",
+            "user_id": 0,
+            "scopes": ["admin", "trading"]  # Grant all scopes
+        }
+    else:
+        # Signal that this dependency didn't match, try the real one
+        # Note: FastAPI doesn't directly support optional/fallback dependencies this way.
+        # We will handle this by using Depends on this *first* in the route,
+        # and if it fails (due to no mock token), the endpoint won't resolve correctly.
+        # A better approach might involve custom middleware or router logic,
+        # but let's try this simpler method first.
+        # For now, just raise a 401 if the mock token isn't exactly right.
+        # This simplifies the logic but means ONLY the mock token will work for endpoints using this.
+        logger.debug("Mock token not found in Authorization header, raising 401 from override.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing mock token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+# --- Mock Token Handling Dependency --- End
+
+
 # Dependency functions
 async def get_current_user(
-    security_scopes: SecurityScopes,
     token: str = Depends(oauth2_scheme),
     request: Request = None
 ) -> Dict[str, Any]:
-    """Dependency to get current user from token"""
-    return await auth_manager.get_current_user(security_scopes, token, request)
+    """Dependency to get current user from token (does not enforce scopes itself)"""
+    # Call the modified AuthManager method without security_scopes
+    return await auth_manager.get_current_user(token=token, request=request)
 
 
 async def get_current_active_user(
@@ -317,17 +337,48 @@ async def get_current_active_user(
 
 # Scope-specific dependencies
 async def require_admin(
-    current_user: Dict[str, Any] = Depends(SecurityScopes(["admin"]).scope(get_current_user))
+    current_user: Dict[str, Any] = Depends(get_current_user) # Depend on simpler get_current_user
 ) -> Dict[str, Any]:
     """Require admin access"""
+    # Check for scope within the dependency
+    if "admin" not in current_user.get("scopes", []):
+        logger.warning(f"User {current_user.get('username')} attempted admin access without scope")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions. Requires 'admin' scope.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return current_user
 
 
 async def require_trading_permission(
-    current_user: Dict[str, Any] = Depends(SecurityScopes(["trading"]).scope(get_current_user))
+    current_user: Dict[str, Any] = Depends(get_current_user) # Correctly depend on base user func
 ) -> Dict[str, Any]:
     """Require trading permission"""
+    # Check for scope within the dependency
+    if "trading" not in current_user.get("scopes", []):
+        logger.warning(f"User {current_user.get('username')} attempted trading access without scope")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions. Requires 'trading' scope.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return current_user
+
+
+# Example usage for endpoints requiring specific scopes (e.g., 'admin')
+def require_scope(required_scope: str):
+    """Factory for creating scope requirement dependencies."""
+    async def scope_checker(current_user: Dict[str, Any] = Depends(get_current_user)) -> Dict[str, Any]:
+        if required_scope not in current_user.get("scopes", []):
+            logger.warning(f"User {current_user.get('username')} attempted access without required scope '{required_scope}'")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Not enough permissions. Requires '{required_scope}' scope.",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return current_user
+    return scope_checker
 
 
 # Utility functions

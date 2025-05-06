@@ -19,7 +19,7 @@ from .manager import (
     WebSocketMessage,
     MessageType
 )
-from ai_trading_agent.data_acquisition.data_service import DataService
+from ai_trading_agent.data_acquisition.data_service import data_service, DataService
 from ai_trading_agent.data_acquisition.base_provider import BaseDataProvider
 
 # Setup logging
@@ -70,8 +70,8 @@ class MarketDataStreamer:
             self.data_service = data_service
         else:
             # Import here to avoid circular imports
-            from ai_trading_agent.data_acquisition.data_service import get_data_service
-            self.data_service = await get_data_service()
+            from ai_trading_agent.data_acquisition.data_service import data_service
+            self.data_service = data_service
         
         self.running = True
         logger.info(f"Market data streamer started (mock_mode={mock_mode})")

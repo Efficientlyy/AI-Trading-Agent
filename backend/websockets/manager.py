@@ -15,11 +15,12 @@ from datetime import datetime
 import uuid
 from enum import Enum
 
-from fastapi import WebSocket, WebSocketDisconnect, Depends, status
+from fastapi import WebSocket, WebSocketDisconnect, Depends, status, HTTPException
 from pydantic import BaseModel, ValidationError
+from jose import JWTError, jwt
 
 from backend.database.models import User
-from backend.auth.jwt import get_current_user_from_token
+from backend.security.auth import auth_manager, AuthConfig, TokenData
 from ai_trading_agent.trading_engine.models import OrderStatus, Order, Trade
 
 # Setup logging
@@ -105,43 +106,70 @@ class ConnectionManager:
         logger.info(f"New WebSocket connection established: {connection_id}")
         return connection_id
     
-    async def authenticate(self, connection_id: str, token: str) -> bool:
+    async def authenticate(self, connection_id: str, token: str) -> Optional[Dict[str, Any]]:
         """
         Authenticate a WebSocket connection using JWT token
         
         Args:
             connection_id: Connection ID to authenticate
-            token: JWT token
+            token: JWT token string
             
         Returns:
-            bool: True if authentication is successful
+            Optional[Dict[str, Any]]: User data ({'user_id', 'username', 'scopes'}) on success, None on failure.
         """
         if connection_id not in self.active_connections:
             logger.error(f"Cannot authenticate non-existent connection: {connection_id}")
-            return False
+            return None
         
+        websocket = self.active_connections[connection_id]
+
         try:
-            # Verify token and get user
-            user = await get_current_user_from_token(token)
-            user_id = user.id
+            # Decode the token using the auth manager's config
+            payload = jwt.decode(
+                token, 
+                AuthConfig.SECRET_KEY, 
+                algorithms=[AuthConfig.ALGORITHM]
+            )
             
-            # Associate connection with user
+            # Extract data (similar to AuthManager.get_current_user)
+            username: str = payload.get("sub")
+            user_id: int = payload.get("user_id")
+            jti: str = payload.get("jti")
+            scopes: List[str] = payload.get("scope", "").split()
+
+            if username is None or user_id is None:
+                logger.warning(f"WS connection {connection_id}: Token missing required claims")
+                await websocket.send_json({"type": MessageType.ERROR, "data": {"message": "Invalid token claims"}})
+                return None
+
+            # Check if token is revoked using the auth_manager's revoked list
+            if jti and jti in auth_manager.revoked_tokens:
+                logger.warning(f"WS connection {connection_id}: Attempt to use revoked token for user {username}")
+                await websocket.send_json({"type": MessageType.ERROR, "data": {"message": "Token revoked"}})
+                return None
+
+            # Authentication successful, store user mapping
             self.connection_to_user[connection_id] = user_id
-            
-            # Add connection to user's connections
             if user_id not in self.user_connections:
                 self.user_connections[user_id] = set()
-            
             self.user_connections[user_id].add(connection_id)
             self.connection_status[connection_id] = ConnectionStatus.AUTHENTICATED
             self.last_activity[connection_id] = time.time()
             
-            logger.info(f"Connection {connection_id} authenticated for user {user_id}")
-            return True
+            logger.info(f"WebSocket connection {connection_id} authenticated for user {user_id} ({username})")
+            # Send confirmation back to the client
+            await websocket.send_json({"type": "auth_success", "data": {"user_id": user_id, "username": username, "scopes": scopes}})
+            # Return user data on success
+            return {"user_id": user_id, "username": username, "scopes": scopes}
             
+        except JWTError as e:
+            logger.warning(f"WS connection {connection_id}: JWT validation error - {e}")
+            await websocket.send_json({"type": MessageType.ERROR, "data": {"message": f"Invalid token: {e}"}})
+            return None
         except Exception as e:
-            logger.error(f"Authentication failed for connection {connection_id}: {str(e)}")
-            return False
+            logger.error(f"WS connection {connection_id}: Unexpected error during authentication - {e}")
+            await websocket.send_json({"type": MessageType.ERROR, "data": {"message": "Authentication failed"}})
+            return None
     
     async def disconnect(self, connection_id: str) -> None:
         """

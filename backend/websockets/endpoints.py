@@ -21,8 +21,6 @@ from .manager import (
     MessageType
 )
 from backend.security.audit_logging import log_security_event, SecurityEventType
-from backend.auth.jwt import get_current_user_from_token, get_token_data
-from backend.auth.dependencies import get_current_user, get_current_active_user
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -102,60 +100,35 @@ async def websocket_endpoint(websocket: WebSocket):
                     await websocket.send_json(error_msg)
                     continue
                 
-                # Try to authenticate
-                auth_success = await connection_manager.authenticate(connection_id, token)
+                # Try to authenticate - now returns user data dict or None
+                user_data = await connection_manager.authenticate(connection_id, token)
                 
-                if auth_success:
+                if user_data: # Check if authenticate returned user data (success)
                     authenticated = True
                     try:
-                        # Get user ID for logging
-                        token_data = await get_token_data(token)
-                        user_id = token_data.user_id
+                        # Get user ID from the returned dictionary for logging
+                        user_id = user_data.get('user_id') 
                         
-                        # Log successful WebSocket authentication
-                        log_security_event(
-                            event_type=SecurityEventType.AUTH_SUCCESS,
-                            message=f"WebSocket authentication successful for user: {user_id}",
-                            user_id=str(user_id),
-                            details={
-                                "connection_id": connection_id,
-                                "websocket": True,
-                            }
-                        )
-                    except Exception as e:
-                        # Continue even if logging fails
-                        logger.error(f"Error logging WebSocket auth: {str(e)}")
-                    
-                    # Send success message
-                    auth_msg = WebSocketMessage(
-                        type=MessageType.SYSTEM_STATUS,
-                        data={
-                            "message": "Authentication successful",
-                            "status": "authenticated"
-                        }
-                    ).dict()
-                    await websocket.send_json(auth_msg)
-                else:
-                    # Authentication failed
-                    error_msg = WebSocketMessage(
-                        type=MessageType.ERROR,
-                        data={
-                            "message": "Authentication failed",
-                            "error": "invalid_token"
-                        }
-                    ).dict()
-                    await websocket.send_json(error_msg)
-                    
-                    # Log failed authentication
+                        # Log successful WebSocket authentication if user_id exists
+                        if user_id:
+                            log_security_event(
+                                event_type=SecurityEventType.WEBSOCKET_AUTH_SUCCESS,
+                                user_id=user_id,
+                                connection_id=connection_id,
+                                details=f"WebSocket connection authenticated successfully."
+                            )
+                        else:
+                            logger.warning(f"Authentication succeeded for WS {connection_id}, but user_id missing in returned data.")
+
+                    except Exception as log_err:
+                        # Log the error but don't disrupt the flow
+                        logger.error(f"Error logging WebSocket authentication success: {log_err}")
+                else: # Authentication failed (returned None)
+                    # Log failed WebSocket authentication attempt
                     log_security_event(
-                        event_type=SecurityEventType.AUTH_FAILURE,
-                        message=f"WebSocket authentication failed",
-                        details={
-                            "connection_id": connection_id,
-                            "websocket": True,
-                            "error": "invalid_token"
-                        },
-                        severity="WARNING"
+                        event_type=SecurityEventType.WEBSOCKET_AUTH_FAILURE,
+                        connection_id=connection_id,
+                        details=f"WebSocket authentication failed for connection."
                     )
             
             elif action == "subscribe":
