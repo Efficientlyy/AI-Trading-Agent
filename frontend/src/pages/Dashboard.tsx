@@ -156,7 +156,7 @@ const Dashboard: React.FC = () => {
   // Memoize the third column components
   const [agentLoading, setAgentLoading] = React.useState(false);
   const prevStatusRef = React.useRef(wsData.agent_status?.status);
-  const { addNotification } = useNotification();
+  const { showNotification: addNotification } = useNotification();
 
   // When agent_status changes, disable loading and show notification
   React.useEffect(() => {
@@ -183,7 +183,7 @@ const Dashboard: React.FC = () => {
       }
       prevStatusRef.current = wsData.agent_status?.status;
     }
-  }, [wsData.agent_status?.status, agentLoading, addNotification]);
+  }, [wsData.agent_status?.status, agentLoading]);
 
   const { status: wsStatus } = useWebSocket([]); // get wsRef
   const wsRef = React.useRef<WebSocket | null>(null);

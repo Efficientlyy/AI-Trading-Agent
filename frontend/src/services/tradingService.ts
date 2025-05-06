@@ -8,10 +8,11 @@ import { OrderType, OrderSide } from '../types';
 import { binanceTradingApi } from '../api/trading/binanceTradingApi';
 import { bybitTradingApi } from '../api/trading/bybitTradingApi';
 // Create a dummy implementation for paper trading api
-const paperTradingApi = (mode: 'live' | 'paper', config: any) => bybitTradingApi(mode, config);
+const paperTradingApi = (mode: TradingMode, config: any) => bybitTradingApi(mode, config);
 
 // Import configuration from config file
 import config from '../config';
+import { TradingMode } from '../config/index';
 
 // Define Config interface to match the expected structure
 interface Config {
@@ -68,9 +69,9 @@ const tradingConfig = configuration.trading;
 
 // Initialize API clients for each exchange with proper types
 const apiClients: Record<string, any> = {
-  binance: binanceTradingApi(tradingConfig.mode as 'live' | 'paper', tradingConfig.exchanges.binance),
-  bybit: bybitTradingApi(tradingConfig.mode as 'live' | 'paper', tradingConfig.exchanges.bybit),
-  paper: paperTradingApi(tradingConfig.mode as 'live' | 'paper', tradingConfig.exchanges.binance),
+  binance: binanceTradingApi(tradingConfig.mode === 'live' ? 'live' : 'paper', tradingConfig.exchanges.binance),
+  bybit: bybitTradingApi(tradingConfig.mode === 'live' ? 'live' : 'paper', tradingConfig.exchanges.bybit),
+  paper: paperTradingApi(tradingConfig.mode === 'live' ? 'live' : 'paper', tradingConfig.exchanges.binance),
 };
 
 // Get the currently active API client

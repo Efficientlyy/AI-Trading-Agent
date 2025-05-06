@@ -38,6 +38,14 @@
   --color-error: #ef4444;
   --color-info: #3b82f6;
   
+  /* RGB Color Values for rgba() functions */
+  --color-primary-rgb: 59, 130, 246; /* Blue */
+  --color-secondary-rgb: 107, 114, 128; /* Gray */
+  --color-success-rgb: 16, 185, 129; /* Green */
+  --color-danger-rgb: 239, 68, 68; /* Red */
+  --color-warning-rgb: 245, 158, 11; /* Yellow */
+  --color-info-rgb: 59, 130, 246; /* Blue */
+  
   /* Chart Colors */
   --chart-up: #10b981;
   --chart-down: #ef4444;
