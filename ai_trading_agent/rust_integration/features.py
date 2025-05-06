@@ -4,7 +4,7 @@ Rust-accelerated feature engineering module.
 This module provides Python wrappers for feature engineering functions implemented in Rust.
 """
 import numpy as np
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict
 from decimal import Decimal
 
 # Import our lag features implementation

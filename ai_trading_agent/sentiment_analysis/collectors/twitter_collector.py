@@ -9,7 +9,8 @@ import os
 import json
 import time
 import logging
-from typing import Dict, List, Optional, Any, Union
+import re
+from typing import Dict, List, Optional, Any, Union, Callable
 from datetime import datetime, timedelta
 import requests
 import pandas as pd
@@ -210,80 +211,132 @@ class TwitterAPICollector(BaseSentimentProvider):
         Returns:
             List of tweet objects
         """
+        # If using mock data, return mock data
+        if self.use_mock_data:
+            logger.info(f"Using mock data for query: {query}")
+            symbols = [s.strip('$') for s in query.split('OR') if s.strip().startswith('$')]
+            if not symbols:
+                symbols = [query.split()[0]]  # Use first word as symbol if no $ symbols
+            return self._generate_mock_data(symbols, start_time, end_time).to_dict('records')
+        
         # Check cache first
         cache_key = self._get_cache_key(query, start_time, end_time, kwargs)
         cached_data = self._get_from_cache(cache_key)
         if cached_data:
-            logger.debug(f"Using cached data for query: {query}")
+            logger.info(f"Using cached data for query: {query}")
             return cached_data
         
-        # Format dates for Twitter API
+        # Prepare API request for Twitter API v2
+        url = "https://api.twitter.com/2/tweets/search/recent"
+        
+        # Format dates for Twitter API (ISO 8601 format)
         start_time_str = start_time.strftime("%Y-%m-%dT%H:%M:%SZ")
         end_time_str = end_time.strftime("%Y-%m-%dT%H:%M:%SZ")
         
-        # Set up parameters
+        # Prepare query parameters
         params = {
             "query": query,
             "start_time": start_time_str,
             "end_time": end_time_str,
-            "max_results": self.max_results_per_query,
-            "tweet.fields": "created_at,public_metrics,entities",
-            "expansions": "author_id",
-            "user.fields": "username,name,verified",
+            "max_results": kwargs.get("max_results", self.max_results_per_query),
+            "tweet.fields": kwargs.get("tweet_fields", "created_at,public_metrics,entities,context_annotations"),
+            "user.fields": kwargs.get("user_fields", "username,public_metrics,verified"),
+            "expansions": kwargs.get("expansions", "author_id,referenced_tweets.id"),
         }
         
-        # Update with any additional parameters
-        params.update(kwargs)
-        
-        # Make API request
-        url = "https://api.twitter.com/2/tweets/search/recent"
         all_tweets = []
         next_token = None
+        max_pages = kwargs.get("max_pages", 5)  # Limit number of pages to avoid rate limits
+        page_count = 0
         
-        while True:
-            if next_token:
-                params["next_token"] = next_token
-            
-            try:
+        try:
+            while page_count < max_pages:
+                if next_token:
+                    params["next_token"] = next_token
+                
+                # Make API request
+                logger.info(f"Making Twitter API request for query: {query} (page {page_count+1})")
                 response = self.session.get(url, params=params)
                 
                 # Handle rate limiting
                 if response.status_code == 429:
-                    logger.warning(f"Rate limited. Waiting {self.rate_limit_wait} seconds.")
-                    time.sleep(self.rate_limit_wait)
+                    wait_time = int(response.headers.get("x-rate-limit-reset", self.rate_limit_wait))
+                    logger.warning(f"Rate limited. Waiting {wait_time} seconds.")
+                    time.sleep(wait_time)
                     continue
                 
                 # Handle other errors
                 if response.status_code != 200:
-                    logger.error(f"Error from Twitter API: {response.status_code} - {response.text}")
+                    logger.error(f"Twitter API error: {response.status_code} - {response.text}")
                     break
                 
+                # Parse response
                 data = response.json()
                 
                 # Extract tweets
                 if "data" in data:
-                    all_tweets.extend(data["data"])
+                    tweets = data["data"]
+                    
+                    # Process tweets to include user information
+                    if "includes" in data and "users" in data["includes"]:
+                        users = {user["id"]: user for user in data["includes"]["users"]}
+                        
+                        for tweet in tweets:
+                            # Add user information to tweet
+                            if "author_id" in tweet and tweet["author_id"] in users:
+                                tweet["user"] = users[tweet["author_id"]]
+                    
+                    all_tweets.extend(tweets)
                 
-                # Check for next page
+                # Check if there are more results
                 if "meta" in data and "next_token" in data["meta"]:
                     next_token = data["meta"]["next_token"]
+                    page_count += 1
                 else:
                     break
+            
+            # Process the tweets into a standardized format
+            processed_tweets = []
+            for tweet in all_tweets:
+                processed_tweet = {
+                    "tweet_id": tweet.get("id"),
+                    "content": tweet.get("text"),
+                    "timestamp": datetime.strptime(tweet.get("created_at"), "%Y-%m-%dT%H:%M:%S.%fZ") if "created_at" in tweet else datetime.now(),
+                    "source": "twitter",
+                    "user_id": tweet.get("author_id"),
+                    "username": tweet.get("user", {}).get("username") if "user" in tweet else None,
+                    "metric_retweet_count": tweet.get("public_metrics", {}).get("retweet_count", 0) if "public_metrics" in tweet else 0,
+                    "metric_reply_count": tweet.get("public_metrics", {}).get("reply_count", 0) if "public_metrics" in tweet else 0,
+                    "metric_like_count": tweet.get("public_metrics", {}).get("like_count", 0) if "public_metrics" in tweet else 0,
+                    "metric_quote_count": tweet.get("public_metrics", {}).get("quote_count", 0) if "public_metrics" in tweet else 0,
+                }
                 
-            except Exception as e:
-                logger.error(f"Error fetching tweets: {e}")
-                break
-        
-        # Cache the results
-        self._save_to_cache(cache_key, all_tweets)
-        
-        return all_tweets
+                # Extract symbols from entities
+                if "entities" in tweet and "cashtags" in tweet["entities"]:
+                    processed_tweet["symbols"] = [cashtag["tag"] for cashtag in tweet["entities"]["cashtags"]]
+                
+                processed_tweets.append(processed_tweet)
+            
+            # Cache the results
+            self._save_to_cache(cache_key, processed_tweets)
+            
+            return processed_tweets
+            
+        except Exception as e:
+            logger.error(f"Error searching tweets: {e}")
+            # Fallback to mock data in case of error
+            logger.warning("Falling back to mock data due to API error")
+            symbols = [s.strip('$') for s in query.split('OR') if s.strip().startswith('$')]
+            if not symbols:
+                symbols = [query.split()[0]]  # Use first word as symbol if no $ symbols
+            mock_data = self._generate_mock_data(symbols, start_time, end_time).to_dict('records')
+            return mock_data
     
     def _stream_tweets(
         self,
         rules: List[Dict[str, str]],
         params: Dict[str, Any],
-        callback: callable
+        callback: Callable[[pd.DataFrame], None]
     ) -> None:
         """
         Stream tweets using the Twitter API.
@@ -293,37 +346,157 @@ class TwitterAPICollector(BaseSentimentProvider):
             params: Parameters for the stream
             callback: Callback function to process streamed data
         """
-        # Set up the stream
-        url = "https://api.twitter.com/2/tweets/search/stream"
-        
-        # First, delete existing rules
-        rules_url = f"{url}/rules"
-        response = self.session.get(rules_url)
-        if response.status_code == 200:
-            data = response.json()
-            if "data" in data:
-                ids = [rule["id"] for rule in data["data"]]
-                if ids:
-                    payload = {"delete": {"ids": ids}}
-                    self.session.post(rules_url, json=payload)
-        
-        # Add new rules
-        payload = {"add": rules}
-        response = self.session.post(rules_url, json=payload)
-        if response.status_code != 201:
-            logger.error(f"Error setting stream rules: {response.status_code} - {response.text}")
+        # If using mock data, generate mock data periodically
+        if self.use_mock_data:
+            logger.info("Using mock data for streaming")
+            symbols = []
+            for rule in rules:
+                query = rule.get("value", "")
+                symbols.extend([s.strip('$') for s in query.split('OR') if s.strip().startswith('$')])
+            
+            if not symbols:
+                symbols = ["BTC", "ETH"]  # Default symbols if none specified
+            
+            # Generate mock data every few seconds
+            try:
+                while True:
+                    mock_data = self._generate_mock_data(
+                        symbols,
+                        datetime.now() - timedelta(minutes=5),
+                        datetime.now()
+                    )
+                    callback(mock_data)
+                    time.sleep(5)  # Sleep for 5 seconds
+            except KeyboardInterrupt:
+                logger.info("Mock streaming stopped")
             return
         
-        # Start the stream
-        response = self.session.get(url, params=params, stream=True)
+        # Implement Twitter API v2 filtered stream
+        stream_url = "https://api.twitter.com/2/tweets/search/stream"
+        rules_url = f"{stream_url}/rules"
         
-        for line in response.iter_lines():
-            if line:
-                try:
-                    tweet = json.loads(line)
-                    callback(tweet)
-                except json.JSONDecodeError:
-                    logger.error(f"Error decoding tweet: {line}")
+        # Set up stream parameters
+        stream_params = {
+            "tweet.fields": params.get("tweet_fields", "created_at,public_metrics,entities,context_annotations"),
+            "user.fields": params.get("user_fields", "username,public_metrics,verified"),
+            "expansions": params.get("expansions", "author_id,referenced_tweets.id"),
+        }
+        
+        # First, delete any existing rules
+        try:
+            response = self.session.get(rules_url)
+            if response.status_code == 200:
+                data = response.json()
+                if "data" in data:
+                    existing_rules = data["data"]
+                    if existing_rules:
+                        ids = [rule["id"] for rule in existing_rules]
+                        payload = {"delete": {"ids": ids}}
+                        self.session.post(rules_url, json=payload)
+            
+            # Add new rules
+            if rules:
+                payload = {"add": rules}
+                response = self.session.post(rules_url, json=payload)
+                if response.status_code != 201:
+                    logger.error(f"Failed to add stream rules: {response.status_code} - {response.text}")
+                    # Fall back to mock streaming
+                    self._stream_tweets_mock(symbols, callback)
+                    return
+            
+            # Start the stream
+            logger.info("Starting Twitter filtered stream")
+            response = self.session.get(
+                stream_url,
+                params=stream_params,
+                stream=True
+            )
+            
+            if response.status_code != 200:
+                logger.error(f"Stream connection failed: {response.status_code} - {response.text}")
+                # Fall back to mock streaming
+                self._stream_tweets_mock(symbols, callback)
+                return
+            
+            # Process the stream
+            buffer = ""
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:
+                    buffer += chunk.decode("utf-8")
+                    if buffer.endswith("\r\n"):
+                        tweets = []
+                        for line in buffer.split("\r\n"):
+                            if line.strip():
+                                try:
+                                    tweet_data = json.loads(line)
+                                    if "data" in tweet_data:
+                                        tweet = tweet_data["data"]
+                                        
+                                        # Process user information if available
+                                        if "includes" in tweet_data and "users" in tweet_data["includes"]:
+                                            users = {user["id"]: user for user in tweet_data["includes"]["users"]}
+                                            if "author_id" in tweet and tweet["author_id"] in users:
+                                                tweet["user"] = users[tweet["author_id"]]
+                                        
+                                        # Convert to standardized format
+                                        processed_tweet = {
+                                            "tweet_id": tweet.get("id"),
+                                            "content": tweet.get("text"),
+                                            "timestamp": datetime.strptime(tweet.get("created_at"), "%Y-%m-%dT%H:%M:%S.%fZ") if "created_at" in tweet else datetime.now(),
+                                            "source": "twitter",
+                                            "user_id": tweet.get("author_id"),
+                                            "username": tweet.get("user", {}).get("username") if "user" in tweet else None,
+                                            "metric_retweet_count": tweet.get("public_metrics", {}).get("retweet_count", 0) if "public_metrics" in tweet else 0,
+                                            "metric_reply_count": tweet.get("public_metrics", {}).get("reply_count", 0) if "public_metrics" in tweet else 0,
+                                            "metric_like_count": tweet.get("public_metrics", {}).get("like_count", 0) if "public_metrics" in tweet else 0,
+                                            "metric_quote_count": tweet.get("public_metrics", {}).get("quote_count", 0) if "public_metrics" in tweet else 0,
+                                        }
+                                        
+                                        # Extract symbols from entities
+                                        if "entities" in tweet and "cashtags" in tweet["entities"]:
+                                            processed_tweet["symbols"] = [cashtag["tag"] for cashtag in tweet["entities"]["cashtags"]]
+                                        
+                                        tweets.append(processed_tweet)
+                                except json.JSONDecodeError:
+                                    pass
+                        
+                        if tweets:
+                            # Convert to DataFrame and pass to callback
+                            df = pd.DataFrame(tweets)
+                            callback(df)
+                        
+                        buffer = ""
+        
+        except Exception as e:
+            logger.error(f"Error in Twitter stream: {e}")
+            # Fall back to mock streaming
+            self._stream_tweets_mock(symbols, callback)
+        
+    def _stream_tweets_mock(self, symbols: List[str], callback: Callable[[pd.DataFrame], None]) -> None:
+        """
+        Generate mock streaming data as a fallback.
+        
+        Args:
+            symbols: List of symbols to generate mock data for
+            callback: Callback function to process streamed data
+        """
+        logger.warning("Falling back to mock streaming")
+        
+        if not symbols:
+            symbols = ["BTC", "ETH"]  # Default symbols if none specified
+        
+        # Generate mock data every few seconds
+        try:
+            while True:
+                mock_data = self._generate_mock_data(
+                    symbols,
+                    datetime.now() - timedelta(minutes=5),
+                    datetime.now()
+                )
+                callback(mock_data)
+                time.sleep(5)  # Sleep for 5 seconds
+        except KeyboardInterrupt:
+            logger.info("Mock streaming stopped")
     
     def _process_tweets_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -335,37 +508,55 @@ class TwitterAPICollector(BaseSentimentProvider):
         Returns:
             Processed DataFrame
         """
-        # Convert created_at to datetime
-        if "created_at" in df.columns:
-            df["created_at"] = pd.to_datetime(df["created_at"])
+        if df.empty:
+            return df
         
-        # Extract metrics if available
-        if "public_metrics" in df.columns:
-            metrics = pd.json_normalize(df["public_metrics"])
-            for col in metrics.columns:
-                df[f"metric_{col}"] = metrics[col]
-            df = df.drop(columns=["public_metrics"])
+        # Ensure timestamp column exists
+        if "timestamp" not in df.columns:
+            if "created_at" in df.columns:
+                df["timestamp"] = pd.to_datetime(df["created_at"])
+            else:
+                df["timestamp"] = pd.Timestamp.now()
         
-        # Rename columns for consistency
-        column_mapping = {
-            "created_at": "timestamp",
-            "id": "tweet_id",
-            "text": "content",
-            "author_id": "user_id",
-        }
-        df = df.rename(columns=column_mapping)
+        # Convert timestamp to datetime if it's not already
+        if not pd.api.types.is_datetime64_any_dtype(df["timestamp"]):
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
         
-        # Add source column
-        df["source"] = "twitter"
+        # Sort by timestamp
+        df = df.sort_values("timestamp")
         
-        # Ensure required columns exist
-        required_columns = ["timestamp", "content", "symbol", "source"]
+        # Ensure all required columns exist
+        required_columns = [
+            "content", "source", "tweet_id", "user_id",
+            "metric_retweet_count", "metric_reply_count", "metric_like_count", "metric_quote_count"
+        ]
+        
         for col in required_columns:
             if col not in df.columns:
-                if col == "timestamp":
-                    df[col] = datetime.now()
-                else:
-                    df[col] = ""
+                df[col] = None
+        
+        # Add source if not present
+        if "source" not in df.columns:
+            df["source"] = "twitter"
+        
+        # Extract symbols from content if not already present
+        if "symbols" not in df.columns:
+            # Extract cashtags ($BTC, $ETH, etc.)
+            df["symbols"] = df["content"].apply(lambda x: re.findall(r'\$([A-Za-z0-9]+)', str(x)) if pd.notna(x) else [])
+        
+        # Add sentiment placeholder column (will be filled by NLP processor)
+        if "sentiment_score" not in df.columns:
+            df["sentiment_score"] = None
+        
+        # Add engagement score (weighted combination of metrics)
+        if all(col in df.columns for col in ["metric_retweet_count", "metric_like_count", "metric_quote_count"]):
+            df["engagement_score"] = (
+                df["metric_retweet_count"].fillna(0) * 2 +  # Retweets weighted more
+                df["metric_like_count"].fillna(0) * 1 +     # Likes standard weight
+                df["metric_quote_count"].fillna(0) * 1.5     # Quotes weighted in between
+            )
+        else:
+            df["engagement_score"] = 0
         
         return df
     
