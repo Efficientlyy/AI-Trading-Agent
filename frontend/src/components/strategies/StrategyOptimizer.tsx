@@ -23,7 +23,7 @@ const StrategyOptimizer: React.FC = () => {
 
   // Fetch strategies
   useEffect(() => {
-    strategiesApi.getStrategies().then(res => setStrategies(res.strategies));
+    strategiesApi.getStrategies().then(res => setStrategies(res));
   }, []);
 
   // Simulate backend optimization call

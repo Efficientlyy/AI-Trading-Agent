@@ -18,7 +18,7 @@ const BacktestingInterface: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    strategiesApi.getStrategies().then(res => setStrategies(res.strategies));
+    strategiesApi.getStrategies().then(res => setStrategies(res));
   }, []);
 
   useEffect(() => {
