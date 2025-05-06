@@ -72,6 +72,109 @@ def calculate_cvar(returns: pd.Series, alpha: float = 0.05) -> float:
     var = calculate_var(returns, alpha)
     return returns[returns <= var].mean()
 
+def get_drawdown_data(equity_curve: pd.Series) -> Dict[str, Any]:
+    """
+    Generate comprehensive drawdown data for visualization and analysis.
+    
+    Args:
+        equity_curve: Series of portfolio values
+        
+    Returns:
+        Dict with drawdown data including timestamps, equity values, drawdown values, and underwater periods
+    """
+    # Calculate drawdown curve
+    drawdown_curve = calculate_drawdown(equity_curve)
+    
+    # Get underwater periods
+    underwater_periods = get_drawdown_periods(drawdown_curve)
+    
+    # Prepare data for frontend
+    return {
+        'timestamps': [str(ts) for ts in equity_curve.index.tolist()],
+        'equity': equity_curve.tolist(),
+        'drawdown': drawdown_curve.tolist(),
+        'underwater_periods': underwater_periods
+    }
+
+
+def calculate_trade_statistics(trades_df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Calculate detailed trade statistics from trade history.
+    
+    Args:
+        trades_df: DataFrame with trade data
+        
+    Returns:
+        Dict with trade statistics
+    """
+    if trades_df.empty:
+        return {
+            'win_rate': 0.0,
+            'profit_factor': 0.0,
+            'average_win': 0.0,
+            'average_loss': 0.0,
+            'risk_reward_ratio': 0.0,
+            'max_consecutive_wins': 0,
+            'max_consecutive_losses': 0,
+            'average_duration': 0.0
+        }
+    
+    # Filter to closed trades
+    closed_trades = trades_df[trades_df['status'] == 'closed']
+    
+    if closed_trades.empty:
+        return {
+            'win_rate': 0.0,
+            'profit_factor': 0.0,
+            'average_win': 0.0,
+            'average_loss': 0.0,
+            'risk_reward_ratio': 0.0,
+            'max_consecutive_wins': 0,
+            'max_consecutive_losses': 0,
+            'average_duration': 0.0
+        }
+    
+    # Calculate win rate
+    winning_trades = closed_trades[closed_trades['pnl'] > 0]
+    losing_trades = closed_trades[closed_trades['pnl'] < 0]
+    
+    win_rate = len(winning_trades) / len(closed_trades) if len(closed_trades) > 0 else 0.0
+    
+    # Calculate profit factor
+    gross_profit = winning_trades['pnl'].sum() if not winning_trades.empty else 0.0
+    gross_loss = abs(losing_trades['pnl'].sum()) if not losing_trades.empty else 0.0
+    profit_factor = gross_profit / gross_loss if gross_loss > 0 else float('inf') if gross_profit > 0 else 0.0
+    
+    # Calculate average win/loss
+    average_win = winning_trades['pnl_percent'].mean() if not winning_trades.empty else 0.0
+    average_loss = losing_trades['pnl_percent'].mean() if not losing_trades.empty else 0.0
+    
+    # Calculate risk/reward ratio
+    risk_reward_ratio = abs(average_win / average_loss) if average_loss != 0 else float('inf') if average_win > 0 else 0.0
+    
+    # Calculate max consecutive wins/losses
+    if 'streak' in closed_trades.columns:
+        max_consecutive_wins = closed_trades['streak'].max() if not closed_trades.empty else 0
+        max_consecutive_losses = abs(closed_trades['streak'].min()) if not closed_trades.empty else 0
+    else:
+        max_consecutive_wins = 0
+        max_consecutive_losses = 0
+    
+    # Calculate average duration
+    average_duration = closed_trades['duration'].mean() if 'duration' in closed_trades.columns else 0.0
+    
+    return {
+        'win_rate': win_rate,
+        'profit_factor': profit_factor,
+        'average_win': average_win,
+        'average_loss': average_loss,
+        'risk_reward_ratio': risk_reward_ratio,
+        'max_consecutive_wins': max_consecutive_wins,
+        'max_consecutive_losses': max_consecutive_losses,
+        'average_duration': average_duration
+    }
+
+
 def calculate_metrics(
     portfolio_history: List[Dict[str, Any]],
     trade_history: List,
@@ -234,13 +337,13 @@ def calculate_drawdown(equity_curve: pd.Series) -> pd.Series:
     # Calculate running maximum
     running_max = equity_curve.cummax()
     
-    # Calculate drawdown percentage
-    drawdown = (equity_curve - running_max) / running_max
+    # Calculate drawdown as percentage of running maximum
+    drawdown = (equity_curve / running_max) - 1
     
     return drawdown
 
 
-def get_drawdown_periods(drawdown_curve: pd.Series) -> List[int]:
+def get_drawdown_periods(drawdown_curve: pd.Series) -> List[Dict[str, Any]]:
     """
     Calculate drawdown periods (consecutive periods below zero).
     
@@ -248,33 +351,61 @@ def get_drawdown_periods(drawdown_curve: pd.Series) -> List[int]:
         drawdown_curve: Series of drawdown values
         
     Returns:
-        List[int]: List of drawdown period lengths
+        List[Dict]: List of drawdown periods with start, end, depth, and duration
     """
-    # Find periods where drawdown is below zero
-    is_drawdown = drawdown_curve < 0
+    # Initialize variables
+    in_drawdown = False
+    current_start = 0
+    periods = []
     
-    # Get start of each drawdown period
-    drawdown_starts = is_drawdown.astype(int).diff().fillna(0)
-    drawdown_starts = drawdown_starts[drawdown_starts > 0].index
+    # Iterate through drawdown curve
+    for i, (timestamp, dd) in enumerate(drawdown_curve.items()):
+        if dd < 0:
+            # We're in a drawdown
+            if not in_drawdown:
+                # Start of a new drawdown period
+                in_drawdown = True
+                current_start = i
+        else:
+            # We're not in a drawdown
+            if in_drawdown:
+                # End of a drawdown period
+                current_end = i - 1
+                # Get the deepest drawdown in this period
+                period_slice = drawdown_curve.iloc[current_start:current_end+1]
+                max_depth = period_slice.min()
+                max_depth_idx = period_slice.idxmin()
+                
+                periods.append({
+                    'start': current_start,
+                    'end': current_end,
+                    'depth': max_depth,
+                    'duration': current_end - current_start + 1,
+                    'start_date': drawdown_curve.index[current_start],
+                    'end_date': drawdown_curve.index[current_end],
+                    'max_depth_date': max_depth_idx
+                })
+                
+                in_drawdown = False
     
-    # Get end of each drawdown period
-    drawdown_ends = (~is_drawdown).astype(int).diff().fillna(0)
-    drawdown_ends = drawdown_ends[drawdown_ends > 0].index
+    # Check if we're still in a drawdown at the end
+    if in_drawdown:
+        current_end = len(drawdown_curve) - 1
+        period_slice = drawdown_curve.iloc[current_start:current_end+1]
+        max_depth = period_slice.min()
+        max_depth_idx = period_slice.idxmin()
+        
+        periods.append({
+            'start': current_start,
+            'end': current_end,
+            'depth': max_depth,
+            'duration': current_end - current_start + 1,
+            'start_date': drawdown_curve.index[current_start],
+            'end_date': drawdown_curve.index[current_end],
+            'max_depth_date': max_depth_idx
+        })
     
-    # Handle case where we start or end in drawdown
-    if is_drawdown.iloc[0]:
-        drawdown_starts = pd.Index([drawdown_curve.index[0]]).append(drawdown_starts)
-    
-    if is_drawdown.iloc[-1]:
-        drawdown_ends = drawdown_ends.append(pd.Index([drawdown_curve.index[-1]]))
-    
-    # Calculate drawdown periods
-    drawdown_periods = []
-    for start, end in zip(drawdown_starts, drawdown_ends):
-        period_length = drawdown_curve.index.get_indexer([end])[0] - drawdown_curve.index.get_indexer([start])[0]
-        drawdown_periods.append(period_length)
-    
-    return drawdown_periods
+    return periods
 
 
 def process_trade_history(trade_history: List) -> pd.DataFrame:
@@ -290,41 +421,67 @@ def process_trade_history(trade_history: List) -> pd.DataFrame:
     if not trade_history:
         return pd.DataFrame()
     
-    # Extract relevant fields from trade objects
+    # Extract trade data
     trades = []
     for trade in trade_history:
-        trade_dict = {
+        trade_data = {
+            'id': getattr(trade, 'id', f"{trade.symbol}_{trade.entry_time}"),
             'symbol': trade.symbol,
-            'order_id': trade.order_id,
-            'side': trade.side,
+            'entry_time': trade.entry_time,
+            'exit_time': trade.exit_time,
+            'entry_price': trade.entry_price,
+            'exit_price': trade.exit_price,
             'quantity': trade.quantity,
-            'price': trade.price,
-            'timestamp': trade.timestamp,
-            'value': trade.quantity * trade.price
+            'side': trade.side,
+            'pnl': trade.pnl,
+            'pnl_percent': trade.pnl_percent,
+            'status': trade.status
         }
-        trades.append(trade_dict)
+        trades.append(trade_data)
     
-    trade_df = pd.DataFrame(trades)
+    # Convert to DataFrame
+    trades_df = pd.DataFrame(trades)
     
-    # Calculate P&L for each trade (simplified)
-    # Note: This is a simplified approach. For accurate P&L calculation,
-    # we would need to match buys and sells for each symbol
-    from ..trading_engine.enums import OrderSide
-
-    # Convert side to numeric for calculations
-    trade_df['side_value'] = trade_df['side'].apply(lambda x: 1 if x == OrderSide.BUY else -1)
+    # Calculate additional metrics
+    if not trades_df.empty and 'entry_time' in trades_df.columns and 'exit_time' in trades_df.columns:
+        # Convert timestamps to datetime if they're not already
+        for col in ['entry_time', 'exit_time']:
+            if trades_df[col].dtype == 'object':
+                trades_df[col] = pd.to_datetime(trades_df[col])
+        
+        # Calculate trade duration
+        trades_df['duration'] = (trades_df['exit_time'] - trades_df['entry_time']).dt.total_seconds() / 60  # in minutes
+        
+        # Calculate consecutive wins/losses
+        if 'pnl' in trades_df.columns and not trades_df.empty:
+            # Sort by exit time
+            trades_df = trades_df.sort_values('exit_time')
+            
+            # Initialize streak counters
+            current_streak = 0
+            streak_type = None
+            trades_df['streak'] = 0
+            
+            # Calculate streaks
+            for i, row in trades_df.iterrows():
+                if row['status'] == 'closed':
+                    is_win = row['pnl'] > 0
+                    
+                    if streak_type is None:
+                        # First trade
+                        streak_type = 'win' if is_win else 'loss'
+                        current_streak = 1
+                    elif (is_win and streak_type == 'win') or (not is_win and streak_type == 'loss'):
+                        # Continuing the streak
+                        current_streak += 1
+                    else:
+                        # Breaking the streak
+                        streak_type = 'win' if is_win else 'loss'
+                        current_streak = 1
+                    
+                    trades_df.at[i, 'streak'] = current_streak if streak_type == 'win' else -current_streak
     
-    # Calculate position changes
-    trade_df['position_change'] = trade_df['quantity'] * trade_df['side_value']
-    
-    # Group by symbol and calculate running position
-    trade_df = trade_df.sort_values('timestamp')
-    trade_df['running_position'] = trade_df.groupby('symbol')['position_change'].cumsum()
-    
-    # Calculate P&L (simplified)
-    trade_df['pnl'] = -trade_df['value'] * trade_df['side_value']
-    
-    return trade_df
+    return trades_df
 
 
 def create_positions_df(portfolio_history: List[Dict[str, Any]]) -> pd.DataFrame:

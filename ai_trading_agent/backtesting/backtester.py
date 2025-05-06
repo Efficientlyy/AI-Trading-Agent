@@ -6,7 +6,7 @@ This module provides the core backtesting functionality.
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Any, Union, Callable, Tuple
+from typing import Dict, List, Optional, Any, Union, Callable
 from datetime import datetime
 import time
 from dataclasses import dataclass, field
