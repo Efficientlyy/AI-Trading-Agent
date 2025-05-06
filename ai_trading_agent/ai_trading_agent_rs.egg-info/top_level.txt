@@ -1,13 +1,17 @@
 agent
+api
 backtesting
 common
 data
 data_acquisition
+data_pipeline
 data_processing
 data_providers
 data_sources
 examples
 execution
+feature_engineering
+features
 models
 nlp_processing
 optimization
