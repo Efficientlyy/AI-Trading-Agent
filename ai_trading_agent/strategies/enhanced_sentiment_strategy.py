@@ -289,6 +289,11 @@ class EnhancedSentimentStrategy:
             stop_loss_float = float(stop_loss)
             take_profit_float = float(price * (Decimal("1") + take_profit_pct)) if side == OrderSide.BUY else float(price * (Decimal("1") - take_profit_pct))
             
+            # Skip creating orders with zero or negative quantities
+            if position_size_float <= 0:
+                logger.warning(f"Skipping order for {asset}: calculated position size {position_size_float} is not positive")
+                continue
+            
             # Create order
             order = Order(
                 symbol=asset,

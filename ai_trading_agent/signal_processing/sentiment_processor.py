@@ -141,13 +141,13 @@ class SentimentSignalProcessor:
             # Default to swing trading for unknown timeframes
             return TradingMode.SWING
     
-    def get_sentiment_weight(self, trading_mode: TradingMode, market_regime: Optional[str] = None) -> float:
+    def get_sentiment_weight(self, trading_mode: TradingMode, market_regime: Optional[Union[str, 'MarketRegime']] = None) -> float:
         """
         Get the appropriate sentiment weight based on trading mode and market regime.
         
         Args:
             trading_mode: The trading mode
-            market_regime: The market regime (if available)
+            market_regime: The market regime (if available), can be a string or MarketRegime enum
             
         Returns:
             The sentiment weight (0.0 to 1.0)
@@ -156,13 +156,12 @@ class SentimentSignalProcessor:
         base_weights = {
             TradingMode.SCALPING: 0.0,    # No sentiment for scalping
             TradingMode.INTRADAY: 0.3,    # Limited sentiment for intraday
-            TradingMode.SWING: 0.6,       # Significant sentiment for swing
-            TradingMode.POSITION: 0.8     # Heavy sentiment for position
+            TradingMode.SWING: 0.6,       # Moderate sentiment for swing trading
+            TradingMode.POSITION: 0.8     # High sentiment for position trading
         }
         
-        base_weight = base_weights.get(trading_mode, self.sentiment_weight)
+        base_weight = base_weights.get(trading_mode, 0.5)  # Default to 0.5
         
-        # Adjust weight based on market regime if enabled and regime is available
         if self.enable_regime_detection and market_regime and self.regime_detector:
             regime_multipliers = {
                 "trending": 1.0,    # Full weight in trending markets
@@ -170,7 +169,14 @@ class SentimentSignalProcessor:
                 "volatile": 0.5     # Minimal weight in volatile markets
             }
             
-            multiplier = regime_multipliers.get(market_regime.lower(), 1.0)
+            # Handle both string and enum values for market_regime
+            regime_key = market_regime
+            if hasattr(market_regime, 'value'):  # It's an enum
+                regime_key = market_regime.value  # Use the enum's value (already a string)
+            elif isinstance(market_regime, str):
+                regime_key = market_regime.lower()  # Convert string to lowercase
+            
+            multiplier = regime_multipliers.get(regime_key, 1.0)
             return base_weight * multiplier
         
         return base_weight

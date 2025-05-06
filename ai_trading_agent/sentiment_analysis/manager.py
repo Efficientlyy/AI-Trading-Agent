@@ -38,5 +38,18 @@ class SentimentManager:
                 "text": cleaned
             })
 
-        signal = self.signal_generator.generate_signal(processed_data)
+        # Convert processed data to a pandas Series of sentiment scores
+        import pandas as pd
+        sentiment_scores = pd.Series([item['score'] for item in processed_data])
+        
+        # Generate signals using the correct method
+        signals = self.signal_generator.generate_signals_from_scores(sentiment_scores)
+        
+        # Convert numerical signal to string format
+        if signals.empty or signals.iloc[-1] == 0:
+            signal = 'hold'
+        elif signals.iloc[-1] == 1:
+            signal = 'buy'
+        else:  # -1
+            signal = 'sell'
         return signal
