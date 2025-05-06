@@ -13,12 +13,13 @@ import sys
 import traceback
 import logging
 from datetime import datetime
+from decimal import Decimal
 import pandas as pd
 import numpy as np
 
 # Set up error logging
 error_log_path = "backtest_error_detailed.log"
-with open(error_log_path, "w") as error_log:
+with open(error_log_path, "w", encoding='utf-8') as error_log:
     error_log.write(f"=== BACKTEST ERROR LOG ===\n")
     error_log.write(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
     
@@ -51,6 +52,8 @@ with open(error_log_path, "w") as error_log:
         error_log.write("✓ Successfully imported Backtester\n\n")
         
         # Only import RustBacktester if needed
+        # Define global variable for Rust availability
+        global RUST_AVAILABLE
         try:
             from ai_trading_agent.backtesting.rust_backtester import RustBacktester
             error_log.write("✓ Successfully imported RustBacktester\n")
@@ -59,12 +62,19 @@ with open(error_log_path, "w") as error_log:
             error_log.write(f"Note: RustBacktester not available: {e}\n")
             error_log.write("This is expected if Rust extensions are not installed.\n")
             RUST_AVAILABLE = False
+            # Define a placeholder RustBacktester class to avoid NameError
+            class RustBacktester:
+                def __init__(self, *args, **kwargs):
+                    raise ImportError("Rust extensions not available. Cannot use RustBacktester.")
         
         error_log.write("Importing agent components...\n")
         from ai_trading_agent.agent.data_manager import SimpleDataManager
         error_log.write("✓ Successfully imported data_manager\n")
         
-        from ai_trading_agent.agent.strategy import SimpleStrategyManager, SentimentStrategy
+                # Removed SimpleStrategyManager, added IntegratedStrategyManager and specific strategies
+        from ai_trading_agent.agent.integrated_manager import IntegratedStrategyManager
+        from ai_trading_agent.strategies.ma_crossover_strategy import MACrossoverStrategy
+        from ai_trading_agent.strategies.sentiment_strategy import SentimentStrategy # Ensure this is the correct one if multiple exist
         error_log.write("✓ Successfully imported strategy\n")
         
         from ai_trading_agent.agent.risk_manager import SimpleRiskManager
@@ -72,6 +82,9 @@ with open(error_log_path, "w") as error_log:
         
         from ai_trading_agent.agent.execution_handler import SimulatedExecutionHandler
         error_log.write("✓ Successfully imported execution_handler\n")
+        
+        from ai_trading_agent.trading_engine.portfolio_manager import PortfolioManager
+        error_log.write("✓ Successfully imported portfolio_manager\n")
         
         from ai_trading_agent.agent.orchestrator import BacktestOrchestrator
         error_log.write("✓ Successfully imported orchestrator\n\n")
@@ -168,7 +181,9 @@ with open(error_log_path, "w") as error_log:
             logger.info(f"Sentiment data loaded successfully")
             return sentiment_data
         
-        def run_backtest(symbols, start_date, end_date, initial_capital=100000.0):
+        def run_backtest(symbols, start_date, end_date, initial_capital=100000.0,
+                      aggregation_method='weighted_average', strategy_weights=None,
+                      market_regime='normal', volatility='medium', trend_strength='medium'):
             """
             Run a backtest for the specified symbols and date range.
             
@@ -176,6 +191,13 @@ with open(error_log_path, "w") as error_log:
                 symbols: List of ticker symbols
                 start_date: Start date for the backtest
                 end_date: End date for the backtest
+                initial_capital: Initial capital for the portfolio
+                aggregation_method: Method to combine signals ('weighted_average', 'dynamic_contextual', 
+                                   'rule_based', or 'majority_vote')
+                strategy_weights: Dictionary mapping strategy names to weights
+                market_regime: Current market regime ('normal', 'trending', 'volatile', 'crisis')
+                volatility: Current market volatility ('low', 'medium', 'high')
+                trend_strength: Current market trend strength ('weak', 'medium', 'strong')
                 initial_capital: Initial capital for the portfolio
                 
             Returns:
@@ -190,25 +212,108 @@ with open(error_log_path, "w") as error_log:
             sentiment_data = load_sentiment_data(symbols, start_date, end_date)
             
             # Create data manager
-            data_manager = SimpleDataManager(price_data, sentiment_data)
+            # Construct the config dictionary for SimpleDataManager
+            data_manager_config = {
+                'data_dir': os.path.join(project_root, 'data'), # Assuming data is in project_root/data
+                'symbols': symbols,
+                'start_date': start_date,
+                'end_date': end_date,
+                'timeframe': '1d', # Assuming 1d timeframe, adjust if needed
+                'data_types': ['ohlcv', 'sentiment'] # Load both types
+            }
+            data_manager = SimpleDataManager(config=data_manager_config)
             
-            # Create strategy manager
-            strategy = SentimentStrategy(
+            # Manually set the data in the data manager
+            logger.info("Setting data directly in the data manager")
+            data_manager.data = price_data
+            
+            # Create a combined index from the price data
+            all_indices = set()
+            for df in price_data.values():
+                all_indices.update(df.index)
+            data_manager.combined_index = pd.DatetimeIndex(sorted(list(all_indices)))
+            data_manager.current_index = 0
+            
+            logger.info(f"Combined index created with {len(data_manager.combined_index)} timestamps")
+            
+            # Create strategy manager (NEW SETUP)
+            # Instantiate individual strategies
+            ma_crossover_strategy = MACrossoverStrategy(
                 symbols=symbols,
-                sentiment_threshold=0.3,
-                position_size_pct=0.1
+                fast_period=20,   # Corrected argument name
+                slow_period=50,   # Corrected argument name
+                risk_pct=0.02,      # Use expected risk parameters
+                max_position_pct=0.1 # Use expected risk parameters (adjust value if needed)
             )
-            strategy_manager = SimpleStrategyManager(strategy)
+            # Create the config dictionary for SentimentStrategy
+            sentiment_config = {
+                'assets': symbols, # Use 'assets' key as expected by SentimentStrategy
+                'sentiment_threshold': 0.2, # Example threshold
+                'max_position_size': 0.05, # Use 'max_position_size' key
+                # Add other necessary config keys if needed, e.g.:
+                # 'risk_per_trade': 0.01,
+                # 'stop_loss_pct': 0.03,
+                # 'take_profit_pct': 0.06
+            }
+            sentiment_strategy = SentimentStrategy(name='Sentiment', config=sentiment_config)
             
-            # Create risk manager
-            risk_manager = SimpleRiskManager(
-                max_position_size_pct=0.2,
-                max_portfolio_risk_pct=0.05,
-                stop_loss_pct=0.05
+            # Instantiate the IntegratedStrategyManager with the specified aggregation method
+            # Use default strategy weights if none provided
+            default_strategy_weights = {
+                'MACrossover': 0.6,  # Give more weight to technical analysis
+                'Sentiment': 0.4     # Give less weight to sentiment
+            }
+            
+            # Use provided strategy weights or default
+            strategy_weights_to_use = strategy_weights if strategy_weights else default_strategy_weights
+            
+            # Configure the IntegratedStrategyManager
+            integrated_manager_config = {
+                'name': f'IntegratedManager_{aggregation_method}',
+                'aggregation_method': aggregation_method,
+                'strategy_weights': strategy_weights_to_use,
+                # Market regime information for dynamic contextual combination
+                'market_regime': market_regime,
+                'volatility': volatility,
+                'trend_strength': trend_strength,
+                # Add priority rules for rule-based combination
+                'priority_rules': [
+                    {'condition': 'confidence_score > 0.9', 'action': 'use_highest_confidence'},
+                    {'condition': 'signal_disagreement > 0.8', 'action': 'reduce_confidence'},
+                    {'condition': 'default', 'action': 'weighted_average'}
+                ]
+            }
+            
+            logger.info(f"Using signal aggregation method: {aggregation_method}")
+            strategy_manager = IntegratedStrategyManager(
+                config=integrated_manager_config,
+                data_manager=data_manager # Pass the data manager instance
             )
             
-            # Create execution handler
+            # Add the individual strategies to the manager (method expects only the strategy object)
+            strategy_manager.add_strategy(ma_crossover_strategy)
+            strategy_manager.add_strategy(sentiment_strategy)
+            
+            # Create risk manager with config dictionary
+            risk_config = {
+                'max_position_size': 0.2,  # Changed from max_position_size_pct to match expected parameter
+                'max_portfolio_risk_pct': 0.05,
+                'stop_loss_pct': 0.05
+            }
+            risk_manager = SimpleRiskManager(config=risk_config)
+            
+            # Create portfolio manager
+            portfolio_manager = PortfolioManager(
+                initial_capital=Decimal('100000.0'),  # Starting with 100k
+                risk_per_trade=Decimal('0.02'),       # 2% risk per trade
+                max_position_size=Decimal('0.1'),     # Max 10% in any position
+                max_correlation=0.7,                  # Max correlation between positions
+                rebalance_frequency="daily"           # Rebalance daily
+            )
+            
+            # Create execution handler with portfolio manager
             execution_handler = SimulatedExecutionHandler(
+                portfolio_manager=portfolio_manager,  # Pass the portfolio manager
                 config={
                     'commission_rate': 0.001,
                     'slippage_pct': 0.001
@@ -219,37 +324,63 @@ with open(error_log_path, "w") as error_log:
             orchestrator = BacktestOrchestrator(
                 data_manager=data_manager,
                 strategy_manager=strategy_manager,
+                portfolio_manager=portfolio_manager,  # Add the portfolio manager
                 risk_manager=risk_manager,
                 execution_handler=execution_handler,
-                initial_capital=initial_capital
+                config={
+                    'start_date': start_date,
+                    'end_date': end_date,
+                    'symbols': symbols,
+                    'data_types': ['ohlcv', 'sentiment'],
+                    'timeframe': '1d'
+                }
             )
             
             # Run backtest
             try:
                 # Use RustBacktester if available, otherwise use Python Backtester
-                if RUST_AVAILABLE:
-                    logger.info("Using Rust-accelerated backtester")
-                    backtester = RustBacktester(
-                        data=price_data,
-                        initial_capital=initial_capital,
-                        commission_rate=0.001,
-                        slippage=0.001
-                    )
-                    results = backtester.run(orchestrator.process_bar)
-                else:
-                    logger.info("Using Python backtester")
-                    backtester = Backtester(
-                        data=price_data,
-                        initial_capital=initial_capital,
-                        commission_rate=0.001,
-                        slippage=0.001
-                    )
-                    results = backtester.run(orchestrator.process_bar)
+                logger.info(f"RUST_AVAILABLE = {RUST_AVAILABLE}")
+                
+                # Always use Python Backtester for now to avoid issues
+                logger.info("Using Python backtester")
+                # Use portfolio_manager's starting balance
+                backtester = Backtester(
+                    data=price_data,
+                    initial_capital=float(portfolio_manager.portfolio.starting_balance),  # Convert Decimal to float
+                    commission_rate=0.001,
+                    slippage=0.001
+                )
+                
+                # Instead of passing a callback, let the orchestrator run itself
+                logger.info("Running the backtest orchestrator directly")
+                results = orchestrator.run()
+                
+                # Check if results is None or empty
+                if results is None or not results:
+                    logger.warning("Backtest completed but returned no results")
+                    # Return a minimal results structure to avoid errors
+                    return {
+                        'portfolio_history': [],
+                        'trades': [],
+                        'orders_generated': [],
+                        'signals': [],
+                        'performance_metrics': {}
+                    }
+                
+                # Log the results structure
+                logger.info(f"Backtest completed with results keys: {list(results.keys())}")
                 
                 logger.info(f"Backtest completed successfully")
                 return results
             except Exception as e:
-                logger.error(f"Error running backtest: {e}")
+                logger.error(f"Error running backtest: {e}", exc_info=True)
+                # Log detailed error information to the error log file
+                with open(error_log_path, "a", encoding='utf-8') as error_log:
+                    error_log.write("\nDetailed error during backtest execution:\n")
+                    error_log.write(f"Error type: {type(e).__name__}\n")
+                    error_log.write(f"Error message: {str(e)}\n")
+                    error_log.write("Traceback:\n")
+                    error_log.write(traceback.format_exc())
                 raise
         
         def analyze_results(results):
