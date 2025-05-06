@@ -12,7 +12,7 @@ from fastapi import APIRouter, Query, HTTPException, Depends
 from pydantic import BaseModel
 from datetime import datetime
 
-from ...sentiment_analysis.alpha_vantage_connector import AlphaVantageSentimentConnector
+# Import removed as it's not used in this file
 from ..sentiment_api import SentimentAPI
 
 logger = logging.getLogger(__name__)

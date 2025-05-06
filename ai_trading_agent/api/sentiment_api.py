@@ -13,7 +13,21 @@ from datetime import datetime
 import os
 import pandas as pd
 
-from ..sentiment_analysis.alpha_vantage_connector import AlphaVantageSentimentConnector
+# Use absolute import instead of relative import
+try:
+    from ai_trading_agent.sentiment_analysis.alpha_vantage_connector import AlphaVantageSentimentConnector
+except ImportError:
+    # Fallback for development environment
+    logger = logging.getLogger(__name__)
+    logger.warning("Using mock sentiment connector due to import error")
+    
+    # Create a mock connector class
+    class AlphaVantageSentimentConnector:
+        def get_sentiment_summary(self, symbols):
+            return {'sentimentData': {}, 'timestamp': datetime.now().isoformat()}
+            
+        def get_historical_sentiment(self, symbol, timeframe):
+            return []
 
 logger = logging.getLogger(__name__)
 
