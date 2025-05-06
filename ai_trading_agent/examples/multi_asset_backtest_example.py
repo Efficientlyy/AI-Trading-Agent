@@ -9,8 +9,11 @@ import pandas as pd
 import numpy as np
 from typing import Dict, List, Any
 from datetime import datetime, timedelta
+import functools # Import functools for partial
 
 # Add parent directory to path to import modules
+import sys
+import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Correct the imports - separate models and enums
@@ -29,6 +32,8 @@ from ..backtesting.diversification_analysis import (
     plot_risk_contributions,
     plot_correlation_impact
 )
+# Import the strategy to wrap
+from ..strategies.ma_crossover_strategy import MACrossoverStrategy
 
 
 def generate_mock_data(
@@ -240,6 +245,94 @@ def simple_sentiment_strategy(
     return orders
 
 
+def ma_crossover_strategy_fn(
+    data: Dict[str, pd.DataFrame],
+    portfolio: Portfolio,
+    bar_idx: int,
+    **kwargs
+) -> List[Order]:
+    """
+    Wrapper function for MACrossoverStrategy to fit MultiAssetBacktester.
+
+    Args:
+        data: Dictionary mapping symbols to DataFrames with OHLCV data.
+        portfolio: Current portfolio state.
+        bar_idx: Current bar index.
+        **kwargs: Must contain 'short_window', 'long_window'. 
+                  Optionally 'position_pct' (default 0.05 = 5%).
+
+    Returns:
+        List of orders to execute.
+    """
+    orders = []
+    current_date = list(data.values())[0].index[bar_idx]
+
+    # Get parameters from kwargs
+    short_window = kwargs.get('short_window')
+    long_window = kwargs.get('long_window')
+    position_pct = kwargs.get('position_pct', 0.05) # Default to 5% of portfolio value
+
+    if not short_window or not long_window:
+        raise ValueError("MACrossoverStrategy requires 'short_window' and 'long_window' in kwargs")
+
+    for symbol, df in data.items():
+        # Ensure we have enough data for the long window
+        if bar_idx + 1 < long_window:
+            continue
+
+        # Instantiate the strategy for this symbol
+        strategy = MACrossoverStrategy(short_window=short_window, long_window=long_window)
+        
+        # Get market data up to the current bar
+        # Note: MACrossoverStrategy expects the DataFrame passed to generate_signals
+        market_data_history = df.iloc[:bar_idx + 1]
+
+        # Generate signals using the strategy class
+        signals_df = strategy.generate_signals(market_data_history)
+
+        # Check if signals were generated and the current date exists
+        if signals_df.empty or current_date not in signals_df.index:
+            continue
+
+        # Get the signal for the current bar (-1, 0, 1)
+        signal = signals_df.loc[current_date, 'signal']
+
+        # Get current position and price
+        current_position = portfolio.positions.get(symbol, None)
+        current_quantity = current_position.quantity if current_position else 0
+        current_price = df.loc[current_date, 'close']
+
+        # --- Generate Orders --- 
+        if signal == 1 and current_quantity <= 0: # Buy signal and not already long
+            # Calculate position size based on percentage of portfolio value
+            position_value = portfolio.total_value * position_pct
+            position_size = position_value / current_price
+            
+            # Ensure we don't try to buy zero or negative quantity
+            if position_size > 1e-9: # Use small threshold for float comparison
+                order = Order(
+                    symbol=symbol,
+                    quantity=position_size,
+                    side=OrderSide.BUY,
+                    type=OrderType.MARKET,
+                    timestamp=current_date
+                )
+                orders.append(order)
+
+        elif signal == -1 and current_quantity > 0: # Sell signal and currently long
+            # Sell the entire position
+            order = Order(
+                symbol=symbol,
+                quantity=current_quantity,
+                side=OrderSide.SELL,
+                type=OrderType.MARKET,
+                timestamp=current_date
+            )
+            orders.append(order)
+            
+    return orders
+
+
 def prepare_returns_data(price_data: Dict[str, pd.DataFrame]) -> Dict[str, pd.Series]:
     """
     Prepare returns data for diversification analysis.
@@ -262,114 +355,129 @@ def prepare_returns_data(price_data: Dict[str, pd.DataFrame]) -> Dict[str, pd.Se
 
 def run_multi_asset_backtest():
     """Run a multi-asset backtest with different allocation strategies."""
-    # Define parameters
-    symbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'TSLA', 'NVDA', 'NFLX']
-    start_date = datetime(2020, 1, 1)
-    end_date = datetime(2022, 12, 31)
+    print("Starting Multi-Asset Backtest Example...")
+
+    # --- Configuration ---
+    symbols = ['AAPL', 'GOOG', 'MSFT', 'AMZN']
+    start_date = datetime(2022, 1, 1)
+    end_date = datetime(2023, 12, 31)
+    frequency = 'D'
     initial_capital = 100000.0
+    commission_rate = 0.001
+    slippage = 0.0005
+
+    # --- Generate Mock Data ---
+    print("Generating mock data...")
+    price_data = generate_mock_data(symbols, start_date, end_date, frequency)
+    sentiment_data = generate_mock_sentiment_data(symbols, start_date, end_date, frequency)
+
+    # --- Initialize Backtester ---
+    backtester = MultiAssetBacktester(
+        data=price_data,
+        initial_capital=initial_capital,
+        commission_rate=commission_rate,
+        slippage=slippage
+    )
+
+    # --- Define Strategy Functions (using partial for parameters) ---
     
-    # Generate mock data
-    print("Generating mock price data...")
-    price_data = generate_mock_data(symbols, start_date, end_date)
-    
-    print("Generating mock sentiment data...")
-    sentiment_data = generate_mock_sentiment_data(symbols, start_date, end_date)
-    
-    # Create sentiment scores dictionary for allocation
-    sentiment_scores = {}
-    for symbol, df in sentiment_data.items():
-        # Use the most recent sentiment score
-        sentiment_scores[symbol] = df['sentiment'].iloc[-1]
-    
-    # Define allocation strategies to test
+    # 1. Simple Sentiment Strategy (Function-based)
+    strategy_func_with_sentiment = functools.partial(
+        simple_sentiment_strategy,
+        sentiment_data=sentiment_data,
+        sentiment_threshold=0.3
+    )
+
+    # 2. MA Crossover Strategy (Wrapped Class-based)
+    ma_strategy_fn_20_50 = functools.partial(
+        ma_crossover_strategy_fn,
+        short_window=20,
+        long_window=50,
+        position_pct=0.05 # Trade 5% of portfolio value
+    )
+
+    # --- Define Allocation Strategies --- 
+    # Note: These functions take (data, bar_idx) and return Dict[str, float]
     allocation_strategies = {
-        'Equal Weight': equal_weight_allocation,
-        'Minimum Variance': lambda data, bar_idx: minimum_variance_allocation(data, bar_idx, lookback_period=60),
-        'Momentum': lambda data, bar_idx: momentum_allocation(data, bar_idx, lookback_period=60, top_n=5),
-        'Sentiment Weighted': lambda data, bar_idx: sentiment_weighted_allocation(
-            data, bar_idx, sentiment_scores, equal_weight_allocation, sentiment_weight=0.5
-        )
+        "EqualWeight": equal_weight_allocation,
+        "MinVariance": minimum_variance_allocation,
+        # Add other allocation functions as needed (e.g., momentum, sentiment-weighted)
     }
-    
-    # Run backtest for each allocation strategy
+
+    # --- Run Backtests --- 
     results = {}
     
-    for strategy_name, allocation_fn in allocation_strategies.items():
-        print(f"\nRunning backtest with {strategy_name} allocation strategy...")
-        
-        # Initialize backtester
-        backtester = MultiAssetBacktester(
-            data=price_data,
-            initial_capital=initial_capital,
-            commission_rate=0.001,
-            slippage=0.001,
-            enable_fractional=True,
-            max_position_pct=0.3,
-            max_correlation=0.7,
-            rebalance_threshold=0.05
-        )
-        
-        # Run backtest
-        metrics, additional_results = backtester.run(
-            strategy_fn=lambda data, portfolio, bar_idx: simple_sentiment_strategy(
-                data, portfolio, bar_idx, sentiment_data, sentiment_threshold=0.3
-            ),
-            allocation_fn=allocation_fn,
-            rebalance_period=20  # Rebalance every 20 trading days (roughly monthly)
-        )
-        
-        # Store results
-        results[strategy_name] = {
-            'metrics': metrics,
-            'additional_results': additional_results
-        }
-        
-        # Generate report
-        report_dir = f"./reports/{strategy_name.replace(' ', '_').lower()}"
-        backtester.generate_report(output_dir=report_dir)
-        print(f"Report generated in {report_dir}")
-        
-        # Print key metrics
-        print(f"  Total Return: {metrics.total_return:.2%}")
-        print(f"  Sharpe Ratio: {metrics.sharpe_ratio:.2f}")
-        print(f"  Max Drawdown: {metrics.max_drawdown:.2%}")
-        print(f"  Diversification Score: {additional_results['diversification_score']:.2f}")
-        
-        # Perform diversification analysis
-        if strategy_name == 'Equal Weight':  # Only do this for one strategy to save time
-            print("\nPerforming diversification analysis...")
-            
-            # Prepare returns data
-            returns_data = prepare_returns_data(price_data)
-            
-            # Get final portfolio weights
-            portfolio_weights = {}
-            for symbol, values in additional_results['allocation_history'].items():
-                if values:
-                    portfolio_weights[symbol] = values[-1]
-            
-            # Prepare portfolio metrics
-            portfolio_metrics = {
-                'total_return': metrics.total_return,
-                'volatility': metrics.volatility,
-                'sharpe_ratio': metrics.sharpe_ratio,
-                'max_drawdown': metrics.max_drawdown
-            }
-            
-            # Analyze diversification benefits
-            analyze_diversification_benefits(
-                returns_data=returns_data,
-                portfolio_weights=portfolio_weights,
-                portfolio_metrics=portfolio_metrics,
-                single_asset_metrics=additional_results['asset_metrics'],
-                correlation_matrix=additional_results['correlation_matrix'],
-                output_dir=f"{report_dir}/diversification"
-            )
-            
-            print(f"Diversification analysis completed and saved to {report_dir}/diversification")
-    
-    # Compare strategies
-    compare_strategies(results)
+    # Run Sentiment Strategy with Equal Weight
+    print("\nRunning Sentiment Strategy + Equal Weight Allocation...")
+    metrics_sent_eq, results_sent_eq = backtester.run(
+        strategy_fn=strategy_func_with_sentiment,
+        allocation_fn=allocation_strategies["EqualWeight"],
+        rebalance_period=30 
+    )
+    if metrics_sent_eq:
+        results["Sentiment_EqWeight"] = {"metrics": metrics_sent_eq, "additional_results": results_sent_eq}
+        backtester.generate_report(output_dir="./reports/Sentiment_EqWeight")
+        print("Sentiment + Equal Weight: Sharpe = {:.2f}".format(metrics_sent_eq.sharpe_ratio))
+    else:
+        print("Sentiment + Equal Weight backtest failed to generate metrics.")
+
+    # Run MA Crossover Strategy with Equal Weight
+    print("\nRunning MA Crossover Strategy + Equal Weight Allocation...")
+    # Need a new backtester instance or reset the state if running sequentially
+    backtester_ma = MultiAssetBacktester( # Use a fresh instance for clean state
+        data=price_data,
+        initial_capital=initial_capital,
+        commission_rate=commission_rate,
+        slippage=slippage
+    )
+    metrics_ma_eq, results_ma_eq = backtester_ma.run(
+        strategy_fn=ma_strategy_fn_20_50, # Use the MA wrapper function
+        allocation_fn=allocation_strategies["EqualWeight"],
+        rebalance_period=30 
+    )
+    if metrics_ma_eq:
+        results["MACrossover_EqWeight"] = {"metrics": metrics_ma_eq, "additional_results": results_ma_eq}
+        backtester_ma.generate_report(output_dir="./reports/MACrossover_EqWeight")
+        print("MA Crossover + Equal Weight: Sharpe = {:.2f}".format(metrics_ma_eq.sharpe_ratio))
+    else:
+        print("MA Crossover + Equal Weight backtest failed to generate metrics.")
+
+
+    # # --- Run Backtests with different allocation strategies (Original Loop Example) ---
+    # # Keeping this commented out as a reference, replaced by specific runs above
+    # results = {}
+    # 
+    # for alloc_name, alloc_fn in allocation_strategies.items():
+    #     print(f"\nRunning backtest with {alloc_name} Allocation...")
+    #     # IMPORTANT: Re-initialize backtester for each run to reset state
+    #     backtester_instance = MultiAssetBacktester(
+    #         data=price_data,
+    #         initial_capital=initial_capital,
+    #         commission_rate=commission_rate,
+    #         slippage=slippage
+    #     )
+    #     metrics, additional_results = backtester_instance.run(
+    #         strategy_fn=strategy_func_with_sentiment, # Or choose another strategy like ma_strategy_fn_20_50
+    #         allocation_fn=alloc_fn,
+    #         rebalance_period=30 # Rebalance monthly (approx)
+    #     )
+    #     
+    #     if metrics:
+    #         results[alloc_name] = {"metrics": metrics, "additional_results": additional_results}
+    #         print(f"{alloc_name}: Sharpe = {metrics.sharpe_ratio:.2f}")
+    #         # Generate report for this specific run
+    #         backtester_instance.generate_report(output_dir=f"./reports/{alloc_name}")
+    #     else:
+    #         print(f"{alloc_name} backtest failed to generate metrics.")
+
+    # --- Compare strategies --- 
+    if results:
+        print("\nComparing strategy results...")
+        compare_strategies(results)
+    else:
+        print("\nNo successful backtests to compare.")
+
+    print("\nMulti-Asset Backtest Example Finished.")
 
 
 def compare_strategies(results: Dict[str, Dict[str, Any]]):
