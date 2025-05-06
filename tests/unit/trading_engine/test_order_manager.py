@@ -3,10 +3,11 @@ Unit tests for the OrderManager.
 """
 
 import pytest
-from unittest.mock import MagicMock
+from datetime import datetime, timedelta
+from decimal import Decimal
 
-from trading_engine.models import Portfolio, Order, Trade, OrderStatus
-from trading_engine.order_manager import OrderManager
+from ai_trading_agent.trading_engine.models import Portfolio, Order, Trade, OrderStatus
+from ai_trading_agent.trading_engine.order_manager import OrderManager
 
 @pytest.fixture
 def mock_portfolio():

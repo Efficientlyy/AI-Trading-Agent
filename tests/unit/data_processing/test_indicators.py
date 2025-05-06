@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 from pandas.testing import assert_series_equal
 
-from src.data_processing.indicators import (
+from ai_trading_agent.data_processing.indicators import (
     calculate_sma,
     calculate_ema,
     calculate_rsi,

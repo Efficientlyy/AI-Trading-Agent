@@ -10,12 +10,12 @@ from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 # Assuming indicators are tested separately, we can mock them if needed,
 # but for simplicity, let's use the real ones here.
-from src.data_processing.feature_engineering import (
+from ai_trading_agent.data_processing.feature_engineering import (
     add_lagged_features,
     add_technical_indicators,
     scale_features
 )
-from src.data_processing.indicators import calculate_sma # Import one for simple testing
+from ai_trading_agent.data_processing.indicators import calculate_sma # Import one for simple testing
 
 # Sample DataFrame for testing
 @pytest.fixture
