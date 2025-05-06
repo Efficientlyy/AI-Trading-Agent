@@ -2,6 +2,7 @@
 name = "ai_trading_agent_rs"
 version = "0.1.0"
 edition = "2021"
+description = "Rust extensions for AI Trading Agent"
 
 [lib]
 name = "ai_trading_agent_rs"
@@ -12,3 +13,7 @@ ta = "0.5.0"
 num-traits = "0.2.15"
 rayon = "1.7.0"
 pyo3 = { version = "0.22.1", features = ["extension-module"] }
+
+[features]
+extension-module = ["pyo3/extension-module"]
+default = ["extension-module"]

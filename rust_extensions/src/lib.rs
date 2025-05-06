@@ -10,6 +10,14 @@ pub use features::*;
 // Import lag features module
 mod lag_features;
 
+// Import moving averages module
+mod moving_averages;
+pub use moving_averages::*;
+
+// Import advanced features module
+mod advanced_features;
+pub use advanced_features::*;
+
 // C-compatible function for calculating SMA
 #[no_mangle]
 pub extern "C" fn calculate_sma_c(data_ptr: *const f64, data_len: usize, period: usize, result_ptr: *mut f64) -> i32 {
@@ -60,9 +68,19 @@ pub extern "C" fn free_string(ptr: *mut std::os::raw::c_char) {
 
 /// Python module for rust extensions
 #[pymodule]
-fn rust_extensions(_py: Python, m: &PyModule) -> PyResult<()> {
+fn ai_trading_agent_rs(_py: Python, m: &PyModule) -> PyResult<()> {
     // Register feature engineering functions
     features::register(_py, m)?;
     
-    Ok()
+    // Register moving averages functions
+    moving_averages::register(_py, m)?;
+    
+    // Register advanced features functions
+    advanced_features::register(_py, m)?;
+    
+    // Add module info
+    m.add("__version__", env!("CARGO_PKG_VERSION"))?;
+    m.add("__doc__", "Rust extensions for AI Trading Agent")?;
+    
+    Ok(())
 }

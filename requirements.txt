@@ -6,12 +6,31 @@ numpy==1.26.3
 pandas
 scipy
 scikit-learn>=1.3  # For scaling, potentially ML later
+dask_ml
+
+# Add uvicorn for running the FastAPI server
+uvicorn[standard]
+fastapi>=0.100 # The core FastAPI framework
+
+# Security and Authentication
+passlib[bcrypt]
+python-jose[cryptography]
+
+# Database and ORM
+sqlalchemy>=1.4
 
 # Dashboard and visualization
 dash==2.14.2
 dash-mantine-components==0.12.1
 plotly==5.18.0
 flask==2.3.3
+
+# Frontend dependencies (for reference - installed via npm)
+# react
+# react-dom
+# axios
+# d3
+# typescript
 
 # Configuration and utilities
 pyyaml>=6.0   # For configuration
@@ -31,3 +50,8 @@ pytest>=7.0
 pytest-asyncio>=0.18
 freezegun>=1.2
 pydantic>=1.9 # For data models
+jsonschema>=4.0 # For config validation
+emoji>=2.0 # For sentiment analysis
+pyarrow>=10.0 # For data optimization/storage
+praw>=7.0 # For Reddit data access
+spacy>=3.0 # For NLP tasks
