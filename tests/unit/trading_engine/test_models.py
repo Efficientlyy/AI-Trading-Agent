@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import uuid
 from pydantic import ValidationError
 
-from trading_engine.models import (
+from ai_trading_agent.trading_engine.models import (
     Order, Trade, Position, Portfolio,
     OrderSide, OrderType, OrderStatus, PositionSide,
     utcnow
