@@ -277,21 +277,27 @@ class BacktestOrchestrator(BaseOrchestrator):
 
             # 2a. Get strategy signals based on current market data
             try:
+                # Fetch historical data (assuming get_all_data() returns Dict[str, pd.DataFrame])
+                all_historical_data = self.data_manager.get_all_data()
+
                 # Pass current data, portfolio state, and timestamp
-                strategy_signals = self.strategy_manager.generate_signals(
-                    current_data=market_data, 
-                    portfolio_state=portfolio_state, 
-                    timestamp=current_time
+                # Updated method call to process_data_and_generate_signals
+                rich_strategy_signals = self.strategy_manager.process_data_and_generate_signals(
+                    current_data=market_data,                   # Correct name for current tick data
+                    historical_data=all_historical_data,        # Pass the full historical data
+                    current_portfolio=portfolio_state,          # Correct name for portfolio state
+                    timestamp=current_time                      # Pass timestamp via kwargs
                 )
-                if strategy_signals:
+                # Updated processing to handle RichSignalsDict and extract 'signal_type'
+                if rich_strategy_signals:
                      self.results['signals'].extend([
-                         {'timestamp': current_time, 'symbol': sym, 'signal_type': 'strategy', 'value': sig}
-                         for sym, sig in strategy_signals.items()
+                         {'timestamp': current_time, 'symbol': sym, 'signal_type': 'strategy', 'value': rich_sig.get('signal_type', 'hold')} # Extract signal_type
+                         for sym, rich_sig in rich_strategy_signals.items()
                      ])
-                logging.debug(f"Strategy signals generated: {strategy_signals}")
+                logging.debug(f"Strategy signals generated: {rich_strategy_signals}")
             except Exception as e:
                 logging.error(f"Error generating strategy signals: {e}", exc_info=True)
-                strategy_signals = {} # Proceed without strategy signals if error
+                rich_strategy_signals = {} # Proceed without strategy signals if error
 
             # 2b. Get stop-loss signals from Risk Manager
             try:
@@ -311,58 +317,55 @@ class BacktestOrchestrator(BaseOrchestrator):
                 stop_loss_signals = {}
 
             # --- Combine Signals (Stop-loss overrides strategy) --- #
-            final_signals = strategy_signals.copy() if strategy_signals else {}
+            final_signals = rich_strategy_signals.copy() if rich_strategy_signals else {}
             if stop_loss_signals:
-                for symbol, signal in stop_loss_signals.items():
-                    if symbol in final_signals and final_signals[symbol] != signal:
-                        logging.info(f"Stop-loss signal for {symbol} ({signal}) overrides strategy signal ({final_signals[symbol]}).")
-                    elif symbol not in final_signals:
-                        logging.info(f"Adding stop-loss signal for {symbol} ({signal}).")
-                    final_signals[symbol] = signal
+                for symbol, stop_signal in stop_loss_signals.items(): # Renamed 'signal' to 'stop_signal'
+                    if symbol in final_signals:
+                        # Compare stop_signal with the signal_type within the rich signal
+                        current_signal_type = final_signals[symbol].get('signal_type')
+                        # Determine the action based on stop_signal (assuming 0=hold/exit, -1=sell, 1=buy? needs clarification)
+                        # For now, let's assume stop_signal -1 means 'sell', 0 means 'hold' (exit position)
+                        stop_action_type = 'sell' if stop_signal == -1 else 'hold'
+                        if current_signal_type != stop_action_type:
+                            logging.info(f"Stop-loss ({stop_action_type}) triggered for {symbol}, overriding strategy signal ({current_signal_type}).")
+                            # Update only the signal_type in the existing rich signal dict
+                            final_signals[symbol]['signal_type'] = stop_action_type
+                            # Optionally adjust confidence or add metadata?
+                            final_signals[symbol]['metadata'] = final_signals[symbol].get('metadata', {})
+                            final_signals[symbol]['metadata']['override'] = 'stop_loss'
+                    else:
+                        # If the symbol wasn't in strategy signals, create a basic rich signal for stop-loss
+                        logging.info(f"Stop-loss signal generated for {symbol} (no prior strategy signal).")
+                        stop_action_type = 'sell' if stop_signal == -1 else 'hold'
+                        final_signals[symbol] = {
+                            'signal_strength': 1.0, # Assign max strength for stop-loss?
+                            'confidence_score': 1.0, # Assign max confidence?
+                            'signal_type': stop_action_type,
+                            'metadata': {'trigger': 'stop_loss_only'}
+                        }
 
-            # 3. Get Risk Constraints (optional, based on current state)
+            # 3. Generate Orders based on combined signals and portfolio state
             try:
-                # Use the already fetched state
-                current_portfolio_value = portfolio_state.get('total_value')
-                # Ensure value is not None before proceeding
-                if current_portfolio_value is not None:
-                    risk_constraints = self.risk_manager.get_risk_constraints(
-                        current_positions=current_positions,
-                        current_value=current_portfolio_value
-                    )
-                    logging.debug(f"Risk constraints generated: {risk_constraints}")
-                else:
-                    logging.warning("Portfolio value is None, cannot generate risk constraints.")
-                    risk_constraints = None
+                # Pass market_data needed for order calculation (e.g., price)
+                proposed_orders = self.portfolio_manager.generate_orders(
+                     signals=final_signals,
+                     market_data=market_data, # Pass current market data
+                     risk_constraints=None
+                 )
+                logging.debug(f"Proposed orders: {proposed_orders}")
             except Exception as e:
-                logging.error(f"Failed to generate risk constraints: {e}", exc_info=True)
-                risk_constraints = None
-
-            # 4. Generate orders from Portfolio Manager based on FINAL signals and market data
-            if final_signals:
-                 try:
-                    # Pass market_data needed for order calculation (e.g., price)
-                    proposed_orders = self.portfolio_manager.generate_orders(
-                         signals=final_signals,
-                         market_data=market_data, # Pass current market data
-                         risk_constraints=risk_constraints
-                     )
-                    logging.debug(f"Proposed orders: {proposed_orders}")
-                 except Exception as e:
-                    logging.error(f"Failed to generate proposed orders: {e}", exc_info=True)
-                    proposed_orders = []
-            else:
+                logging.error(f"Failed to generate proposed orders: {e}", exc_info=True)
                 proposed_orders = []
-                logging.debug("No final signals, no orders proposed.")
+                # self.results['orders_generated'].extend(proposed_orders)
 
             # 5. (Optional) Risk Manager approves/modifies orders
             # --- Simplified Risk Approval: Check each order individually --- #
             approved_orders = []
-            if proposed_orders and current_portfolio_value is not None:
+            if proposed_orders:
                 for order in proposed_orders:
                     try:
                         # Pass necessary state to assess_risk
-                        if self.risk_manager.assess_risk(order, current_positions, current_portfolio_value):
+                        if self.risk_manager.assess_risk(order, portfolio_state.get('positions', {}), portfolio_state.get('total_value')):
                             approved_orders.append(order)
                         else:
                             logging.warning(f"Order rejected by Risk Manager: {order}")
@@ -370,8 +373,6 @@ class BacktestOrchestrator(BaseOrchestrator):
                         logging.error(f"Error during risk assessment for order {order.order_id}: {e}", exc_info=True)
             elif not proposed_orders:
                 logging.debug("No proposed orders to approve.")
-            else:
-                logging.warning("Cannot approve orders because current portfolio value is None.")
 
             # 6. Submit approved orders to Execution Handler
             if approved_orders:

@@ -10,7 +10,9 @@ logger = logging.getLogger(__name__)
 
 # Placeholder for a more structured Signal object later if needed
 Signal = int # e.g., 1 (Buy), -1 (Sell), 0 (Hold)
-SignalsDict = Dict[str, Signal] # e.g., {'AAPL': 1, 'GOOG': -1}
+SignalsDict = Dict[str, int] # e.g., {'AAPL': 1, 'GOOG': -1}
+RichSignal = Dict[str, Any] # Type for the inner dictionary
+RichSignalsDict = Dict[str, RichSignal] # Type for the outer dictionary
 
 class BaseStrategy(ABC):
     """
@@ -38,7 +40,7 @@ class BaseStrategy(ABC):
         self,
         data: Union[pd.DataFrame, Dict[str, pd.DataFrame]],
         current_portfolio: Optional[Dict[str, Any]] = None # Optional access to current holdings/cash
-    ) -> SignalsDict:
+    ) -> RichSignalsDict:
         """
         Generate trading signals based on the provided data and optional portfolio state.
 
@@ -49,7 +51,12 @@ class BaseStrategy(ABC):
                                (e.g., {'cash': 10000, 'positions': {'AAPL': 10}}).
 
         Returns:
-            A dictionary mapping symbols to signals (e.g., {'AAPL': 1, 'GOOG': -1, 'MSFT': 0}).
+            RichSignalsDict (Dict[str, Dict[str, Any]]): 
+                A dictionary mapping each symbol to a richer signal dictionary containing:
+                - 'signal_strength' (float): -1.0 (strong sell) to +1.0 (strong buy)
+                - 'confidence_score' (float): 0.0 (low) to 1.0 (high)
+                - 'signal_type' (str, optional): 'technical', 'sentiment', etc.
+                - 'metadata' (dict, optional): Strategy-specific details (e.g., {'indicator': 'RSI', 'value': 75})
         """
         pass
 
@@ -138,7 +145,7 @@ class BaseStrategyManager(StrategyManagerABC):
         self,
         data: Union[pd.DataFrame, Dict[str, pd.DataFrame]],
         current_portfolio: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, int]: # Changed return type to Dict[str, int]
+    ) -> RichSignalsDict: # Changed return type to RichSignalsDict
         """
         Receives data, passes it to managed strategies, combines their signals
         according to configured logic, and returns the final aggregated signals.
@@ -252,7 +259,7 @@ class SentimentStrategy(BaseStrategy):
         data: Dict[str, pd.DataFrame], # Historical data window
         current_positions: Dict[str, Any] = None,
         **kwargs: Any
-    ) -> Dict[str, int]:
+    ) -> RichSignalsDict:
         """
         Generates buy/sell/hold signals based on sentiment data with optional smoothing.
 
@@ -260,25 +267,38 @@ class SentimentStrategy(BaseStrategy):
             data: Dictionary mapping symbol to a DataFrame containing historical data.
                   Expected columns: 'sentiment_score' or similar sentiment indicators.
             current_positions: Dictionary mapping symbol to current position details.
-            kwargs: Additional arguments, potentially including `current_data` (a Dict[str, pd.Series])
-                    and `timestamp`.
+            kwargs: Additional arguments.
 
         Returns:
-            Dictionary mapping symbol to signal (1 for Buy, -1 for Sell, 0 for Hold).
+            RichSignalsDict (Dict[str, Dict[str, Any]]): 
+                A dictionary mapping each symbol to a richer signal dictionary containing:
+                - 'signal_strength' (float): -1.0 (strong sell) to +1.0 (strong buy)
+                - 'confidence_score' (float): 0.0 (low) to 1.0 (high)
+                - 'signal_type' (str, optional): 'technical', 'sentiment', etc.
+                - 'metadata' (dict, optional): Strategy-specific details (e.g., {'indicator': 'RSI', 'value': 75})
         """
         if current_positions is None:
             current_positions = {}
             
         logger.info(f"{self.name}: Generating signals at timestamp {kwargs.get('timestamp', 'N/A')}")
-        signals = {}
+        signals: RichSignalsDict = {} # <-- Use RichSignalsDict type
         timestamp = kwargs.get('timestamp')
-
+ 
         # Process each symbol in the historical data
         for symbol, symbol_data in data.items():
+            # Default HOLD signal in rich format
+            default_signal: RichSignal = {
+                'signal_strength': 0.0,
+                'confidence_score': 0.1, # Low confidence for default/error
+                'signal_type': 'sentiment',
+                'metadata': {'reason': 'No data or processing error'}
+            }
+            signals[symbol] = default_signal.copy()
+
             # Early validation of the data
             if symbol_data is None or symbol_data.empty:
                 logger.warning(f"{self.name}: Empty data for symbol {symbol}. Setting HOLD signal.")
-                signals[symbol] = 0  # Default to HOLD
+                # signals[symbol] is already set to default HOLD
                 continue
             
             try:
@@ -316,7 +336,7 @@ class SentimentStrategy(BaseStrategy):
                 # If still no sentiment column found, set HOLD and continue to next symbol
                 if sentiment_col is None:
                     logger.error(f"{self.name}: No suitable sentiment or numeric column found for {symbol}. Available columns: {list(symbol_data.columns)}. Setting HOLD signal.")
-                    signals[symbol] = 0  # Default to HOLD
+                    # signals[symbol] is already set to default HOLD
                     continue
                 
                 logger.info(f"{self.name}: Using sentiment column: {sentiment_col} for {symbol}")
@@ -335,7 +355,7 @@ class SentimentStrategy(BaseStrategy):
                     
                     if valid_sentiment.empty:
                         logger.warning(f"{self.name}: No valid sentiment values for {symbol} after cleaning. Setting HOLD signal.")
-                        signals[symbol] = 0  # Default to HOLD
+                        # signals[symbol] is already set to default HOLD
                         continue
                         
                     # Get the latest valid sentiment value for signal generation
@@ -343,28 +363,59 @@ class SentimentStrategy(BaseStrategy):
                     
                     # Generate clear Buy/Sell/Hold signal based on thresholds
                     if latest_sentiment > self.buy_threshold:
-                        signals[symbol] = 1  # BUY signal
+                        final_signal = 1 # BUY
+                        signal_strength = min(1.0, (latest_sentiment - self.buy_threshold) * 2) # Simple scaling
+                        confidence = 0.6 + signal_strength * 0.3 # Confidence increases with strength
+                        metadata = {'raw_sentiment': latest_sentiment}
+                        signals[symbol] = {
+                            'signal_strength': signal_strength,
+                            'confidence_score': min(1.0, max(0.0, confidence)), # Clamp confidence [0, 1]
+                            'signal_type': 'sentiment',
+                            'metadata': metadata
+                        }
                         logger.info(f"{self.name}: BUY signal for {symbol} - sentiment: {latest_sentiment:.4f} > threshold: {self.buy_threshold}")
                     elif latest_sentiment < self.sell_threshold:
-                        signals[symbol] = -1  # SELL signal
+                        final_signal = -1 # SELL
+                        signal_strength = max(-1.0, (latest_sentiment - self.sell_threshold) * 2) # Simple scaling
+                        confidence = 0.6 + abs(signal_strength) * 0.3 # Confidence increases with strength
+                        metadata = {'raw_sentiment': latest_sentiment}
+                        signals[symbol] = {
+                            'signal_strength': signal_strength,
+                            'confidence_score': min(1.0, max(0.0, confidence)), # Clamp confidence [0, 1]
+                            'signal_type': 'sentiment',
+                            'metadata': metadata
+                        }
                         logger.info(f"{self.name}: SELL signal for {symbol} - sentiment: {latest_sentiment:.4f} < threshold: {self.sell_threshold}")
                     else:
-                        signals[symbol] = 0  # HOLD signal
+                        signal_strength = 0.0
+                        confidence = 0.4 # Slightly lower confidence for HOLD
+                        metadata = {'raw_sentiment': latest_sentiment}
+                        signals[symbol] = {
+                            'signal_strength': signal_strength,
+                            'confidence_score': min(1.0, max(0.0, confidence)), # Clamp confidence [0, 1]
+                            'signal_type': 'sentiment',
+                            'metadata': metadata
+                        }
                         logger.info(f"{self.name}: HOLD signal for {symbol} - sentiment: {latest_sentiment:.4f} is between thresholds")
                     
                 except Exception as e:
                     logger.error(f"{self.name}: Error converting sentiment values to numeric for {symbol}: {e}")
-                    signals[symbol] = 0  # Default to HOLD on error
+                    # signals[symbol] is already set to default HOLD
             
             except Exception as e:
-                logger.error(f"{self.name}: Error processing sentiment for {symbol}: {e}")
-                signals[symbol] = 0  # Default to HOLD on error
+                logger.error(f"{self.name}: Error processing sentiment for {symbol}: {e}", exc_info=True)
+                # signals[symbol] is already set to default HOLD
                 
         # Ensure we have signals for all symbols (final sanity check)
         for symbol in data.keys():
             if symbol not in signals:
                 logger.warning(f"{self.name}: No signal generated for {symbol}. Setting HOLD as fallback.")
-                signals[symbol] = 0
+                signals[symbol] = {
+                    'signal_strength': 0.0,
+                    'confidence_score': 0.1, # Low confidence for default/error
+                    'signal_type': 'sentiment',
+                    'metadata': {'reason': 'No data or processing error'}
+                }
         
         logger.info(f"{self.name}: Generated signals for {len(signals)} symbols: {signals}")
         return signals
@@ -436,7 +487,7 @@ class SimpleStrategyManager(BaseStrategyManager):
         data: Dict[str, pd.DataFrame], # Data from DataManager
         current_positions: Dict[str, Any],
         **kwargs: Any
-    ) -> Dict[str, Dict[str, int]]: # {strategy_name: {symbol: signal}}
+    ) -> RichSignalsDict: # {strategy_name: {symbol: signal}}
         """
         Processes data through managed strategies and aggregates signals.
  
@@ -449,7 +500,7 @@ class SimpleStrategyManager(BaseStrategyManager):
             Dictionary mapping strategy name to its generated signals ({symbol: signal}).
             In this simple version, assumes one strategy.
         """
-        all_signals: Dict[str, Dict[str, int]] = {}
+        all_signals: Dict[str, RichSignalsDict] = {}
  
         if not self._strategies:
             logging.warning("StrategyManager has no strategies loaded. No signals generated.")
@@ -464,7 +515,7 @@ class SimpleStrategyManager(BaseStrategyManager):
  
                 if historical_data_window is None:
                      logger.warning(f"Could not retrieve historical data window (lookback={lookback}) at timestamp {kwargs.get('timestamp')}. Skipping signal generation.")
-                     strategy_signals = {symbol: 0 for symbol in symbols} # Default to HOLD
+                     strategy_signals = {symbol: {'signal_strength': 0, 'confidence_score': 0, 'signal_type': 'hold'} for symbol in symbols} # Default to HOLD
                 else:
                      # --- Call strategy with historical DataFrame dictionary ---            
                      strategy_signals = strategy_instance.generate_signals(
@@ -477,7 +528,7 @@ class SimpleStrategyManager(BaseStrategyManager):
                 logger.debug(f"Signals generated by '{strategy_name}': {strategy_signals}")
             except Exception as e:
                 logging.error(f"Error generating signals from strategy '{strategy_name}': {e}", exc_info=True)
-                all_signals[strategy_name] = {symbol: 0 for symbol in data.keys()} # Default to HOLD on error
+                all_signals[strategy_name] = {symbol: {'signal_strength': 0, 'confidence_score': 0, 'signal_type': 'hold'} for symbol in data.keys()} # Default to HOLD on error
  
         # Future work: Implement logic to combine signals from multiple strategies if needed.
         # For now, just return the signals per strategy.
@@ -498,7 +549,7 @@ class SimpleStrategyManager(BaseStrategyManager):
         """ Retrieves a strategy instance by name. """
         return self._strategies.get(name)
  
-    def generate_signals(self, current_data: Dict[str, pd.Series], portfolio_state: Dict[str, Any], **kwargs) -> Dict[str, int]:
+    def generate_signals(self, current_data: Dict[str, pd.Series], portfolio_state: Dict[str, Any], **kwargs) -> RichSignalsDict:
         """Generates trading signals by delegating to managed strategies.
  
         This simple manager currently assumes it manages only one strategy
@@ -511,15 +562,20 @@ class SimpleStrategyManager(BaseStrategyManager):
             kwargs: Additional arguments.
  
         Returns:
-            A dictionary mapping symbols to their final trading signal (1, -1, or 0).
+            RichSignalsDict (Dict[str, Dict[str, Any]]): 
+                A dictionary mapping each symbol to a richer signal dictionary containing:
+                - 'signal_strength' (float): -1.0 (strong sell) to +1.0 (strong buy)
+                - 'confidence_score' (float): 0.0 (low) to 1.0 (high)
+                - 'signal_type' (str, optional): 'technical', 'sentiment', etc.
+                - 'metadata' (dict, optional): Strategy-specific details (e.g., {'indicator': 'RSI', 'value': 75})
         """
-        final_signals: Dict[str, int] = {}
+        final_signals: RichSignalsDict = {}
  
         if not self._strategies:
             logger.warning(f"{self.__class__.__name__}: No strategies loaded. Returning HOLD signals.")
             # Determine symbols from data if possible, otherwise return empty
             symbols = list(current_data.keys()) if current_data else []
-            return {symbol: 0 for symbol in symbols}
+            return {symbol: {'signal_strength': 0, 'confidence_score': 0, 'signal_type': 'hold'} for symbol in symbols}
  
         # Simple approach: Use the signals from the *first* strategy found.
         # A more robust implementation would handle multiple strategies (e.g., averaging, voting).
@@ -540,7 +596,7 @@ class SimpleStrategyManager(BaseStrategyManager):
  
                 if historical_data_window is None:
                      logger.warning(f"Could not retrieve historical data window (lookback={lookback}) at timestamp {kwargs.get('timestamp')}. Skipping signal generation.")
-                     strategy_signals = {symbol: 0 for symbol in symbols} # Default to HOLD
+                     strategy_signals = {symbol: {'signal_strength': 0, 'confidence_score': 0, 'signal_type': 'hold'} for symbol in symbols} # Default to HOLD
                 else:
                      # --- Call strategy with historical DataFrame dictionary ---            
                      strategy_signals = strategy_instance.generate_signals(
@@ -554,12 +610,12 @@ class SimpleStrategyManager(BaseStrategyManager):
             else:
                  logger.error(f"Strategy '{first_strategy_name}' is missing the 'generate_signals' method.")
                  symbols = list(current_data.keys()) if current_data else []
-                 final_signals = {symbol: 0 for symbol in symbols} # Default to HOLD
+                 final_signals = {symbol: {'signal_strength': 0, 'confidence_score': 0, 'signal_type': 'hold'} for symbol in symbols} # Default to HOLD
  
         except Exception as e:
             logger.error(f"Error generating signals from strategy '{first_strategy_name}': {e}", exc_info=True)
             symbols = list(current_data.keys()) if current_data else []
-            final_signals = {symbol: 0 for symbol in symbols} # Default to HOLD on error
+            final_signals = {symbol: {'signal_strength': 0, 'confidence_score': 0, 'signal_type': 'hold'} for symbol in symbols} # Default to HOLD on error
  
         return final_signals
  
@@ -588,14 +644,19 @@ class SentimentStrategyManager(BaseStrategyManager):
         self.signal_processing_cfg = config.get('signal_processing', {})
         logger.info(f"SentimentStrategyManager initialized with threshold: {self.sentiment_threshold}, lookback: {self.lookback}")
  
-    def generate_signals(self, current_data: Dict[str, pd.Series], historical_data: Dict[str, pd.DataFrame]) -> Dict[str, int]:
+    def generate_signals(self, current_data: Dict[str, pd.Series], historical_data: Dict[str, pd.DataFrame]) -> RichSignalsDict:
         """Generates trading signals based on sentiment data.
         Now supports configurable advanced signal processing (noise filtering and regime detection).
         Args:
             current_data: Dict of {symbol: pd.Series} for the current timestamp.
             historical_data: Dict of {symbol: pd.DataFrame} for lookback window.
         Returns:
-            Dict of {symbol: signal}.
+            RichSignalsDict (Dict[str, Dict[str, Any]]): 
+                A dictionary mapping each symbol to a richer signal dictionary containing:
+                - 'signal_strength' (float): -1.0 (strong sell) to +1.0 (strong buy)
+                - 'confidence_score' (float): 0.0 (low) to 1.0 (high)
+                - 'signal_type' (str, optional): 'technical', 'sentiment', etc.
+                - 'metadata' (dict, optional): Strategy-specific details (e.g., {'indicator': 'RSI', 'value': 75})
         """
         signals = {}
         for symbol, series in current_data.items():
@@ -652,21 +713,21 @@ class SentimentStrategyManager(BaseStrategyManager):
                 sentiment_float = float(current_sentiment)
                 # Only trade in 'low_vol' regime if regime_label is present
                 if regime_label is not None and regime_label != 'low_vol':
-                    signals[symbol] = 0 # HOLD in high_vol or unknown regime
+                    signals[symbol] = {'signal_strength': 0, 'confidence_score': 0, 'signal_type': 'hold'} # HOLD in high_vol or unknown regime
                 else:
                     if sentiment_float > self.sentiment_threshold:
-                        signals[symbol] = 1 # BUY
+                        signals[symbol] = {'signal_strength': 1.0, 'confidence_score': 1.0, 'signal_type': 'buy'} # BUY
                     elif sentiment_float < -self.sentiment_threshold:
-                        signals[symbol] = -1 # SELL
+                        signals[symbol] = {'signal_strength': -1.0, 'confidence_score': 1.0, 'signal_type': 'sell'} # SELL
                     else:
-                        signals[symbol] = 0 # HOLD
+                        signals[symbol] = {'signal_strength': 0, 'confidence_score': 0, 'signal_type': 'hold'} # HOLD
             except (ValueError, TypeError) as e:
                 logger.error(f"Error converting sentiment '{current_sentiment}' to float for {symbol}: {e}. Holding.")
-                signals[symbol] = 0 # HOLD on error
+                signals[symbol] = {'signal_strength': 0, 'confidence_score': 0, 'signal_type': 'hold'} # HOLD on error
         # Ensure all symbols managed by the strategy have a signal (default to HOLD)
         for symbol in self.config.get('symbols', []):
             if symbol not in signals:
-                signals[symbol] = 0
+                signals[symbol] = {'signal_strength': 0, 'confidence_score': 0, 'signal_type': 'hold'}
                 logger.warning(f"No data found for configured symbol {symbol}, setting HOLD signal.")
         return signals
  

@@ -1,10 +1,17 @@
-# src/agent/risk_manager.py
+"""
+Risk manager module for the AI Trading Agent.
+
+This module handles risk assessment, position sizing, and stop-loss management.
+"""
+
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Optional, List
 import pandas as pd
-import logging
+import numpy as np
 
-# Assuming PortfolioState and Order are defined elsewhere (e.g., in portfolio.py or models)
+from ..common import logger
+
+# Type aliases for clarity
 PortfolioState = Dict[str, Any]
 Order = Dict[str, Any]
 
