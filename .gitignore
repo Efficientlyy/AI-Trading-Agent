@@ -5,8 +5,10 @@ __pycache__/
 
 # Virtual environment
 .venv/
+.venv312/
 venv/
 ENV/
+.pytest_cache/
 
 # Node.js dependencies
 node_modules/
@@ -36,6 +38,8 @@ htmlcov/
 debug_output.txt
 test_output.txt
 test_debug.txt
+frontend_debug.html
+*.html
 
 # Rust / Cargo
 /target/
@@ -71,3 +75,23 @@ temp_data/
 
 # Test results and artifacts
 test_results/
+
+# Binary and executable files
+*.exe
+*.bin
+*.dll
+*.so
+*.dylib
+
+# Data files
+*.pkl
+*.pickle
+*.json.bak
+*.py.bak
+*.ts.new
+*.ts.backup
+
+# Temporary development files
+signal_aggregation_results.txt
+signal_results.txt
+signal_test_results.txt
