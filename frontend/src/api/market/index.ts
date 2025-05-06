@@ -7,6 +7,7 @@
 
 import { apiRequest } from '../apiUtils';
 import { OHLCV } from '../../types';
+import { createAuthenticatedClient } from '../client';
 
 interface MarketDataParams {
   symbol: string;
@@ -83,4 +84,52 @@ function generateMockPriceData(symbol: string, length: number): OHLCV[] {
       volume: Math.floor(Math.random() * 1000000)
     };
   });
+}
+
+/**
+ * Get historical prices for a symbol
+ * 
+ * @param symbol Symbol to get prices for (e.g., BTC, ETH)
+ * @param timeframe Timeframe for the prices (e.g., 1h, 4h, 1d, 1w)
+ * @param startDate Start date for the price data
+ * @param endDate End date for the price data
+ * @returns Promise with historical price data
+ */
+export async function getHistoricalPrices(
+  symbol: string,
+  timeframe: string = '1d',
+  startDate?: Date,
+  endDate?: Date
+): Promise<OHLCV[]> {
+  try {
+    const client = createAuthenticatedClient();
+    
+    // Format dates for API request
+    const from = startDate ? startDate.toISOString() : undefined;
+    const to = endDate ? endDate.toISOString() : undefined;
+    
+    // Prepare query parameters
+    const params: Record<string, string> = {
+      symbol,
+      timeframe,
+      limit: '100'
+    };
+    
+    if (from) params.from = from;
+    if (to) params.to = to;
+    
+    // Make API request
+    const response = await client.get('/api/market/historical', { params });
+    
+    if (response.data && response.data.data) {
+      return response.data.data;
+    }
+    
+    throw new Error('Invalid response format');
+  } catch (error) {
+    console.error('Error fetching historical prices:', error);
+    
+    // Return mock data on error
+    return generateMockPriceData(symbol, 100);
+  }
 }

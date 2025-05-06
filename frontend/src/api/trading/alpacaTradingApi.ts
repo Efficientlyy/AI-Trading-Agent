@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { TradingMode } from '../../config';
+import { TradingMode } from '../../config/index';
 import { Order, OrderRequest, Portfolio, Position } from '../../types';
 import { createAuthenticatedClient } from '../client';
 import { ApiError, NetworkError } from '../utils/errorHandling';
@@ -19,8 +19,8 @@ interface AlpacaConfig {
 
 // Create Alpaca API client
 const createAlpacaClient = (tradingMode: TradingMode, config: AlpacaConfig) => {
-  // For paper trading mode, always use paper API
-  // For live mode, use the configuration setting
+  // Determine if we should use the paper trading API
+  // Use paper trading if explicitly configured or if trading mode is PAPER
   const useRealMoney = tradingMode === 'live' && !config.paperTrading;
   const baseURL = useRealMoney ? ALPACA_LIVE_API_URL : ALPACA_PAPER_API_URL;
 
@@ -103,9 +103,13 @@ const fetchMarketPrice = async (symbol: string, client: any): Promise<number | n
 };
 
 // Create Alpaca trading API
-export const createAlpacaTradingApi = (config: AlpacaConfig): TradingApi => {
-  // Create Alpaca client
-  const { client, dataClient } = createAlpacaClient('live', config);
+export const alpacaTradingApi = (mode: TradingMode, config: { apiKey: string, apiSecret: string }): TradingApi => {
+  // Create Alpaca client with paperTrading based on mode
+  const alpacaConfig: AlpacaConfig = {
+    ...config,
+    paperTrading: mode !== 'live'
+  };
+  const { client, dataClient } = createAlpacaClient(mode, alpacaConfig);
 
   // Create authenticated client for our backend
   const backendClient = createAuthenticatedClient();

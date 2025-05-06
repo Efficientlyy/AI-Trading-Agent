@@ -1,5 +1,6 @@
 import { alpacaTradingApi } from './alpacaTradingApi.wrapper';
 import { OrderSide, OrderType } from '../../types';
+import { TradingMode } from '../../config/index';
 // Define AlpacaConfig interface if it's not imported correctly
 interface AlpacaConfig {
   apiKey: string;
@@ -155,7 +156,7 @@ describe('Alpaca Trading API', () => {
       mockedAxios.create.mockReturnValue(mockClient as any);
       
       // Create API and call method
-      const api = alpacaTradingApi('paper', mockConfig);
+      const api = alpacaTradingApi('paper' as TradingMode, mockConfig);
       const portfolio = await api.getPortfolio();
       
       // Assertions
@@ -210,7 +211,7 @@ describe('Alpaca Trading API', () => {
       require('../client').createAuthenticatedClient.mockReturnValue(mockBackendClient);
       
       // Create API and call method
-      const api = alpacaTradingApi('paper', mockConfig);
+      const api = alpacaTradingApi('paper' as TradingMode, mockConfig);
       const portfolio = await api.getPortfolio();
       
       // Assertions
@@ -281,7 +282,7 @@ describe('Alpaca Trading API', () => {
       require('../client').createAuthenticatedClient.mockReturnValue(mockBackendClient);
       
       // Create API and call method
-      const api = alpacaTradingApi('paper', mockConfig);
+      const api = alpacaTradingApi('paper' as TradingMode, mockConfig);
       const portfolio = await api.getPortfolio();
       
       // Assertions
@@ -350,7 +351,7 @@ describe('Alpaca Trading API', () => {
       mockedAxios.create.mockReturnValue(mockClient as any);
       
       // Create API and call method
-      const api = alpacaTradingApi('paper', mockConfig);
+      const api = alpacaTradingApi('paper' as TradingMode, mockConfig);
       const orderRequest = {
         symbol: 'BTC/USDT',
         side: 'buy' as const,

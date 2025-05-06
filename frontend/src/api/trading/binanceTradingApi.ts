@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 import crypto from 'crypto';
-import { TradingMode } from '../../config';
+import { TradingMode } from '../../config/index';
 import { Order, OrderRequest, OrderSide, OrderStatus, OrderType, Portfolio, Position } from '../../types';
 import { createAuthenticatedClient } from '../client';
 import { ApiError, NetworkError } from '../utils/errorHandling';

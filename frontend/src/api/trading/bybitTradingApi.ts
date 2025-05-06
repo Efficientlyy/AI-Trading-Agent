@@ -2,6 +2,7 @@
 import axios from 'axios';
 import { createAuthenticatedClient } from '../client';
 import { TradingApi } from './index';
+import { TradingMode } from '../../config/index';
 import {
   Order,
   OrderRequest,
@@ -18,7 +19,7 @@ import { canMakeApiCall, recordApiCall, recordCircuitBreakerResult } from '../ut
  * @param mode Trading mode (live or paper)
  * @param config API configuration
  */
-export const bybitTradingApi = (mode: 'live' | 'paper', config: { apiKey: string, apiSecret: string }): TradingApi => {
+export const bybitTradingApi = (mode: TradingMode, config: { apiKey: string, apiSecret: string }): TradingApi => {
   const client = axios.create({
     baseURL: 'https://api.bybit.com',
     headers: {

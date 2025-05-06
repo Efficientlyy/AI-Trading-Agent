@@ -2,6 +2,7 @@ import { binanceTradingApi } from './binanceTradingApi';
 import axios from 'axios';
 import { canMakeApiCall, recordApiCall, recordCircuitBreakerResult } from '../utils/monitoring';
 import { OrderSide, OrderType } from '../../types';
+import { TradingMode } from '../../config/index';
 // Mock Date for consistent test results
 const mockDate = new Date('2023-01-01T00:00:00Z');
 jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
@@ -239,7 +240,7 @@ describe('Binance Trading API', () => {
       (mockedAxios.create as jest.Mock).mockReturnValue(mockClient);
       
       // Create API and call method
-      const api = binanceTradingApi('paper', mockConfig);
+      const api = binanceTradingApi('paper' as TradingMode, mockConfig);
       const portfolio = await api.getPortfolio();
       
       // Assertions
@@ -309,7 +310,7 @@ describe('Binance Trading API', () => {
       require('../client').createAuthenticatedClient.mockReturnValue(mockBackendClient);
       
       // Create API and call method
-      const api = binanceTradingApi('paper', mockConfig);
+      const api = binanceTradingApi('paper' as TradingMode, mockConfig);
       const portfolio = await api.getPortfolio();
       
       // Assertions
@@ -377,7 +378,7 @@ describe('Binance Trading API', () => {
       require('../client').createAuthenticatedClient.mockReturnValue(mockBackendClient);
       
       // Create API and call method
-      const api = binanceTradingApi('paper', mockConfig);
+      const api = binanceTradingApi('paper' as TradingMode, mockConfig);
       const portfolio = await api.getPortfolio();
       
       // Assertions
@@ -445,7 +446,7 @@ describe('Binance Trading API', () => {
       (mockedAxios.create as jest.Mock).mockReturnValue(mockClient);
       
       // Create API and call method
-      const api = binanceTradingApi('paper', mockConfig);
+      const api = binanceTradingApi('paper' as TradingMode, mockConfig);
       const orderRequest = {
         symbol: 'BTC/USDT',
         side: 'buy' as const,
@@ -543,7 +544,7 @@ describe('Binance Trading API', () => {
       require('../client').createAuthenticatedClient.mockReturnValue(mockBackendClient);
       
       // Create API and call method
-      const api = binanceTradingApi('paper', mockConfig);
+      const api = binanceTradingApi('paper' as TradingMode, mockConfig);
       const orderRequest = {
         symbol: 'BTC/USDT',
         side: 'buy' as 'buy', // Type assertion to match OrderRequest type
@@ -609,7 +610,7 @@ describe('Binance Trading API', () => {
       (mockedAxios.create as jest.Mock).mockReturnValue(mockClient);
       
       // Create API and call method
-      const api = binanceTradingApi('paper', mockConfig);
+      const api = binanceTradingApi('paper' as TradingMode, mockConfig);
       const price = await api.getMarketPrice('BTC/USDT');
       
       // Assertions

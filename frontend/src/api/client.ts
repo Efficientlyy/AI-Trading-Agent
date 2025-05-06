@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 // Create a base API client
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8008';
 
 export const createApiClient = (token?: string): AxiosInstance => {
   const config: AxiosRequestConfig = {
@@ -24,11 +24,17 @@ export const createApiClient = (token?: string): AxiosInstance => {
   client.interceptors.response.use(
     (response) => response,
     (error) => {
-      // Handle token expiration
+      // Handle token expiration / Unauthorized
       if (error.response && error.response.status === 401) {
-        // Clear local storage and redirect to login
-        localStorage.removeItem('token');
-        window.location.href = '/login';
+        // Only force logout in production mode
+        if (process.env.NODE_ENV !== 'development') {
+          console.error('Received 401 Unauthorized in production, logging out.');
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+        } else {
+          console.warn('Received 401 Unauthorized in development, not logging out automatically.');
+          // In development, let the specific component handle the error
+        }
       }
       return Promise.reject(error);
     }

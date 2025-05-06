@@ -1,4 +1,5 @@
-import { getTradingMode, getExchangeConfig, ExchangeName } from '../../config';
+import { getTradingMode, getExchangeConfig, ExchangeName } from '../../config/index';
+import { TradingMode } from '../../config/index';
 import { OrderRequest, Order, Portfolio, Position } from '../../types';
 import { mockTradingApi } from './mockTradingApi';
 import { binanceTradingApi } from './binanceTradingApi';
@@ -41,7 +42,7 @@ export const createTradingApi = (exchange?: ExchangeName): TradingApi => {
   }
   
   // For paper or live mode, use the appropriate exchange API
-  const exchangeConfig = getExchangeConfig(selectedExchange);
+  const exchangeConfig = getExchangeConfig(selectedExchange as ExchangeName);
   
   if (!exchangeConfig) {
     throw new Error(`No configuration found for exchange: ${selectedExchange}`);
@@ -52,7 +53,7 @@ export const createTradingApi = (exchange?: ExchangeName): TradingApi => {
   
   switch (selectedExchange) {
     case 'binance':
-      baseApi = binanceTradingApi(tradingMode, exchangeConfig);
+      baseApi = binanceTradingApi(tradingMode as TradingMode, exchangeConfig);
       break;
     case 'coinbase': {
       // Ensure passphrase is present
@@ -60,7 +61,7 @@ export const createTradingApi = (exchange?: ExchangeName): TradingApi => {
         ...exchangeConfig,
         passphrase: (exchangeConfig as any).passphrase || process.env.REACT_APP_COINBASE_PASSPHRASE || 'test-passphrase',
       };
-      baseApi = coinbaseTradingApi(tradingMode, coinbaseConfig);
+      baseApi = coinbaseTradingApi(tradingMode as TradingMode, coinbaseConfig);
       break;
     }
     case 'alpaca': {
@@ -69,7 +70,7 @@ export const createTradingApi = (exchange?: ExchangeName): TradingApi => {
         ...exchangeConfig,
         paperTrading: typeof (exchangeConfig as any).paperTrading === 'boolean' ? (exchangeConfig as any).paperTrading : true,
       };
-      baseApi = alpacaTradingApi(tradingMode, alpacaConfig);
+      baseApi = alpacaTradingApi(tradingMode as TradingMode, alpacaConfig);
       break;
     }
     default:

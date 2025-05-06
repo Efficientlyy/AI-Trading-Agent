@@ -3,6 +3,7 @@ import { ApiError } from '../utils/errorHandling';
 import { alpacaTradingApi } from './alpacaTradingApi.wrapper';
 import { binanceTradingApi } from './binanceTradingApi';
 import { coinbaseTradingApi } from './coinbaseTradingApi';
+import { TradingMode } from '../../config/index';
 
 // Mock axios
 jest.mock('axios', () => {
@@ -91,7 +92,7 @@ describe('Trading API Circuit Breaker Integration', () => {
       require('../client').createAuthenticatedClient.mockReturnValue(mockBackendClient);
 
       // Create API and call method
-      const api = alpacaTradingApi('paper', alpacaConfig);
+      const api = alpacaTradingApi('paper' as TradingMode, alpacaConfig);
       const portfolio = await api.getPortfolio();
 
       // Assertions
@@ -124,7 +125,7 @@ describe('Trading API Circuit Breaker Integration', () => {
       require('../client').createAuthenticatedClient.mockReturnValue(mockBackendClient);
 
       // Create API and call method
-      const api = binanceTradingApi('paper', binanceConfig);
+      const api = binanceTradingApi('paper' as TradingMode, binanceConfig);
       const portfolio = await api.getPortfolio();
 
       // Assertions
@@ -157,7 +158,7 @@ describe('Trading API Circuit Breaker Integration', () => {
       require('../client').createAuthenticatedClient.mockReturnValue(mockBackendClient);
 
       // Create API and call method
-      const api = coinbaseTradingApi('paper', coinbaseConfig);
+      const api = coinbaseTradingApi('paper' as TradingMode, coinbaseConfig);
       const portfolio = await api.getPortfolio();
 
       // Assertions
@@ -195,7 +196,7 @@ describe('Trading API Circuit Breaker Integration', () => {
       require('../client').createAuthenticatedClient.mockReturnValue(mockBackendClient);
 
       // Create API and call method
-      const api = coinbaseTradingApi('paper', coinbaseConfig);
+      const api = coinbaseTradingApi('paper' as TradingMode, coinbaseConfig);
       const portfolio = await api.getPortfolio();
 
       // Assertions

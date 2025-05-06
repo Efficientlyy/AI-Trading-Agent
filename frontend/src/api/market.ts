@@ -50,4 +50,15 @@ export const marketApi = {
     });
     return response.data;
   },
+  
+  // Get historical prices for a symbol
+  getHistoricalPrices: async (symbol: string, timeframe: string = '1d', limit: number = 100): Promise<{ data: OHLCV[] }> => {
+    // This function uses the same mock data generator as getHistoricalData
+    // but with a different interface to match existing code
+    return marketApi.getHistoricalData({
+      symbol,
+      timeframe,
+      limit
+    });
+  },
 };

@@ -2,9 +2,9 @@ import { createAuthenticatedClient } from './client';
 import { Strategy } from '../types';
 
 export const strategiesApi = {
-  getStrategies: async (): Promise<{ strategies: Strategy[] }> => {
+  getStrategies: async (): Promise<Strategy[]> => {
     const client = createAuthenticatedClient();
-    const response = await client.get<{ strategies: Strategy[] }>('/strategies');
+    const response = await client.get<Strategy[]>('/api/strategies');
     return response.data;
   },
   
