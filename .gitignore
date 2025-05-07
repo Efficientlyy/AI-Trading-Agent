@@ -96,6 +96,15 @@ test_results/
 signal_aggregation_results.txt
 signal_results.txt
 signal_test_results.txt
+error_log.txt
+
+# Temporary and backup files
+*.new
+*.bak
+*.backup
+
+# Database files
+data/sessions.db
 
 # Frontend components in development
 frontend/src/components/trading/PaperTrading/TradeStatistics.tsx
