@@ -41,8 +41,7 @@ import './styles/theme.css';
 // Import dark theme overrides for better visibility
 import './styles/darkThemeOverrides.css';
 
-// Import Mantine core styles and provider
-import '@mantine/core/styles.css';
+// Import Mantine provider
 import { MantineProvider, createTheme } from '@mantine/core';
 
 // Create a client

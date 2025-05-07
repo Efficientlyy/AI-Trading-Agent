@@ -1,4 +1,4 @@
-import { ArrowDownIcon, ArrowUpIcon, MinusIcon } from '@heroicons/react/24/solid';
+import { ArrowDownIcon, ArrowUpIcon, MinusIcon } from '@heroicons/react/solid';
 import React, { useEffect, useMemo, useState } from 'react';
 import { getMockSentimentSummary } from '../../api/mockData/mockSentimentSummary';
 import { sentimentApi } from '../../api/sentiment';
