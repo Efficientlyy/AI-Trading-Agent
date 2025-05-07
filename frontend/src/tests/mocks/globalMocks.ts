@@ -7,7 +7,31 @@ import { ApiCallMetrics } from '../../api/utils/monitoring';
 
 // Type definitions for axios mock to fix TypeScript errors
 type AxiosResponseData = { data: Record<string, any> };
-type JestMockFn = jest.Mock;
+
+// Create a compatible mock interface that matches Jest's expectations
+interface MockContext<TReturn, TArgs extends any[]> {
+  calls: TArgs[];
+  instances: any[];
+  invocationCallOrder: number[];
+  results: Array<{type: string; value: TReturn}>;
+  lastCall?: TArgs; // Make lastCall optional to match Jest's implementation
+}
+
+// Define a compatible mock function type
+interface CompatibleMock<TReturn = any, TArgs extends any[] = any[]> {
+  (...args: TArgs): TReturn;
+  mock: MockContext<TReturn, TArgs>;
+  mockClear(): void;
+  mockReset(): void;
+  mockRestore(): void;
+  mockImplementation(fn: (...args: TArgs) => TReturn): CompatibleMock<TReturn, TArgs>;
+  mockImplementationOnce(fn: (...args: TArgs) => TReturn): CompatibleMock<TReturn, TArgs>;
+  mockReturnValue(value: TReturn): CompatibleMock<TReturn, TArgs>;
+  mockReturnValueOnce(value: TReturn): CompatibleMock<TReturn, TArgs>;
+}
+
+// Use this type for all Jest mocks
+type JestMockFn = CompatibleMock;
 
 interface AxiosMockInstance {
   get: JestMockFn;

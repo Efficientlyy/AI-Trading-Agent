@@ -5,7 +5,7 @@ import { OrderSide, OrderType } from '../../types';
 import { TradingMode } from '../../config/index';
 // Mock Date for consistent test results
 const mockDate = new Date('2023-01-01T00:00:00Z');
-jest.spyOn(global, 'Date').mockImplementation(() => mockDate);
+jest.spyOn(global, 'Date').mockImplementation(() => mockDate as unknown as string);
 
 // Mock axios
 jest.mock('axios', () => {

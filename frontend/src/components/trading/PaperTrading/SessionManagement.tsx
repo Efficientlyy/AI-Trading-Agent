@@ -78,9 +78,13 @@ const SessionManagement: React.FC = () => {
       const data = await response.json();
       console.log('Fetched sessions:', data);
       
-      // Check if data has a sessions property (which is what our backend returns)
+      // Handle different response formats
       if (data && data.sessions && Array.isArray(data.sessions)) {
+        // Standard format with sessions property
         setSessions(data.sessions);
+      } else if (Array.isArray(data)) {
+        // Handle case where API directly returns an array
+        setSessions(data);
       } else {
         console.error('Invalid response format:', data);
         setSessions([]);
@@ -289,9 +293,11 @@ const SessionManagement: React.FC = () => {
         </Typography>
         <Box>
           <Tooltip title="Refresh">
-            <IconButton onClick={handleRefresh} disabled={loading}>
-              <RefreshIcon />
-            </IconButton>
+            <span>
+              <IconButton onClick={handleRefresh} disabled={loading}>
+                <RefreshIcon />
+              </IconButton>
+            </span>
           </Tooltip>
           <Button 
             variant="contained" 

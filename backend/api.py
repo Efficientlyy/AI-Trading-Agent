@@ -80,6 +80,10 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 # Include WebSocket router
 app.include_router(websocket_router)
 
+# Include Paper Trading router
+from backend.paper_trading import paper_trading_router
+app.include_router(paper_trading_router)
+
 # Add startup and shutdown events for WebSocket services
 @app.on_event("startup")
 async def startup_event():

@@ -39,9 +39,10 @@ const createBinanceClient = (tradingMode: TradingMode, config: BinanceConfig): A
       // Handle specific Binance error codes
       if (axios.isAxiosError(error) && error.response) {
         const { status, data } = error.response;
+        const typedData = data as Record<string, any>;
 
         // Rate limiting
-        if (status === 429 || data?.code === -1003) {
+        if (status === 429 || typedData?.code === -1003) {
           const retryAfter = error.response.headers['retry-after']
             ? parseInt(error.response.headers['retry-after'], 10) * 1000
             : 60000; // Default to 60 seconds if no header
@@ -65,7 +66,7 @@ const createBinanceClient = (tradingMode: TradingMode, config: BinanceConfig): A
         }
 
         // Authentication errors
-        if (status === 401 || data?.code === -2015) {
+        if (status === 401 || typedData?.code === -2015) {
           return Promise.reject(new ApiError(
             'Binance authentication failed',
             401,

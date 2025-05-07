@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import crypto from 'crypto';
 import { TradingMode } from '../../config/index';
 import { Order, OrderRequest, OrderSide, OrderStatus, OrderType, Portfolio, Position } from '../../types';
@@ -28,7 +28,7 @@ const createCoinbaseClient = (tradingMode: TradingMode, coinbaseConfig: Coinbase
   });
 
   // Add request interceptor for authentication
-  client.interceptors.request.use((config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
+  client.interceptors.request.use((config: AxiosRequestConfig): AxiosRequestConfig => {
     const timestamp = Math.floor(Date.now() / 1000).toString();
     const method = config.method?.toUpperCase() || 'GET';
     const path = config.url || '';
@@ -42,11 +42,15 @@ const createCoinbaseClient = (tradingMode: TradingMode, coinbaseConfig: Coinbase
       .digest('base64');
 
     // Add headers
-    // Use the set method of AxiosHeaders
-    config.headers.set('CB-ACCESS-KEY', coinbaseConfig.apiKey);
-    config.headers.set('CB-ACCESS-SIGN', signature);
-    config.headers.set('CB-ACCESS-TIMESTAMP', timestamp);
-    config.headers.set('CB-ACCESS-PASSPHRASE', coinbaseConfig.passphrase);
+    // Ensure headers object exists and add headers
+    if (!config.headers) {
+      config.headers = {};
+    }
+    
+    config.headers['CB-ACCESS-KEY'] = coinbaseConfig.apiKey;
+    config.headers['CB-ACCESS-SIGN'] = signature;
+    config.headers['CB-ACCESS-TIMESTAMP'] = timestamp;
+    config.headers['CB-ACCESS-PASSPHRASE'] = coinbaseConfig.passphrase;
 
     return config;
   });

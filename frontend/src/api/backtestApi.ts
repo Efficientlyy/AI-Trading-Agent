@@ -32,7 +32,8 @@ export const fetchBacktestResult = async (backtestId: string, token: string): Pr
     console.error('Error fetching backtest result:', error);
     // Enhance error handling based on Axios error structure
     if (axios.isAxiosError(error) && error.response) {
-      throw new Error(`Failed to fetch backtest result: ${error.response.data.detail || error.message}`);
+      const errorData = error.response.data as Record<string, any>;
+      throw new Error(`Failed to fetch backtest result: ${errorData?.detail || error.message}`);
     } else {
       throw new Error(`Failed to fetch backtest result: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -78,7 +79,8 @@ export const fetchBacktestHistory = async (
   } catch (error) {
     console.error('Error fetching backtest history:', error);
     if (axios.isAxiosError(error) && error.response) {
-      throw new Error(`Failed to fetch backtest history: ${error.response.data.detail || error.message}`);
+      const errorData = error.response.data as Record<string, any>;
+      throw new Error(`Failed to fetch backtest history: ${errorData?.detail || error.message}`);
     } else {
       throw new Error(`Failed to fetch backtest history: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }

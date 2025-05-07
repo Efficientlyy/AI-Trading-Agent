@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 // Create a base API client
-const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8008';
+const API_URL = process.env.REACT_APP_API_URL || 'http://127.0.0.1:8000';
 
 export const createApiClient = (token?: string): AxiosInstance => {
   const config: AxiosRequestConfig = {
