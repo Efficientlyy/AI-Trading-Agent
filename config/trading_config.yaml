@@ -1,0 +1,155 @@
+# AI Trading Agent Configuration
+
+# Trading parameters
+trading:
+  symbols: ["BTC/USDT", "ETH/USDT"]  # Trading pairs
+  initial_capital: 10000.0           # Initial capital in USD
+  timeframe: "1h"                    # Trading timeframe (1m, 5m, 15m, 1h, 4h, 1d)
+
+# Backtest parameters
+backtest:
+  start_date: "2023-01-01"           # Backtest start date
+  end_date: "2023-12-31"             # Backtest end date
+  timeframe: "1h"                    # Data timeframe for backtesting
+
+# Paper trading parameters
+paper:
+  duration_hours: 24                 # Duration of paper trading simulation
+  update_interval_minutes: 15        # How often to update and make decisions
+
+# Live trading parameters
+live:
+  update_interval_minutes: 15        # How often to update and make decisions
+
+# Data service configuration
+data_service:
+  provider: "ccxt"                   # Data provider (ccxt, binance, etc.)
+  exchange_id: "binance"             # Exchange ID for CCXT
+  api_key: ""                        # API key (leave empty for public data)
+  api_secret: ""                     # API secret (leave empty for public data)
+  rate_limit: true                   # Respect exchange rate limits
+
+# Data manager configuration
+data_manager:
+  cache_data: true                   # Cache data to disk
+  cache_dir: "data/cache"            # Cache directory
+  data_lookback: 200                 # Number of historical bars to keep
+
+# Strategy manager configuration
+strategy_manager:
+  aggregation_method: "weighted_average"  # Signal aggregation method
+  strategy_weights:                       # Weights for each strategy
+    MACrossover: 0.2
+    Sentiment: 0.1
+    MarketRegimeStrategy: 0.25
+    MLStrategy: 0.25
+    PortfolioStrategy: 0.2
+  use_meta_learner: true
+  apply_risk_management: true
+  apply_signal_filtering: true
+  min_confidence_threshold: 0.3
+  min_signal_strength: 0.1
+  
+  # Meta-strategy configuration (used when aggregation_method is "meta")
+  meta_strategy:
+    default_method: "weighted_average"
+    market_condition_mapping:
+      normal: "weighted_average"
+      trending: "dynamic_contextual"
+      volatile: "rule_based"
+      crisis: "majority_vote"
+    performance_tracking: true
+    adaptation_period: 20            # Number of periods before adapting
+
+# Market analyzer configuration
+market_analyzer:
+  volatility_window: 20
+  trend_window: 50
+  volatility_thresholds:
+    low: 0.15
+    high: 0.30
+  trend_thresholds:
+    weak: 0.001
+    strong: 0.003
+
+# Strategy configurations
+strategies:
+  ma_crossover:
+    enabled: true
+    short_window: 10
+    long_window: 50
+    signal_threshold: 0.0
+  
+  sentiment:
+    enabled: true
+    sentiment_threshold: 0.2
+    confidence_threshold: 0.6
+    sentiment_window: 24
+    
+  market_regime:
+    enabled: true
+    lookback_window: 20
+    volatility_window: 10
+    trend_threshold: 0.5
+    range_threshold: 0.3
+    breakout_threshold: 2.0
+    volatility_threshold: 0.2
+    signal_mapping:
+      trending_up: 0.8
+      trending_down: -0.8
+      ranging: 0.0
+      volatile: -0.2
+      calm: 0.2
+      breakout: 0.5
+      reversal: -0.5
+      unknown: 0.0
+      
+  ml_strategy:
+    enabled: true
+    model_type: "random_forest"
+    prediction_horizon: 1
+    training_lookback: 50
+    retrain_frequency: 20
+    confidence_threshold: 0.6
+    features:
+      - "rsi"
+      - "macd"
+      - "bb_position"
+      - "price_change"
+      - "volatility"
+      - "trend_strength"
+      
+  portfolio_strategy:
+    enabled: true
+    optimization_method: "mean_variance"
+    risk_aversion: 2.0
+    rebalance_threshold: 0.05
+    max_position_size: 0.3
+    lookback_window: 60
+    target_volatility: 0.15
+    use_shrinkage: true
+
+# Risk management configuration
+risk:
+  max_position_size: 0.2             # Maximum position size as fraction of portfolio
+  max_risk_per_trade: 0.02           # Maximum risk per trade as fraction of portfolio
+  stop_loss_atr_multiple: 2.0        # Stop loss as multiple of ATR
+  take_profit_atr_multiple: 4.0      # Take profit as multiple of ATR
+
+# Portfolio management configuration
+portfolio:
+  position_sizing: "equal"           # Position sizing method (equal, risk_parity, kelly)
+  rebalance_threshold: 0.1           # Threshold for portfolio rebalancing
+  max_open_positions: 5              # Maximum number of open positions
+
+# Execution configuration
+execution:
+  slippage: 0.001                    # Slippage as fraction of price
+  commission: 0.001                  # Commission as fraction of trade value
+
+# Exchange configuration (for live trading)
+exchange:
+  name: "binance"
+  api_key: ""                        # Your exchange API key
+  api_secret: ""                     # Your exchange API secret
+  testnet: true                      # Use testnet for testing
