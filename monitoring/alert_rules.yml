@@ -1,0 +1,83 @@
+groups:
+- name: trading-agent-alerts
+  rules:
+  - alert: TradingAgentDown
+    expr: up{app="trading-agent"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Trading Agent is down"
+      description: "The Trading Agent has been down for more than 1 minute."
+
+  - alert: ApiDown
+    expr: up{app="api"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "API service is down"
+      description: "The API service has been down for more than 1 minute."
+
+  - alert: DatabaseDown
+    expr: up{app="postgres"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Database is down"
+      description: "The PostgreSQL database has been down for more than 1 minute."
+      
+  - alert: RedisDown
+    expr: up{app="redis"} == 0
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: "Redis is down"
+      description: "The Redis service has been down for more than 1 minute."
+
+  - alert: HighCPUUsage
+    expr: (sum by(pod) (rate(container_cpu_usage_seconds_total{namespace="ai-trading"}[5m])) / sum by(pod) (container_spec_cpu_quota{namespace="ai-trading"} / 100000)) > 0.85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage"
+      description: "Pod {{ $labels.pod }} has high CPU usage (> 85%) for more than 5 minutes."
+
+  - alert: HighMemoryUsage
+    expr: (sum by(pod) (container_memory_working_set_bytes{namespace="ai-trading"}) / sum by(pod) (container_spec_memory_limit_bytes{namespace="ai-trading"})) > 0.85
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage"
+      description: "Pod {{ $labels.pod }} has high memory usage (> 85%) for more than 5 minutes."
+
+  - alert: TradingAgentHighErrorRate
+    expr: sum(rate(http_requests_total{app="trading-agent",status=~"5.."}[5m])) / sum(rate(http_requests_total{app="trading-agent"}[5m])) > 0.05
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Trading Agent has high error rate"
+      description: "Trading Agent has more than 5% error rate over the last 2 minutes."
+
+  - alert: ApiServiceHighErrorRate
+    expr: sum(rate(http_requests_total{app="api",status=~"5.."}[5m])) / sum(rate(http_requests_total{app="api"}[5m])) > 0.05
+    for: 2m
+    labels:
+      severity: warning
+    annotations:
+      summary: "API service has high error rate"
+      description: "API service has more than 5% error rate over the last 2 minutes."
+
+  - alert: SlowResponseTime
+    expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{namespace="ai-trading"}[5m])) by (le, service)) > 2
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "Slow API response time"
+      description: "Service {{ $labels.service }} has 95th percentile response time higher than 2 seconds over the last 5 minutes."

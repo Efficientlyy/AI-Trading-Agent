@@ -1,0 +1,124 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-oversight
+  labels:
+    app: llm-oversight
+    component: oversight
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: llm-oversight
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: llm-oversight
+        component: oversight
+    spec:
+      containers:
+      - name: llm-oversight
+        image: ai-trading-agent/llm-oversight:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        envFrom:
+        - configMapRef:
+            name: llm-oversight-config
+        - secretRef:
+            name: llm-api-keys
+        env:
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "8080"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: TRADING_LLM_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-api-keys
+              key: trading-llm-api-key
+        - name: PROMETHEUS_MULTIPROC_DIR
+          value: "/tmp/prometheus_multiproc"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 2
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: prometheus-multiproc
+          mountPath: /tmp/prometheus_multiproc
+      volumes:
+      - name: logs
+        persistentVolumeClaim:
+          claimName: llm-oversight-logs-pvc
+      - name: prometheus-multiproc
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-oversight-service
+  labels:
+    app: llm-oversight
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: "/metrics"
+spec:
+  selector:
+    app: llm-oversight
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-oversight-config
+data:
+  TRADING_LLM_PROVIDER: "openai"
+  TRADING_LLM_MODEL: "gpt-4"
+  TRADING_LLM_OVERSIGHT_LEVEL: "advise"
+  DECISION_LOG_PATH: "/app/logs/oversight_decisions"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: llm-oversight-logs-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard

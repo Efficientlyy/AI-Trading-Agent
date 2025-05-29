@@ -1,0 +1,46 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namePrefix: staging-
+namespace: ai-trading-staging
+
+resources:
+  - ../../base
+
+commonLabels:
+  environment: staging
+
+replicas:
+  - name: api
+    count: 2
+  - name: dashboard
+    count: 1
+  - name: trading-agent
+    count: 1
+
+images:
+  - name: trading-agent
+    newName: ghcr.io/efficientlyy/ai-trading-agent/trading-agent
+    newTag: latest
+  - name: api
+    newName: ghcr.io/efficientlyy/ai-trading-agent/api
+    newTag: latest
+  - name: dashboard
+    newName: ghcr.io/efficientlyy/ai-trading-agent/dashboard
+    newTag: latest
+
+patchesStrategicMerge:
+  - patches/resource-limits.yaml
+  - patches/environment-variables.yaml
+  - patches/ingress-hosts.yaml
+
+configMapGenerator:
+  - name: trading-agent-config
+    files:
+      - config/staging.yaml
+  - name: prometheus-config
+    files:
+      - config/prometheus-staging.yaml
+  - name: grafana-config
+    literals:
+      - GF_SERVER_ROOT_URL=https://monitoring.staging.trading-agent.example.com

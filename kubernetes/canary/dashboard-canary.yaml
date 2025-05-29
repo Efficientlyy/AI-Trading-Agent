@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard-canary
+  namespace: ai-trading
+  labels:
+    app: dashboard
+    version: canary
+spec:
+  replicas: 1  # Lower replica count for canary deployment
+  selector:
+    matchLabels:
+      app: dashboard
+      version: canary
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: dashboard
+        version: canary
+    spec:
+      containers:
+      - name: dashboard
+        image: ${DOCKER_REGISTRY}/ai-trading-agent-dashboard:${CANARY_VERSION}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 80
+          name: http
+        env:
+        - name: API_URL
+          value: "https://api.trading-agent.example.com"
+        - name: CANARY
+          value: "true"  # Mark as canary for logging/metrics
+        - name: ENABLE_BETA_FEATURES
+          value: "true"  # Enable beta features in canary
+        resources:
+          limits:
+            cpu: "200m"    # Lower resource limits for canary
+            memory: "256Mi"
+          requests:
+            cpu: "50m"
+            memory: "128Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 2
+      terminationGracePeriodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard-canary
+  namespace: ai-trading
+  labels:
+    app: dashboard
+    version: canary
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: dashboard
+    version: canary
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dashboard-canary
+  namespace: ai-trading
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/canary: "true"
+    nginx.ingress.kubernetes.io/canary-weight: "10"  # 10% of traffic goes to canary
+    # Alternative: Use cookie-based canary for beta testers
+    # nginx.ingress.kubernetes.io/canary-by-cookie: "beta-tester"
+spec:
+  rules:
+  - host: dashboard.trading-agent.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: dashboard-canary
+            port:
+              number: 80

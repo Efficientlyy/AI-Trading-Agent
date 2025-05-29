@@ -1,0 +1,38 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: ai-trading
+
+resources:
+  - ../base
+  - canary-api.yaml
+  - canary-dashboard.yaml
+  - traffic-split.yaml
+
+nameSuffix: -canary
+
+commonLabels:
+  deployment-type: canary
+  version: canary
+
+images:
+  - name: trading-agent
+    newName: ghcr.io/efficientlyy/ai-trading-agent/trading-agent
+    newTag: canary
+  - name: api
+    newName: ghcr.io/efficientlyy/ai-trading-agent/api
+    newTag: canary
+  - name: dashboard
+    newName: ghcr.io/efficientlyy/ai-trading-agent/dashboard
+    newTag: canary
+
+patchesStrategicMerge:
+  - patches/resource-limits.yaml
+  - patches/environment-variables.yaml
+
+replicas:
+  - name: api
+    count: 1
+  - name: dashboard
+    count: 1
+  # Trading agent doesn't have a canary deployment as it's a singleton

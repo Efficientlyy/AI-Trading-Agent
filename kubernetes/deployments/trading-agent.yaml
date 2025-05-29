@@ -1,0 +1,134 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trading-agent
+  namespace: ai-trading
+  labels:
+    app: trading-agent
+    tier: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: trading-agent
+  strategy:
+    type: Recreate  # Trading agent should not run multiple instances
+  template:
+    metadata:
+      labels:
+        app: trading-agent
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8000"
+    spec:
+      containers:
+      - name: trading-agent
+        image: ${DOCKER_REGISTRY}/ai-trading-agent:${IMAGE_TAG}
+        imagePullPolicy: Always
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "2"
+        env:
+          - name: DATABASE_URL
+            valueFrom:
+              secretKeyRef:
+                name: db-credentials
+                key: url
+          - name: REDIS_URL
+            valueFrom:
+              secretKeyRef:
+                name: redis-credentials
+                key: url
+          - name: CONFIG_FILE
+            value: "/app/config/production.yaml"
+          - name: LOG_LEVEL
+            value: "INFO"
+          - name: USE_MOCK_DATA
+            value: "false"
+          - name: ENV
+            value: "production"
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        volumeMounts:
+          - name: config-volume
+            mountPath: /app/config
+          - name: data-volume
+            mountPath: /app/data
+          - name: logs-volume
+            mountPath: /app/logs
+        ports:
+          - containerPort: 8000
+            name: health-port
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: health-port
+          initialDelaySeconds: 90
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: health-port
+          initialDelaySeconds: 60
+          periodSeconds: 15
+          timeoutSeconds: 5
+      volumes:
+        - name: config-volume
+          configMap:
+            name: trading-agent-config
+        - name: data-volume
+          persistentVolumeClaim:
+            claimName: trading-agent-data
+        - name: logs-volume
+          persistentVolumeClaim:
+            claimName: trading-agent-logs
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trading-agent
+  namespace: ai-trading
+  labels:
+    app: trading-agent
+spec:
+  ports:
+    - port: 8000
+      targetPort: 8000
+      name: health-port
+  selector:
+    app: trading-agent
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: trading-agent-data
+  namespace: ai-trading
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+  storageClassName: standard
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: trading-agent-logs
+  namespace: ai-trading
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+  storageClassName: standard

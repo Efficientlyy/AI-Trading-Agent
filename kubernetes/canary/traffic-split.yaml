@@ -1,0 +1,100 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: api-virtual-service
+  namespace: ai-trading
+spec:
+  hosts:
+    - api.trading-agent.example.com
+  gateways:
+    - istio-system/gateway
+  http:
+    - match:
+        - headers:
+            # Route test users to canary
+            test-user:
+              exact: "true"
+        - headers:
+            # Route internal calls with canary header to canary
+            x-canary:
+              exact: "true"
+        - uri:
+            # Always route API documentation to canary
+            prefix: "/docs"
+      route:
+        - destination:
+            host: api-canary
+            port:
+              number: 8000
+          weight: 100
+    - route:
+        # Weight-based traffic split for all other traffic
+        - destination:
+            host: api
+            port:
+              number: 8000
+          weight: 90
+        - destination:
+            host: api-canary
+            port:
+              number: 8000
+          weight: 10
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: dashboard-virtual-service
+  namespace: ai-trading
+spec:
+  hosts:
+    - trading-agent.example.com
+  gateways:
+    - istio-system/gateway
+  http:
+    - match:
+        - headers:
+            # Route test users to canary
+            test-user:
+              exact: "true"
+        - headers:
+            # Route users with the canary cookie to canary
+            cookie:
+              regex: ".*canary=true.*"
+        - queryParams:
+            # Route users with ?version=canary to canary
+            version:
+              exact: "canary"
+      route:
+        - destination:
+            host: dashboard-canary
+            port:
+              number: 80
+          weight: 100
+    - route:
+        # Weight-based traffic split for all other traffic
+        - destination:
+            host: dashboard
+            port:
+              number: 80
+          weight: 90
+        - destination:
+            host: dashboard-canary
+            port:
+              number: 80
+          weight: 10
+---
+# ConfigMap to store current canary deployment settings
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: canary-config
+  namespace: ai-trading
+data:
+  api-canary-weight: "10"
+  dashboard-canary-weight: "10"
+  auto-promotion-enabled: "false"
+  promotion-threshold-success-rate: "99.5"
+  promotion-threshold-p95-latency: "200"
+  rollback-threshold-error-rate: "1.0"
+  canary-analysis-interval-seconds: "60"
+  canary-analysis-window-seconds: "3600"

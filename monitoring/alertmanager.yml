@@ -1,0 +1,112 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: 'smtp.example.com:587'
+  smtp_from: 'alertmanager@trading-agent.example.com'
+  smtp_auth_username: 'alertmanager'
+  smtp_auth_password: 'change_me_in_secrets'
+  smtp_require_tls: true
+
+route:
+  # Default receiver when no specific match
+  receiver: 'operations-team'
+  
+  group_by: ['alertname', 'severity', 'env']
+  group_wait: 30s # Wait time to buffer alerts of same group
+  group_interval: 5m # Wait before sending new notification for group
+  repeat_interval: 4h # Minimum time before resending an alert
+  
+  # First-level routing tree
+  routes:
+  - receiver: 'critical-alerts'
+    matchers:
+      - severity="critical"
+    continue: true  # Continue matching next routes
+    
+  - receiver: 'trading-team'
+    matchers:
+      - alertname=~"Trading.*"
+    
+  - receiver: 'system-team'
+    matchers:
+      - alertname=~"System.*|Pod.*|Node.*"
+      
+  - receiver: 'database-team'
+    matchers:
+      - alertname=~"Database.*|Redis.*"
+
+# Inhibition rules prevent notification when higher-priority alerts already fired
+inhibit_rules:
+  # Don't notify about warning alerts if there's a critical alert for the same node
+  - source_matchers:
+      - severity="critical"
+    target_matchers:
+      - severity="warning"
+    # Only inhibit alerts if they have the same values for these labels
+    equal: ['env', 'instance', 'job']
+
+receivers:
+- name: 'operations-team'
+  email_configs:
+  - to: 'operations@trading-agent.example.com'
+    send_resolved: true
+  slack_configs:
+  - api_url: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'
+    channel: '#operations-alerts'
+    send_resolved: true
+    title: '{{ template "slack.title" . }}'
+    text: '{{ template "slack.message" . }}'
+    
+- name: 'critical-alerts'
+  email_configs:
+  - to: 'critical@trading-agent.example.com'
+    send_resolved: true
+  pagerduty_configs:
+  - service_key: 'your_pagerduty_service_key'
+    send_resolved: true
+    severity: '{{ if eq .CommonLabels.severity "critical" }}critical{{ else }}warning{{ end }}'
+  slack_configs:
+  - api_url: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'
+    channel: '#critical-alerts'
+    send_resolved: true
+    title: '🚨 CRITICAL ALERT: {{ .CommonLabels.alertname }}'
+    text: |
+      *Alert*: {{ .CommonLabels.alertname }}
+      *Description*: {{ .CommonAnnotations.description }}
+      *Severity*: {{ .CommonLabels.severity }}
+      *Start*: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+
+- name: 'trading-team'
+  email_configs:
+  - to: 'trading@trading-agent.example.com'
+    send_resolved: true
+  slack_configs:
+  - api_url: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'
+    channel: '#trading-alerts'
+    send_resolved: true
+    title: '{{ template "slack.title" . }}'
+    text: '{{ template "slack.message" . }}'
+    
+- name: 'system-team'
+  email_configs:
+  - to: 'systems@trading-agent.example.com'
+    send_resolved: true
+  slack_configs:
+  - api_url: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'
+    channel: '#system-alerts'
+    send_resolved: true
+    title: '{{ template "slack.title" . }}'
+    text: '{{ template "slack.message" . }}'
+    
+- name: 'database-team'
+  email_configs:
+  - to: 'database@trading-agent.example.com'
+    send_resolved: true
+  slack_configs:
+  - api_url: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX'
+    channel: '#database-alerts'
+    send_resolved: true
+    title: '{{ template "slack.title" . }}'
+    text: '{{ template "slack.message" . }}'
+
+templates:
+  - '/etc/alertmanager/template/*.tmpl'

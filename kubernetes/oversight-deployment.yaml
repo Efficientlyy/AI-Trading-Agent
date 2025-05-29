@@ -1,0 +1,233 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-oversight
+  namespace: ai-trading
+  labels:
+    app: llm-oversight
+    component: ai-trading-agent
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: llm-oversight
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        app: llm-oversight
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: "/metrics"
+        prometheus.io/port: "8081"
+    spec:
+      containers:
+      - name: llm-oversight
+        image: ${REGISTRY}/ai-trading-agent/llm-oversight:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 8081
+          name: metrics
+        - containerPort: 8082
+          name: health
+        env:
+        - name: OVERSIGHT_CONFIG_PATH
+          value: "/config/oversight_config.yaml"
+        - name: OVERSIGHT_DATA_DIR
+          value: "/data/oversight"
+        - name: PROMETHEUS_MULTIPROC_DIR
+          value: "/tmp/prometheus"
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llm-api-keys
+              key: openai-api-key
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: ENABLE_HIGH_AVAILABILITY
+          value: "true"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+        - name: data-volume
+          mountPath: /data
+        - name: prometheus-multiproc
+          mountPath: /tmp/prometheus
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8082
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8082
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 2
+        startupProbe:
+          httpGet:
+            path: /health/startup
+            port: 8082
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 12
+      volumes:
+      - name: config-volume
+        configMap:
+          name: llm-oversight-config
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: llm-oversight-data
+      - name: prometheus-multiproc
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-oversight
+  namespace: ai-trading
+  labels:
+    app: llm-oversight
+    component: ai-trading-agent
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/metrics"
+    prometheus.io/port: "8081"
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  - port: 8081
+    targetPort: 8081
+    name: metrics
+  selector:
+    app: llm-oversight
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-oversight-config
+  namespace: ai-trading
+data:
+  oversight_config.yaml: |
+    oversight:
+      level: advise
+      bypass_on_error: true
+      max_decision_cache_size: 1000
+      enable_autonomous_recovery: true
+    llm:
+      provider: openai
+      model: gpt-4
+      temperature: 0.0
+      max_tokens: 500
+      timeout: 30.0
+    service:
+      host: 0.0.0.0
+      port: 8080
+      workers: 4
+      log_level: info
+      cors_origins:
+        - "https://dashboard.ai-trading-agent.com"
+        - "http://localhost:3000"
+      request_timeout: 60.0
+    storage:
+      metrics_retention_days: 90
+      decision_log_retention_days: 30
+    deployment:
+      enable_high_availability: true
+      replica_count: 2
+      health_check_interval: 30.0
+      metrics_interval: 15.0
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: llm-oversight-data
+  namespace: ai-trading
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: llm-oversight-ingress
+  namespace: ai-trading
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - oversight.ai-trading-agent.com
+    secretName: oversight-tls-cert
+  rules:
+  - host: oversight.ai-trading-agent.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: llm-oversight
+            port:
+              number: 8080
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: llm-oversight-hpa
+  namespace: ai-trading
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: llm-oversight
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80

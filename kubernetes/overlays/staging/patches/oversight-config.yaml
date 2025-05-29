@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: llm-oversight-config
+data:
+  TRADING_LLM_PROVIDER: "openai"
+  TRADING_LLM_MODEL: "gpt-4"
+  # Staging uses a lower level of oversight - just advise, don't block trades
+  TRADING_LLM_OVERSIGHT_LEVEL: "advise"
+---
+# Patch to configure staging resources
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-oversight
+spec:
+  replicas: 1  # Fewer replicas for staging
+  template:
+    spec:
+      containers:
+      - name: llm-oversight
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"

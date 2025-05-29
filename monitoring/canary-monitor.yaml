@@ -1,0 +1,494 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: canary-monitor
+  namespace: ai-trading
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: api
+      version: canary
+  namespaceSelector:
+    matchNames:
+    - ai-trading
+  endpoints:
+  - port: http
+    path: /metrics
+    interval: 15s  # More frequent scraping for canary
+  - targetPort: 8000
+    path: /metrics
+    interval: 15s
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: canary-alerts
+  namespace: ai-trading
+  labels:
+    release: prometheus
+spec:
+  groups:
+  - name: canary.rules
+    rules:
+    - alert: CanaryHighErrorRate
+      expr: sum(rate(http_requests_total{job="api-canary",status=~"5.."}[5m])) / sum(rate(http_requests_total{job="api-canary"}[5m])) > 0.05
+      for: 2m
+      labels:
+        severity: critical
+        type: canary
+      annotations:
+        summary: "Canary deployment has a high error rate"
+        description: "Canary deployment error rate is {{ $value | humanizePercentage }} (> 5%) for 2 minutes"
+        runbook_url: "https://wiki.example.com/runbooks/canary-issues"
+    
+    - alert: CanaryHighLatency
+      expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="api-canary"}[5m])) by (le)) > 0.5
+      for: 2m
+      labels:
+        severity: warning
+        type: canary
+      annotations:
+        summary: "Canary deployment has high latency"
+        description: "Canary deployment 95th percentile latency is {{ $value }}s (> 0.5s) for 2 minutes"
+        runbook_url: "https://wiki.example.com/runbooks/canary-latency"
+    
+    - alert: CanaryMemoryUsage
+      expr: sum(container_memory_usage_bytes{namespace="ai-trading",pod=~".*-canary.*"}) / sum(kube_pod_container_resource_limits_memory_bytes{namespace="ai-trading",pod=~".*-canary.*"}) > 0.8
+      for: 5m
+      labels:
+        severity: warning
+        type: canary
+      annotations:
+        summary: "Canary deployment has high memory usage"
+        description: "Canary deployment is using {{ $value | humanizePercentage }} of its memory limit for 5 minutes"
+        runbook_url: "https://wiki.example.com/runbooks/canary-resources"
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-canary-dashboard
+  namespace: ai-trading
+  labels:
+    grafana_dashboard: "1"
+data:
+  canary-dashboard.json: |-
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "Prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 1,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum by (status) (rate(http_requests_total{job=\"api-canary\"}[5m]))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "{{status}}",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Canary Requests by Status",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "Prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 2,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.5, sum(rate(http_request_duration_seconds_bucket{job=\"api-canary\"}[5m])) by (le))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "p50",
+              "refId": "A"
+            },
+            {
+              "expr": "histogram_quantile(0.9, sum(rate(http_request_duration_seconds_bucket{job=\"api-canary\"}[5m])) by (le))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "p90",
+              "refId": "B"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"api-canary\"}[5m])) by (le))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "p95",
+              "refId": "C"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"api-canary\"}[5m])) by (le))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "p99",
+              "refId": "D"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Canary API Latency",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "s",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "Prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 9
+          },
+          "id": 3,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"api-canary\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"api-canary\"}[5m]))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "Error rate",
+              "refId": "A"
+            }
+          ],
+          "thresholds": [
+            {
+              "colorMode": "critical",
+              "fill": true,
+              "line": true,
+              "op": "gt",
+              "value": 0.05,
+              "yaxis": "left"
+            }
+          ],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Canary Error Rate",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "percentunit",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        },
+        {
+          "aliasColors": {},
+          "bars": false,
+          "dashLength": 10,
+          "dashes": false,
+          "datasource": "Prometheus",
+          "fill": 1,
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 9
+          },
+          "id": 4,
+          "legend": {
+            "avg": false,
+            "current": false,
+            "max": false,
+            "min": false,
+            "show": true,
+            "total": false,
+            "values": false
+          },
+          "lines": true,
+          "linewidth": 1,
+          "links": [],
+          "nullPointMode": "null",
+          "percentage": false,
+          "pointradius": 5,
+          "points": false,
+          "renderer": "flot",
+          "seriesOverrides": [],
+          "spaceLength": 10,
+          "stack": false,
+          "steppedLine": false,
+          "targets": [
+            {
+              "expr": "sum(rate(http_requests_total{job=\"api-canary\"}[5m]))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "Canary",
+              "refId": "A"
+            },
+            {
+              "expr": "sum(rate(http_requests_total{job=\"api\", pod!~\".*-canary.*\"}[5m]))",
+              "format": "time_series",
+              "intervalFactor": 1,
+              "legendFormat": "Stable",
+              "refId": "B"
+            }
+          ],
+          "thresholds": [],
+          "timeFrom": null,
+          "timeShift": null,
+          "title": "Canary vs Stable Request Rate",
+          "tooltip": {
+            "shared": true,
+            "sort": 0,
+            "value_type": "individual"
+          },
+          "type": "graph",
+          "xaxis": {
+            "buckets": null,
+            "mode": "time",
+            "name": null,
+            "show": true,
+            "values": []
+          },
+          "yaxes": [
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            },
+            {
+              "format": "short",
+              "label": null,
+              "logBase": 1,
+              "max": null,
+              "min": null,
+              "show": true
+            }
+          ]
+        }
+      ],
+      "refresh": "10s",
+      "schemaVersion": 16,
+      "style": "dark",
+      "tags": [
+        "canary"
+      ],
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ],
+        "time_options": [
+          "5m",
+          "15m",
+          "1h",
+          "6h",
+          "12h",
+          "24h",
+          "2d",
+          "7d",
+          "30d"
+        ]
+      },
+      "timezone": "",
+      "title": "Canary Deployment Dashboard",
+      "uid": "canary",
+      "version": 1
+    }
