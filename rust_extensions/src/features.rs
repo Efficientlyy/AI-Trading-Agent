@@ -1,214 +1,150 @@
 use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
 use pyo3::types::PyList;
-use std::collections::VecDeque;
-use rayon::prelude::*;
+use pyo3::wrap_pyfunction;
+// use rayon::prelude::*;
 
 /// Create lag features from a time series.
 ///
 /// Args:
-///     series: Input time series as a Python list
+///     series: Input time series as a Rust vector
 ///     lags: List of lag periods
 ///
 /// Returns:
 ///     List of lists: Each inner list represents a lag feature
 #[pyfunction]
 pub fn create_lag_features_rs(
-    py: Python,
-    series: &PyList,
+    series: Vec<f64>,
     lags: Vec<i32>,
 ) -> PyResult<Py<PyList>> {
-    // Input validation
-    if lags.is_empty() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "lags must be a non-empty list of integers",
-        ));
+    if series.is_empty() {
+        return Python::with_gil(|py| Ok(PyList::empty_bound(py).into()));
     }
-
-    // Convert Python list to Rust vector
-    let mut series_vec = Vec::new();
-    for item in series.iter() {
-        let value = item.extract::<f64>()?;
-        series_vec.push(value);
-    }
-
-    if series_vec.is_empty() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "series must be non-empty",
-        ));
-    }
-
-    let n_samples = series_vec.len();
-    let n_features = lags.len();
-
-    // Create a 2D vector to store the result
-    let mut result = vec![vec![f64::NAN; n_features]; n_samples];
-
-    // Calculate lag features
-    for (i, &lag) in lags.iter().enumerate() {
-        if lag <= 0 {
+    for &lag_val in &lags {
+        if lag_val <= 0 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                format!("Lag periods must be positive integers, got {}", lag),
+                "Lag values must be positive."
             ));
         }
+    }
 
-        let lag_usize = lag as usize;
-        for j in lag_usize..n_samples {
-            result[j][i] = series_vec[j - lag_usize];
+    Python::with_gil(|py| {
+        let main_result_list = PyList::empty_bound(py);
+
+        for &lag_val in &lags {
+            let lag = lag_val as usize;
+            let mut single_lag_series_data: Vec<Option<f64>> = vec![None; series.len()];
+
+            if lag <= series.len() { // lag > 0 is already checked
+                for i in lag..series.len() {
+                    single_lag_series_data[i] = Some(series[i - lag]);
+                }
+            }
+            // If lag > series.len(), all values remain None, which is correct.
+
+            let py_single_lag_series = PyList::new_bound(py, &single_lag_series_data);
+            main_result_list.append(&py_single_lag_series)?;
         }
-    }
-
-    // Convert result to Python list of lists
-    let py_result = PyList::new(py, &[]);
-    
-    for row in result.iter() {
-        let py_row = PyList::new(py, row);
-        py_result.append(py_row)?;
-    }
-    
-    Ok(py_result.into())
+        Ok(main_result_list.into())
+    })
 }
 
 /// Create difference features from a time series.
 ///
 /// Args:
-///     series: Input time series as a Python list
+///     series: Input time series as a Rust vector
 ///     periods: List of periods for calculating differences
 ///
 /// Returns:
 ///     List of lists: Each inner list represents a difference feature
 #[pyfunction]
 pub fn create_diff_features_rs(
-    py: Python,
-    series: &PyList,
+    series: Vec<f64>,
     periods: Vec<i32>,
 ) -> PyResult<Py<PyList>> {
-    // Input validation
-    if periods.is_empty() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "periods must be a non-empty list of integers",
-        ));
+    if series.is_empty() {
+        return Python::with_gil(|py| Ok(PyList::empty_bound(py).into()));
     }
-
-    // Convert Python list to Rust vector
-    let mut series_vec = Vec::new();
-    for item in series.iter() {
-        let value = item.extract::<f64>()?;
-        series_vec.push(value);
-    }
-
-    if series_vec.is_empty() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "series must be non-empty",
-        ));
-    }
-
-    let n_samples = series_vec.len();
-    let n_features = periods.len();
-
-    // Create a 2D vector to store the result
-    let mut result = vec![vec![f64::NAN; n_features]; n_samples];
-
-    // Calculate difference features
-    for (i, &period) in periods.iter().enumerate() {
-        if period <= 0 {
+    for &period_val in &periods {
+        if period_val <= 0 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                format!("Periods must be positive integers, got {}", period),
+                "Period values must be positive."
             ));
         }
+    }
 
-        let period_usize = period as usize;
-        for j in period_usize..n_samples {
-            result[j][i] = series_vec[j] - series_vec[j - period_usize];
+    Python::with_gil(|py| {
+        let main_result_list = PyList::empty_bound(py);
+
+        for &period_val in &periods {
+            let period = period_val as usize;
+            let mut single_diff_series_data: Vec<Option<f64>> = vec![None; series.len()];
+
+            if period <= series.len() { // period > 0 is already checked
+                for i in period..series.len() {
+                    single_diff_series_data[i] = Some(series[i] - series[i - period]);
+                }
+            }
+            // If period > series.len(), all values remain None.
+
+            let py_single_diff_series = PyList::new_bound(py, &single_diff_series_data);
+            main_result_list.append(&py_single_diff_series)?;
         }
-    }
-
-    // Convert result to Python list of lists
-    let py_result = PyList::new(py, &[]);
-    
-    for row in result.iter() {
-        let py_row = PyList::new(py, row);
-        py_result.append(py_row)?;
-    }
-    
-    Ok(py_result.into())
+        Ok(main_result_list.into())
+    })
 }
 
 /// Create percentage change features from a time series.
 ///
 /// Args:
-///     series: Input time series as a Python list
+///     series: Input time series as a Rust vector
 ///     periods: List of periods for calculating percentage changes
 ///
 /// Returns:
 ///     List of lists: Each inner list represents a percentage change feature
 #[pyfunction]
 pub fn create_pct_change_features_rs(
-    py: Python,
-    series: &PyList,
+    series: Vec<f64>,
     periods: Vec<i32>,
 ) -> PyResult<Py<PyList>> {
-    // Input validation
-    if periods.is_empty() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "periods must be a non-empty list of integers",
-        ));
+    if series.is_empty() {
+        return Python::with_gil(|py| Ok(PyList::empty_bound(py).into()));
     }
-
-    // Convert Python list to Rust vector
-    let mut series_vec = Vec::new();
-    for item in series.iter() {
-        let value = item.extract::<f64>()?;
-        series_vec.push(value);
-    }
-
-    if series_vec.is_empty() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "series must be non-empty",
-        ));
-    }
-
-    let n_samples = series_vec.len();
-    let n_features = periods.len();
-
-    // Create a 2D vector to store the result
-    let mut result = vec![vec![f64::NAN; n_features]; n_samples];
-
-    // Calculate percentage change features
-    for (i, &period) in periods.iter().enumerate() {
-        if period <= 0 {
+    for &period_val in &periods {
+        if period_val <= 0 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                format!("Periods must be positive integers, got {}", period),
+                "Period values must be positive."
             ));
         }
+    }
 
-        let period_usize = period as usize;
-        for j in period_usize..n_samples {
-            let previous_value = series_vec[j - period_usize];
-            if previous_value != 0.0 {
-                result[j][i] = (series_vec[j] - previous_value) / previous_value;
-            } else {
-                // Handle division by zero
-                result[j][i] = f64::NAN;
+    Python::with_gil(|py| {
+        let main_result_list = PyList::empty_bound(py);
+
+        for &period_val in &periods {
+            let period = period_val as usize;
+            let mut single_pct_change_series_data: Vec<Option<f64>> = vec![None; series.len()];
+
+            if period <= series.len() { // period > 0 is already checked
+                for i in period..series.len() {
+                    let prev_val = series[i - period];
+                    if prev_val != 0.0 {
+                        single_pct_change_series_data[i] = Some((series[i] - prev_val) / prev_val);
+                    } else {
+                        single_pct_change_series_data[i] = Some(f64::NAN); // Or None, depending on desired behavior for division by zero
+                    }
+                }
             }
+            let py_single_pct_change_series = PyList::new_bound(py, &single_pct_change_series_data);
+            main_result_list.append(&py_single_pct_change_series)?;
         }
-    }
-
-    // Convert result to Python list of lists
-    let py_result = PyList::new(py, &[]);
-    
-    for row in result.iter() {
-        let py_row = PyList::new(py, row);
-        py_result.append(py_row)?;
-    }
-    
-    Ok(py_result.into())
+        Ok(main_result_list.into())
+    })
 }
 
 /// Create rolling window features from a time series.
 ///
 /// Args:
-///     series: Input time series as a Python list
+///     series: Input time series as a Rust vector
 ///     windows: List of window sizes
 ///     feature_type: Type of feature to calculate (0: mean, 1: std, 2: min, 3: max, 4: sum)
 ///
@@ -216,109 +152,57 @@ pub fn create_pct_change_features_rs(
 ///     List of lists: Each inner list represents a rolling window feature
 #[pyfunction]
 pub fn create_rolling_window_features_rs(
-    py: Python,
-    series: &PyList,
+    series: Vec<f64>,
     windows: Vec<i32>,
-    feature_type: i32,
+    feature_type: String, // "mean", "std", "min", "max", "sum"
 ) -> PyResult<Py<PyList>> {
-    // Input validation
-    if windows.is_empty() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "windows must be a non-empty list of integers",
-        ));
+    if series.is_empty() {
+        return Python::with_gil(|py| Ok(PyList::empty_bound(py).into()));
     }
-
-    // Validate feature type
-    if feature_type < 0 || feature_type > 4 {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            format!("feature_type must be between 0 and 4, got {}", feature_type),
-        ));
-    }
-
-    // Convert Python list to Rust vector
-    let mut series_vec = Vec::new();
-    for item in series.iter() {
-        let value = item.extract::<f64>()?;
-        series_vec.push(value);
-    }
-
-    if series_vec.is_empty() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "series must be non-empty",
-        ));
-    }
-
-    let n_samples = series_vec.len();
-    let n_features = windows.len();
-
-    // Create a 2D vector to store the result
-    let mut result = vec![vec![f64::NAN; n_features]; n_samples];
-
-    // Calculate rolling window features in parallel for each window size
-    windows.par_iter().enumerate().for_each(|(i, &window)| {
-        if window <= 0 {
-            // Skip invalid windows (will be handled by error checking below)
-            return;
-        }
-
-        let window_usize = window as usize;
-        
-        // For each window size, calculate the rolling window feature for each time point
-        for j in window_usize - 1..n_samples {
-            // Get the window data
-            let window_data = &series_vec[j - (window_usize - 1)..=j];
-            
-            // Calculate the feature based on the feature type
-            match feature_type {
-                0 => { // Mean
-                    let sum: f64 = window_data.iter().sum();
-                    result[j][i] = sum / window_usize as f64;
-                },
-                1 => { // Standard deviation
-                    let mean: f64 = window_data.iter().sum::<f64>() / window_usize as f64;
-                    let variance: f64 = window_data.iter()
-                        .map(|&x| (x - mean).powi(2))
-                        .sum::<f64>() / window_usize as f64;
-                    result[j][i] = variance.sqrt();
-                },
-                2 => { // Min
-                    result[j][i] = window_data.iter()
-                        .fold(f64::INFINITY, |a, &b| a.min(b));
-                },
-                3 => { // Max
-                    result[j][i] = window_data.iter()
-                        .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-                },
-                4 => { // Sum
-                    result[j][i] = window_data.iter().sum();
-                },
-                _ => unreachable!(), // We already checked for invalid feature types
-            }
-        }
-    });
-
-    // Check for invalid window sizes
-    for &window in &windows {
-        if window <= 0 {
+    for &window_val in &windows {
+        if window_val <= 0 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                format!("Window sizes must be positive integers, got {}", window),
+                "Window values must be positive."
             ));
         }
     }
 
-    // Convert result to Python list of lists
-    let py_result = PyList::new(py, &[]);
-    
-    for row in result.iter() {
-        let py_row = PyList::new(py, row);
-        py_result.append(py_row)?;
-    }
-    
-    Ok(py_result.into())
+    Python::with_gil(|py| {
+        let main_result_list = PyList::empty_bound(py);
+
+        for &window_val in &windows {
+            let window = window_val as usize;
+            let mut single_rolling_series_data: Vec<Option<f64>> = vec![None; series.len()];
+
+            if window > 0 && window <= series.len() {
+                for i in (window - 1)..series.len() {
+                    let window_slice = &series[(i - window + 1)..=i];
+                    let val = match feature_type.as_str() {
+                        "mean" => Some(window_slice.iter().sum::<f64>() / window as f64),
+                        "std" => {
+                            let mean = window_slice.iter().sum::<f64>() / window as f64;
+                            let variance = window_slice.iter().map(|&x| (x - mean).powi(2)).sum::<f64>() / window as f64;
+                            Some(variance.sqrt())
+                        }
+                        "min" => Some(window_slice.iter().fold(f64::INFINITY, |a, &b| a.min(b))),
+                        "max" => Some(window_slice.iter().fold(f64::NEG_INFINITY, |a, &b| a.max(b))),
+                        "sum" => Some(window_slice.iter().sum::<f64>()),
+                        _ => return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                            format!("Invalid feature_type: {}", feature_type)
+                        )),
+                    };
+                    single_rolling_series_data[i] = val;
+                }
+            }
+            let py_single_rolling_series = PyList::new_bound(py, &single_rolling_series_data);
+            main_result_list.append(&py_single_rolling_series)?;
+        }
+        Ok(main_result_list.into())
+    })
 }
 
 /// Register Python module
-pub fn register(py: Python, m: &PyModule) -> PyResult<()> {
+pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create_lag_features_rs, m)?)?;
     m.add_function(wrap_pyfunction!(create_diff_features_rs, m)?)?;
     m.add_function(wrap_pyfunction!(create_pct_change_features_rs, m)?)?;

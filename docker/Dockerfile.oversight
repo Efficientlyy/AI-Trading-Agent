@@ -1,0 +1,32 @@
+# Dockerfile for LLM Oversight Service
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install additional LLM dependencies
+RUN pip install --no-cache-dir openai anthropic
+
+# Copy application code
+COPY ai_trading_agent/ /app/ai_trading_agent/
+COPY config/ /app/config/
+
+# Environment variables (to be overridden by Kubernetes config)
+ENV TRADING_LLM_API_KEY=""
+ENV TRADING_LLM_PROVIDER="openai"
+ENV TRADING_LLM_MODEL="gpt-4"
+ENV TRADING_LLM_OVERSIGHT_LEVEL="advise"
+ENV LOG_LEVEL="INFO"
+
+# Health check endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
+
+# Create necessary directories
+RUN mkdir -p /app/logs/oversight_decisions
+
+# Run oversight service
+CMD ["python", "-m", "ai_trading_agent.oversight.service"]

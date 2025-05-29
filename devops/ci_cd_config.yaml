@@ -1,0 +1,237 @@
+name: AI Trading Agent CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'development'
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      deploy_type:
+        description: 'Type of deployment'
+        required: true
+        default: 'standard'
+        type: choice
+        options:
+          - standard
+          - canary
+          - blue-green
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ai-trading-agent
+  PYTHON_VERSION: '3.10'
+  NODE_VERSION: '18'
+  
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        component: [core, agent, data, execution, portfolio, sentiment, oversight]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          pip install -e .
+          
+      - name: Run tests
+        run: |
+          pytest ai_trading_agent/${{ matrix.component }} --cov=ai_trading_agent/${{ matrix.component }} --cov-report=xml
+          
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          flags: ${{ matrix.component }}
+          
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install black flake8 pylint mypy
+          
+      - name: Run linters
+        run: |
+          black --check ai_trading_agent
+          flake8 ai_trading_agent
+          pylint ai_trading_agent
+          mypy ai_trading_agent
+          
+  frontend-checks:
+    name: Frontend Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+          
+      - name: Install dependencies
+        run: |
+          cd frontend
+          npm ci
+          
+      - name: Run linters
+        run: |
+          cd frontend
+          npm run lint
+          
+      - name: Run tests
+        run: |
+          cd frontend
+          npm run test:ci
+          
+  build:
+    name: Build Docker Images
+    needs: [test, lint, frontend-checks]
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        component: [base, agent, data-service, execution-service, oversight-service, frontend]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+        
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${{ matrix.component }}
+          
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./devops/dockerfiles/Dockerfile.${{ matrix.component }}
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${{ matrix.component }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ env.IMAGE_PREFIX }}-${{ matrix.component }}:buildcache,mode=max
+          
+  deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'development' }}
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    needs: [build]
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'development' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'latest'
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          
+      - name: Update kubeconfig
+        run: |
+          aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+          
+      - name: Deploy standard
+        if: ${{ github.event.inputs.deploy_type == 'standard' || github.event.inputs.deploy_type == '' }}
+        run: |
+          ./devops/deploy.sh ${{ github.event.inputs.environment || 'development' }} standard
+          
+      - name: Deploy canary
+        if: ${{ github.event.inputs.deploy_type == 'canary' }}
+        run: |
+          ./devops/deploy.sh ${{ github.event.inputs.environment || 'development' }} canary
+          
+      - name: Deploy blue-green
+        if: ${{ github.event.inputs.deploy_type == 'blue-green' }}
+        run: |
+          ./devops/deploy.sh ${{ github.event.inputs.environment || 'development' }} blue-green
+          
+  notify:
+    name: Send Notifications
+    needs: [deploy]
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          
+      - name: Send email notification
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.MAIL_SERVER }}
+          server_port: ${{ secrets.MAIL_PORT }}
+          username: ${{ secrets.MAIL_USERNAME }}
+          password: ${{ secrets.MAIL_PASSWORD }}
+          subject: "[${{ github.repository }}] Deployment to ${{ github.event.inputs.environment || 'development' }} ${{ job.status }}"
+          body: |
+            Deployment Status: ${{ job.status }}
+            Repository: ${{ github.repository }}
+            Environment: ${{ github.event.inputs.environment || 'development' }}
+            Commit: ${{ github.sha }}
+            Triggered by: ${{ github.actor }}
+          to: ${{ secrets.NOTIFICATION_EMAIL }}
+          from: CI/CD Pipeline

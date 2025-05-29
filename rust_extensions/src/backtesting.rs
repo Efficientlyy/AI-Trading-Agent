@@ -1,6 +1,5 @@
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
-use ndarray::{Array1, Array2};
 
 /// Order side enum (Buy or Sell)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -140,7 +139,7 @@ pub struct BacktestConfig {
 }
 
 /// Calculate execution price based on order type and current bar
-fn calculate_execution_price(order: &Order, bar: &OHLCVBar) -> Option<f64> {
+pub fn calculate_execution_price(order: &Order, bar: &OHLCVBar) -> Option<f64> {
     match order.order_type {
         OrderType::Market => Some(bar.open),
         
@@ -230,10 +229,10 @@ fn calculate_execution_price(order: &Order, bar: &OHLCVBar) -> Option<f64> {
 }
 
 /// Apply transaction costs (commission and slippage) to execution price
-fn apply_transaction_costs(
+pub fn apply_transaction_costs(
     order: &Order, 
     executed_price: f64, 
-    commission_rate: f64, 
+    _commission_rate: f64, 
     slippage: f64
 ) -> f64 {
     let slippage_factor = match order.side {
@@ -251,7 +250,7 @@ fn apply_transaction_costs(
 }
 
 /// Update portfolio based on a trade
-fn update_portfolio_from_trade(portfolio: &mut Portfolio, trade: &Trade) {
+pub fn update_portfolio_from_trade(portfolio: &mut Portfolio, trade: &Trade) {
     // Update cash
     let trade_value = trade.quantity * trade.price;
     match trade.side {
@@ -319,7 +318,7 @@ fn update_portfolio_from_trade(portfolio: &mut Portfolio, trade: &Trade) {
 }
 
 /// Update portfolio total value
-fn update_portfolio_value(portfolio: &mut Portfolio) {
+pub fn update_portfolio_value(portfolio: &mut Portfolio) {
     let mut total_value = portfolio.cash;
     
     // Add value of all positions
@@ -331,7 +330,7 @@ fn update_portfolio_value(portfolio: &mut Portfolio) {
 }
 
 /// Update position market price and unrealized P&L
-fn update_position_market_price(position: &mut Position, market_price: f64) {
+pub fn update_position_market_price(position: &mut Position, market_price: f64) {
     position.market_price = market_price;
     position.unrealized_pnl = position.quantity * (position.market_price - position.entry_price);
 }
@@ -494,7 +493,7 @@ pub fn run_backtest(
 }
 
 /// Calculate performance metrics from backtest results
-fn calculate_performance_metrics(
+pub fn calculate_performance_metrics(
     portfolio_history: &[PortfolioSnapshot],
     trade_history: &[Trade],
     initial_capital: f64,
@@ -555,9 +554,8 @@ fn calculate_performance_metrics(
     // Calculate drawdowns
     let mut max_value = initial_capital;
     let mut max_drawdown = 0.0;
-    let mut drawdown_start = 0;
-    let mut max_drawdown_duration = 0;
-    let mut current_drawdown_duration = 0;
+    let mut drawdown_start: usize = 0;
+    let mut current_drawdown_duration: usize = 0;
     
     for (i, snapshot) in portfolio_history.iter().enumerate() {
         let current_value = snapshot.total_value;
@@ -576,14 +574,13 @@ fn calculate_performance_metrics(
             
             // Track drawdown duration
             current_drawdown_duration = i - drawdown_start;
-            if current_drawdown_duration > max_drawdown_duration {
-                max_drawdown_duration = current_drawdown_duration;
+            if (current_drawdown_duration as i64) > metrics.max_drawdown_duration {
+                metrics.max_drawdown_duration = current_drawdown_duration as i64;
             }
         }
     }
     
     metrics.max_drawdown = max_drawdown;
-    metrics.max_drawdown_duration = max_drawdown_duration as i64;
     
     // Calculate win rate and profit factor
     if !trade_history.is_empty() {

@@ -1,154 +1,169 @@
 use pyo3::prelude::*;
-use pyo3::wrap_pyfunction;
 use pyo3::types::PyList;
-use rayon::prelude::*;
+// use rayon::prelude::*;
 
-/// Create exponential moving average (EMA) features from a time series.
-///
+// Helper function to calculate EMA for a single series and span
+fn calculate_ema_single(
+    series: &[f64],
+    span: i32,
+    alpha_opt: Option<f64>,
+) -> Vec<Option<f64>> {
+    let n = series.len();
+    if n == 0 || span <= 0 {
+        return vec![None; n]; // Return vector of Nones matching series length
+    }
+
+    let mut ema_values: Vec<Option<f64>> = vec![None; n];
+    let alpha = alpha_opt.unwrap_or_else(|| 2.0 / (span as f64 + 1.0));
+
+    if n > 0 {
+        ema_values[0] = Some(series[0]); // First EMA is the first data point
+    }
+
+    for i in 1..n {
+        if let Some(prev_ema) = ema_values[i - 1] {
+            ema_values[i] = Some(alpha * series[i] + (1.0 - alpha) * prev_ema);
+        } else {
+            // If previous EMA was None (e.g., due to insufficient data at the very start for a complex init),
+            // we might restart EMA or continue with None. Here, we restart with current value.
+            ema_values[i] = Some(series[i]); 
+        }
+    }
+    ema_values
+}
+
+/// Create Exponential Moving Average (EMA) features from a time series.
+/// 
 /// Args:
-///     series: Input time series as a Python list
-///     spans: List of EMA spans (periods)
-///     alpha: Optional smoothing factor (if None, alpha = 2/(span+1))
-///
+///     series (Vec<f64>): Input time series.
+///     spans (Vec<i32>): List of EMA window spans.
+///     alpha (Option<f64>): Optional smoothing factor alpha. If None, it's calculated as 2.0 / (span + 1.0).
+/// 
 /// Returns:
-///     List of lists: Each inner list represents an EMA feature
+///     PyResult<Py<PyList>>: A Python list where each inner list contains the EMA series for a corresponding span.
 #[pyfunction]
+#[pyo3(signature = (series, spans, alpha = None))]
 pub fn create_ema_features_rs(
-    py: Python,
-    series: &PyList,
+    series: Vec<f64>,
     spans: Vec<i32>,
     alpha: Option<f64>,
 ) -> PyResult<Py<PyList>> {
-    // Input validation
-    if spans.is_empty() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "spans must be a non-empty list of integers",
-        ));
+    if series.is_empty() {
+        return Python::with_gil(|py| Ok(PyList::empty_bound(py).into()));
     }
 
-    // Convert Python list to Rust vector
-    let mut series_vec = Vec::new();
-    for item in series.iter() {
-        let value = item.extract::<f64>()?;
-        series_vec.push(value);
-    }
-
-    if series_vec.is_empty() {
-        return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-            "series must be non-empty",
-        ));
-    }
-
-    let n_samples = series_vec.len();
-    let n_features = spans.len();
-
-    // Create a 2D vector to store the result
-    let mut result = vec![vec![f64::NAN; n_features]; n_samples];
-
-    // Calculate EMA features
-    for (i, &span) in spans.iter().enumerate() {
-        if span <= 0 {
+    for &span_val in &spans {
+        if span_val <= 0 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                format!("Span periods must be positive integers, got {}", span),
+                "Span values must be positive."
             ));
         }
+    }
 
-        let span_usize = span as usize;
-        let alpha_value = alpha.unwrap_or(2.0 / (span as f64 + 1.0));
-        
-        if alpha_value <= 0.0 || alpha_value > 1.0 {
+    if let Some(a_val) = alpha {
+        if a_val <= 0.0 || a_val >= 1.0 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                format!("Alpha must be in (0, 1], got {}", alpha_value),
+                "Alpha must be between 0 and 1 exclusive if provided."
             ));
         }
+    }
 
-        // Initialize EMA with the first value
-        result[0][i] = series_vec[0];
-        
-        // Calculate EMA for each time point
-        for j in 1..n_samples {
-            result[j][i] = alpha_value * series_vec[j] + (1.0 - alpha_value) * result[j-1][i];
+    Python::with_gil(|py| {
+        let main_result_list = PyList::empty_bound(py);
+
+        let results_from_spans: Vec<Vec<Option<f64>>> = spans
+            // .par_iter() // Example: Using Rayon for parallel processing if desired
+            .iter()
+            .map(|&current_span| {
+                calculate_ema_single(&series, current_span, alpha)
+            })
+            .collect();
+
+        for single_ema_series_data in results_from_spans {
+            let py_single_ema_series = PyList::new_bound(py, &single_ema_series_data);
+            main_result_list.append(py_single_ema_series)?;
         }
-    }
 
-    // Convert result to Python list of lists
-    let py_result = PyList::new(py, &[]);
-    
-    for row in result.iter() {
-        let py_row = PyList::new(py, row);
-        py_result.append(py_row)?;
-    }
-    
-    Ok(py_result.into())
+        Ok(main_result_list.into())
+    })
 }
 
-/// Create C-compatible function for calculating EMA features
-#[no_mangle]
-pub extern "C" fn create_ema_features_c(
-    data_ptr: *const f64,
-    data_len: usize,
-    spans_ptr: *const i32,
-    spans_len: usize,
-    alpha_ptr: *const f64,  // Can be null for default alpha
-    result_ptr: *mut f64
-) -> i32 {
-    // Safety check for null pointers
-    if data_ptr.is_null() || spans_ptr.is_null() || result_ptr.is_null() {
-        return -1;
+// Helper function to calculate SMA for a single series and window
+fn calculate_sma_single(series: &[f64], window: usize) -> Vec<Option<f64>> {
+    let n = series.len();
+    if n == 0 || window == 0 || window > n {
+        // If window is 0, or larger than series, or series is empty, all results are None
+        // or you could return an empty vec or error based on desired behavior.
+        // For consistency with indicators often padding initial values, vec of Nones is chosen.
+        return vec![None; n];
     }
-    
-    // Convert raw pointers to Rust slices (unsafe)
-    let data = unsafe { std::slice::from_raw_parts(data_ptr, data_len) };
-    let spans = unsafe { std::slice::from_raw_parts(spans_ptr, spans_len) };
-    let result = unsafe { std::slice::from_raw_parts_mut(result_ptr, data_len * spans_len) };
-    
-    // Get alpha value if provided
-    let alpha = if alpha_ptr.is_null() {
-        None
-    } else {
-        Some(unsafe { *alpha_ptr })
-    };
-    
-    // Check for invalid spans
-    for &span in spans {
-        if span <= 0 {
-            return -2;
+
+    let mut sma_values: Vec<Option<f64>> = vec![None; n];
+    let mut current_sum: f64 = 0.0;
+
+    for i in 0..n {
+        current_sum += series[i];
+        if i >= window {
+            current_sum -= series[i - window]; // Subtract the element that's sliding out of the window
+            sma_values[i] = Some(current_sum / window as f64);
+        } else if i == window - 1 {
+            // First point where a full window is available
+            sma_values[i] = Some(current_sum / window as f64);
+        } else {
+            // Not enough data points yet for a full window
+            sma_values[i] = None;
         }
     }
-    
-    // Check alpha value if provided
-    if let Some(a) = alpha {
-        if a <= 0.0 || a > 1.0 {
-            return -3;
-        }
-    }
-    
-    // Initialize result array with NaN
-    for val in result.iter_mut() {
-        *val = f64::NAN;
-    }
-    
-    // Calculate EMA features in parallel for each span
-    spans.par_iter().enumerate().for_each(|(i, &span)| {
-        let alpha_value = alpha.unwrap_or(2.0 / (span as f64 + 1.0));
-        
-        // Initialize EMA with the first value
-        let result_idx = 0 * spans_len + i;
-        result[result_idx] = data[0];
-        
-        // Calculate EMA for each time point
-        for j in 1..data_len {
-            let prev_idx = (j-1) * spans_len + i;
-            let curr_idx = j * spans_len + i;
-            result[curr_idx] = alpha_value * data[j] + (1.0 - alpha_value) * result[prev_idx];
-        }
-    });
-    
-    0 // Success
+    sma_values
 }
 
-/// Register Python module
-pub fn register(py: Python, m: &PyModule) -> PyResult<()> {
+/// Create Simple Moving Average (SMA) features from a time series.
+///
+/// Args:
+///     series (Vec<f64>): Input time series.
+///     windows (Vec<i32>): List of SMA window sizes.
+///
+/// Returns:
+///     PyResult<Py<PyList>>: A Python list where each inner list contains the SMA series for a corresponding window.
+#[pyfunction]
+pub fn calculate_sma_rust_direct(
+    series: Vec<f64>,
+    windows: Vec<i32>,
+) -> PyResult<Py<PyList>> {
+    if series.is_empty() {
+        return Python::with_gil(|py| Ok(PyList::empty_bound(py).into()));
+    }
+
+    for &window_val in &windows {
+        if window_val <= 0 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "Window sizes must be positive."
+            ));
+        }
+    }
+
+    Python::with_gil(|py| {
+        let main_result_list = PyList::empty_bound(py);
+
+        let results_from_windows: Vec<Vec<Option<f64>>> = windows
+            .iter()
+            .map(|&current_window| {
+                calculate_sma_single(&series, current_window as usize)
+            })
+            .collect();
+
+        for single_sma_series_data in results_from_windows {
+            let py_single_sma_series = PyList::new_bound(py, &single_sma_series_data);
+            main_result_list.append(py_single_sma_series)?;
+        }
+
+        Ok(main_result_list.into())
+    })
+}
+
+// Helper function to register all moving average functions
+pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(create_ema_features_rs, m)?)?;
+    m.add_function(wrap_pyfunction!(calculate_sma_rust_direct, m)?)?;
     Ok(())
 }

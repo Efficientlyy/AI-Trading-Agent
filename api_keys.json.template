@@ -1,0 +1,12 @@
+{
+    "mexc": {
+        "api_key": "YOUR_MEXC_API_KEY_HERE",
+        "api_secret": "YOUR_MEXC_API_SECRET_HERE"
+    },
+    "twelve_data": {
+        "api_key": "YOUR_TWELVE_DATA_API_KEY_HERE"
+    },
+    "alpha_vantage": {
+        "api_key": "YOUR_ALPHA_VANTAGE_API_KEY_HERE"
+    }
+}

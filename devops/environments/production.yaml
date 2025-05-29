@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ai-trading-agent-production-config
+data:
+  # Application Mode
+  TRADING_MODE: "shadow"  # Start in shadow mode (paper trading with real data)
+  
+  # Data Sources Configuration
+  MARKET_DATA_PROVIDER: "realtime"
+  HISTORICAL_DATA_SOURCE: "production"
+  
+  # Performance Monitoring
+  ENABLE_DETAILED_LOGGING: "true"
+  PERFORMANCE_METRICS_INTERVAL: "30"  # seconds
+  
+  # Risk Management
+  MAX_DRAWDOWN_PERCENT: "2.0"  # Conservative initial setting
+  POSITION_SIZE_LIMIT_PERCENT: "1.0"  # Small initial positions
+  DAILY_LOSS_LIMIT_PERCENT: "1.5"
+  
+  # Circuit Breakers  
+  PRICE_MOVE_CIRCUIT_BREAKER: "3.5"  # Percentage
+  VOLATILITY_CIRCUIT_BREAKER: "2.5"  # Standard deviations
+  
+  # System Resources
+  CACHE_TTL_SECONDS: "60"
+  DB_CONNECTION_POOL_SIZE: "10"
+  API_RATE_LIMIT: "100"  # Requests per minute
+  
+  # Execution Parameters
+  ORDER_RETRY_COUNT: "3"
+  ORDER_TIMEOUT_SECONDS: "30"
+  
+  # Feature Flags
+  ENABLE_NEWS_SENTIMENT: "true"
+  ENABLE_ADAPTIVE_STRATEGY: "true"
+  ENABLE_LLM_OVERSIGHT: "true"
+  ENABLE_PERFORMANCE_DASHBOARD: "true"

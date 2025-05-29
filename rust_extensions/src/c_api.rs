@@ -2,17 +2,11 @@
 // This approach avoids using PyO3 and its Python detection mechanism
 
 use std::ffi::{CStr, CString};
-use std::os::raw::{c_char, c_double, c_int, c_longlong};
+use std::os::raw::{c_char};
 use std::collections::HashMap;
 use serde_json;
 
-use crate::backtesting::{
-    OrderSide, OrderType, OrderStatus, Order, Fill, Trade, Position,
-    Portfolio, PortfolioSnapshot, OHLCVBar, BacktestConfig, PerformanceMetrics,
-    calculate_execution_price, apply_transaction_costs, update_portfolio_from_trade,
-    update_portfolio_value, update_position_market_price, calculate_performance_metrics,
-    run_backtest, BacktestResult
-};
+use crate::backtesting::{Order, OHLCVBar, BacktestConfig, run_backtest};
 
 // Helper function to safely convert C string to Rust string
 unsafe fn c_str_to_string(c_str: *const c_char) -> Result<String, String> {

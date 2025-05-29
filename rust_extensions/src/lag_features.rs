@@ -1,4 +1,4 @@
-use rayon::prelude::*;
+// use rayon::prelude::*;
 use std::slice;
 
 /// Create lag features from a time series.
@@ -53,16 +53,26 @@ pub extern "C" fn create_lag_features_c(
     }
     
     // Calculate lag features in parallel for each lag period
-    lags.par_iter().enumerate().for_each(|(i, &lag)| {
-        let lag_usize = lag as usize;
-        
-        // For each lag, calculate the lag feature for each time point
-        for j in lag_usize..data_len {
-            // Calculate the index in the flattened result array
-            let result_idx = j * lags_len + i;
-            result[result_idx] = data[j - lag_usize];
+    // Collect (index, value) pairs first
+    let indexed_values: Vec<(usize, f64)> = lags
+        .iter()
+        .enumerate()
+        .flat_map(|(i, &lag)| {
+            let lag_usize = lag as usize;
+            let inner_collected: Vec<(usize, f64)> = (lag_usize..data_len).map(move |j| {
+                let result_idx = j * lags_len + i;
+                (result_idx, data[j - lag_usize])
+            }).collect(); // Collect into a Vec
+            inner_collected
+        })
+        .collect();
+
+    // Fill the result slice (sequentially) from the collected indexed values
+    for (idx, val) in indexed_values {
+        if idx < result.len() { // Basic bounds check
+            result[idx] = val;
         }
-    });
+    }
     
     0 // Success
 }
@@ -119,16 +129,26 @@ pub extern "C" fn create_diff_features_c(
     }
     
     // Calculate difference features in parallel for each period
-    periods.par_iter().enumerate().for_each(|(i, &period)| {
-        let period_usize = period as usize;
-        
-        // For each period, calculate the difference feature for each time point
-        for j in period_usize..data_len {
-            // Calculate the index in the flattened result array
-            let result_idx = j * periods_len + i;
-            result[result_idx] = data[j] - data[j - period_usize];
+    // Collect (index, value) pairs first
+    let indexed_values: Vec<(usize, f64)> = periods
+        .iter()
+        .enumerate()
+        .flat_map(|(i, &period)| {
+            let period_usize = period as usize;
+            let inner_collected: Vec<(usize, f64)> = (period_usize..data_len).map(move |j| {
+                let result_idx = j * periods_len + i;
+                (result_idx, data[j] - data[j - period_usize])
+            }).collect(); // Collect into a Vec
+            inner_collected
+        })
+        .collect();
+
+    // Fill the result slice (sequentially) from the collected indexed values
+    for (idx, val) in indexed_values {
+        if idx < result.len() { // Basic bounds check
+            result[idx] = val;
         }
-    });
+    }
     
     0 // Success
 }
@@ -185,22 +205,33 @@ pub extern "C" fn create_pct_change_features_c(
     }
     
     // Calculate percentage change features in parallel for each period
-    periods.par_iter().enumerate().for_each(|(i, &period)| {
-        let period_usize = period as usize;
-        
-        // For each period, calculate the percentage change feature for each time point
-        for j in period_usize..data_len {
-            // Calculate the index in the flattened result array
-            let result_idx = j * periods_len + i;
-            
-            // Calculate percentage change
-            let previous_value = data[j - period_usize];
-            if previous_value != 0.0 {
-                result[result_idx] = (data[j] - previous_value) / previous_value;
-            }
-            // If previous value is zero, result remains NaN
+    // Collect (index, value) pairs first
+    let indexed_values: Vec<(usize, f64)> = periods
+        .iter()
+        .enumerate()
+        .flat_map(|(i, &period)| {
+            let period_usize = period as usize;
+            let inner_collected: Vec<(usize, f64)> = (period_usize..data_len).map(move |j| {
+                let result_idx = j * periods_len + i;
+                let previous_value = data[j - period_usize];
+                let current_value = data[j];
+                let value = if previous_value != 0.0 {
+                    (current_value - previous_value) / previous_value
+                } else {
+                    f64::NAN
+                };
+                (result_idx, value)
+            }).collect(); // Collect into a Vec
+            inner_collected
+        })
+        .collect();
+
+    // Fill the result slice (sequentially) from the collected indexed values
+    for (idx, val) in indexed_values {
+        if idx < result.len() { // Basic bounds check
+            result[idx] = val;
         }
-    });
+    }
     
     0 // Success
 }
@@ -264,46 +295,51 @@ pub extern "C" fn create_rolling_window_features_c(
         *val = f64::NAN;
     }
     
-    // Calculate rolling window features in parallel for each window size
-    windows.par_iter().enumerate().for_each(|(i, &window)| {
-        let window_usize = window as usize;
-        
-        // For each window size, calculate the rolling window feature for each time point
-        for j in window_usize - 1..data_len {
-            // Calculate the index in the flattened result array
-            let result_idx = j * windows_len + i;
-            
-            // Get the window data
-            let window_data = &data[j - (window_usize - 1)..=j];
-            
-            // Calculate the feature based on the feature type
-            match feature_type {
-                0 => { // Mean
-                    let sum: f64 = window_data.iter().sum();
-                    result[result_idx] = sum / window_usize as f64;
-                },
-                1 => { // Standard deviation
-                    let mean: f64 = window_data.iter().sum::<f64>() / window_usize as f64;
-                    let variance: f64 = window_data.iter()
-                        .map(|&x| (x - mean).powi(2))
-                        .sum::<f64>() / window_usize as f64;
-                    result[result_idx] = variance.sqrt();
-                },
-                2 => { // Min
-                    result[result_idx] = window_data.iter()
-                        .fold(f64::INFINITY, |a, &b| a.min(b));
-                },
-                3 => { // Max
-                    result[result_idx] = window_data.iter()
-                        .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
-                },
-                4 => { // Sum
-                    result[result_idx] = window_data.iter().sum();
-                },
-                _ => unreachable!(), // We already checked for invalid feature types
-            }
+    // Calculate (result_idx, value) pairs in parallel
+    let indexed_values: Vec<(usize, f64)> = windows // windows is &[i32]
+        .iter() // Produces &i32
+        .enumerate() // Produces (usize, &i32), where usize is index `i`
+        .flat_map(|(i, &window_val)| { // i is window_idx, window_val is the size from windows slice
+            let window_usize = window_val as usize;
+            // This inner part is sequential for each window configuration
+            let inner_collected: Vec<(usize, f64)> = (window_usize - 1..data_len).map(move |j| { // j is data_idx (time point)
+                let result_idx = j * windows_len + i; // Calculate flat index for result array
+                let current_window_data_slice = &data[j - (window_usize - 1)..=j];
+                
+                let value = match feature_type {
+                    0 => { // Mean
+                        current_window_data_slice.iter().sum::<f64>() / window_usize as f64
+                    }
+                    1 => { // Standard deviation
+                        let mean = current_window_data_slice.iter().sum::<f64>() / window_usize as f64;
+                        let variance = current_window_data_slice.iter()
+                            .map(|&x| (x - mean).powi(2))
+                            .sum::<f64>() / window_usize as f64;
+                        variance.sqrt()
+                    }
+                    2 => { // Min
+                        current_window_data_slice.iter().fold(f64::INFINITY, |acc, &val| acc.min(val))
+                    }
+                    3 => { // Max
+                        current_window_data_slice.iter().fold(f64::NEG_INFINITY, |acc, &val| acc.max(val))
+                    }
+                    4 => { // Sum
+                        current_window_data_slice.iter().sum()
+                    }
+                    _ => unreachable!(), // Already checked for invalid feature types
+                };
+                (result_idx, value)
+            }).collect(); // Collect into a Vec
+            inner_collected
+        })
+        .collect();
+
+    // Fill the result slice (sequentially) from the collected indexed values
+    for (idx, val) in indexed_values {
+        if idx < result.len() { // Basic bounds check
+            result[idx] = val;
         }
-    });
+    }
     
     0 // Success
 }
