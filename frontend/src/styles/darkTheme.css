@@ -1,0 +1,118 @@
+/* Clean dark theme overrides */
+
+/* Basic global styles */
+.dark body,
+.dark .MuiBox-root,
+.dark .MuiPaper-root,
+.dark .MuiAppBar-root,
+.dark .MuiDrawer-paper {
+  background-color: #121212;
+  color: #ffffff;
+}
+
+/* Ensure all text elements use light colors in dark mode */
+.dark h1, .dark h2, .dark h3, .dark h4, .dark h5, .dark h6,
+.dark p, .dark span, .dark div, .dark label,
+.dark .MuiTypography-root,
+.dark .MuiInputBase-input,
+.dark .MuiFormLabel-root,
+.dark .MuiInputLabel-root {
+  color: #ffffff;
+}
+
+/* Secondary text */
+.dark .MuiTypography-colorTextSecondary {
+  color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Dashboard specific styles */
+.dark .SimpleMexcDashboard .MuiPaper-root,
+.dark .SimpleMexcDashboard .MuiBox-root,
+.dark .SimpleMexcDashboard .MuiTableContainer-root {
+  background-color: #1e1e1e;
+}
+
+/* Chart placeholder */
+.dark .chart-placeholder {
+  background-color: #1e1e1e;
+  color: #ffffff;
+}
+
+/* Table colors */
+.dark .MuiTableCell-root {
+  color: #ffffff;
+  background-color: #1e1e1e;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Price colors */
+.dark .MuiTableCell-root[style*="color: rgb(25, 135, 84)"],
+.dark .MuiTableCell-root[style*="color: success.main"] {
+  color: #4caf50 !important;
+}
+
+.dark .MuiTableCell-root[style*="color: rgb(220, 53, 69)"],
+.dark .MuiTableCell-root[style*="color: error.main"] {
+  color: #f44336 !important;
+}
+
+/* Tab styles */
+.dark .MuiTabs-root {
+  background-color: #1e1e1e;
+}
+
+.dark .MuiTab-root {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.dark .MuiTab-root.Mui-selected {
+  color: #ffffff;
+}
+
+/* Fix for chart text and other dynamic elements */
+.dark div[style*="text-align: center"],
+.dark div > h5, 
+.dark div > h6,
+.dark div > p,
+.dark .chart-placeholder *,
+.dark [id^="tradingview_"] *,
+.dark [class*="tradingview"] * {
+  color: #ffffff !important;
+}
+
+/* Chart data message */
+.dark .SimpleMexcDashboard .chart-data-message,
+.dark .SimpleMexcDashboard [style*="display: flex"] > h5,
+.dark .SimpleMexcDashboard [style*="display: flex"] > p,
+.dark .SimpleMexcDashboard [style*="text-align: center"] {
+  color: #ffffff !important;
+  text-shadow: none !important;
+}
+
+/* Target specific elements that often have black text */
+.dark .SimpleMexcDashboard .MuiTypography-root,
+.dark .SimpleMexcDashboard p,
+.dark .SimpleMexcDashboard span:not([class*="MuiTab"]),
+.dark .SimpleMexcDashboard div > h5,
+.dark .SimpleMexcDashboard div > h6,
+.dark .SimpleMexcDashboard li,
+.dark .SimpleMexcDashboard label,
+.dark .chart-placeholder div,
+.dark .chart-placeholder span,
+.dark [id^="tradingview_"] div,
+.dark [id^="tradingview_"] span {
+  color: #ffffff !important;
+}
+
+/* Exceptions to the catch-all rule */
+.dark *[style*="color: rgb(25, 135, 84)"],
+.dark *[style*="color: success.main"],
+.dark *[style*="color: #4caf50"] {
+  color: #4caf50 !important; /* Keep green */
+}
+
+.dark *[style*="color: rgb(220, 53, 69)"],
+.dark *[style*="color: error.main"],
+.dark *[style*="color: #f44336"] {
+  color: #f44336 !important; /* Keep red */
+}
