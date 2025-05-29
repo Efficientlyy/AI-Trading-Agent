@@ -1,16 +1,25 @@
 import React, { useState } from 'react';
 import { useTheme, ThemeMode } from '../../context/ThemeContext';
-import { useNotification } from '../../context/NotificationContext';
+import { useNotification } from '../../components/common/NotificationSystem';
 
 const Preferences: React.FC = () => {
   const { mode, setMode, accent, setAccent } = useTheme();
-  const { addNotification } = useNotification();
+  const { showNotification } = useNotification();
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(true);
   const [layout, setLayout] = useState<'default' | 'compact'>('default');
   const [message, setMessage] = useState<string | null>(null);
 
   const handleSave = () => {
     // Save preferences to backend or local storage if needed
+    
+    // Call the notification system to show success message
+    showNotification({
+      type: 'success',
+      title: 'Preferences Updated',
+      message: 'Your preferences have been saved successfully.'
+    });
+    
+    // Also set the local message for inline feedback
     setMessage('Preferences saved successfully.');
   };
 

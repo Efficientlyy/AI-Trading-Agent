@@ -145,7 +145,7 @@ const PerformanceMetrics: React.FC = () => {
       </div>
       
       <div className="mt-4">
-        <button className="text-sm text-primary hover:text-primary-dark">View Detailed Analysis →</button>
+        <button className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium transition-colors">View Detailed Analysis →</button>
       </div>
     </div>
   );

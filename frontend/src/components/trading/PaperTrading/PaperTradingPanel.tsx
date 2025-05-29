@@ -8,9 +8,14 @@ import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui
 import { Button } from '../../../components/ui/Button';
 import { Select } from '../../../components/ui/Select';
 import { Input } from '../../../components/ui/Input';
-import { Badge } from '../../../components/ui/Badge';
+import { Badge } from '../../ui/Badge';
+import { Divider } from '../../ui/Divider';
+import { Tooltip } from '../../ui/Tooltip';
 
-// Import API client (we'll create this next)
+// Import components
+import AutonomousTradingButton from './AutonomousTradingButton';
+
+// Import API client
 import { paperTradingApi } from '../../../api/paperTrading';
 
 interface PaperTradingConfig {
@@ -133,70 +138,117 @@ const PaperTradingPanel: React.FC<PaperTradingPanelProps> = ({ selectedSessionId
             <h3 className="text-lg font-medium mb-4">Configuration</h3>
             
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                Configuration File
-              </label>
-              <Select
-                value={configPath}
-                onChange={(e) => setConfigPath(e.target.value)}
-                disabled={isStartDisabled}
-                className="w-full"
-              >
-                {availableConfigs.map((config) => (
-                  <option key={config} value={config}>
-                    {config}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Duration (minutes)
-                </label>
-                <Input
-                  type="number"
-                  value={duration}
-                  onChange={(e) => setDuration(parseInt(e.target.value))}
-                  min={1}
-                  max={10080} // 1 week
-                  disabled={isStartDisabled}
-                  className="w-full"
-                />
+              <h3 className="text-lg font-medium mb-2">Trading Configuration</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">Configuration</label>
+                  <Select
+                    value={configPath}
+                    onChange={(e) => setConfigPath(e.target.value)}
+                    disabled={startMutation.isPending}
+                  >
+                    {availableConfigs.map((config) => (
+                      <option key={config} value={config}>{config}</option>
+                    ))}
+                  </Select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Duration (minutes)</label>
+                  <Input
+                    type="number"
+                    value={duration}
+                    onChange={(e) => setDuration(parseInt(e.target.value) || 60)}
+                    min={1}
+                    max={1440}
+                    disabled={startMutation.isPending}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Update Interval (minutes)</label>
+                  <Input
+                    type="number"
+                    value={interval}
+                    onChange={(e) => setInterval(parseInt(e.target.value) || 1)}
+                    min={1}
+                    max={60}
+                    disabled={startMutation.isPending}
+                  />
+                </div>
               </div>
               
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Interval (seconds)
-                </label>
-                <Input
-                  type="number"
-                  value={interval}
-                  onChange={(e) => setInterval(parseInt(e.target.value))}
-                  min={1}
-                  max={60}
-                  disabled={isStartDisabled}
-                  className="w-full"
-                />
+              <div className="mt-6 flex flex-col space-y-4 sm:flex-row sm:space-y-0 sm:space-x-4">
+                <div>
+                  <h4 className="text-md font-medium mb-2">Standard Mode</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    Start paper trading with manual oversight and control
+                  </p>
+                  <Button
+                    onClick={handleStartPaperTrading}
+                    disabled={isStartDisabled}
+                    variant="secondary"
+                  >
+                    {startMutation.isPending ? 'Starting...' : 'Start Paper Trading'}
+                  </Button>
+                </div>
+                
+                <Divider orientation="vertical" className="hidden sm:block" />
+                <Divider className="sm:hidden" />
+                
+                <div>
+                  <h4 className="text-md font-medium mb-2">Autonomous Mode</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                    Start fully autonomous trading with AI-driven decisions
+                  </p>
+                  <Tooltip content="Trading agent will operate independently with full decision-making autonomy">
+                    <div>
+                      <AutonomousTradingButton
+                        configPath={configPath}
+                        duration={duration}
+                        interval={interval}
+                      />
+                    </div>
+                  </Tooltip>
+                </div>
               </div>
             </div>
             
-            <Button
-              variant="primary"
-              onClick={handleStartPaperTrading}
-              disabled={isStartDisabled}
-              className="w-full mt-2"
-            >
-              {startMutation.isPending ? (
-                <>
-                  <Spinner size="sm" className="mr-2" />
-                  Starting...
-                </>
+            {/* Status */}
+            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-md">
+              <h3 className="text-lg font-medium mb-4">Current Status</h3>
+              
+              {statusLoading ? (
+                <div className="flex justify-center items-center h-32">
+                  <Spinner size="lg" />
+                </div>
               ) : (
-                'Start Paper Trading'
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>Status:</div>
+                    <div>
+                      <Badge className={`${getStatusColor(statusData?.status || 'idle')} text-white`}>
+                        {statusData?.status || 'idle'}
+                      </Badge>
+                    </div>
+                    
+                    {statusData?.uptime_seconds && (
+                      <>
+                        <div>Uptime:</div>
+                        <div>
+                          {Math.floor(statusData.uptime_seconds / 60)} minutes, {statusData.uptime_seconds % 60} seconds
+                        </div>
+                      </>
+                    )}
+                    
+                    {statusData?.symbols && statusData.symbols.length > 0 && (
+                      <>
+                        <div>Symbols:</div>
+                        <div>{statusData.symbols.join(', ')}</div>
+                      </>
+                    )}
+                  </div>
+                </div>
               )}
-            </Button>
+            </div>
           </div>
           
           {/* Status */}

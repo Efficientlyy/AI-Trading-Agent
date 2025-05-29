@@ -4,6 +4,7 @@ interface PaperTradingConfig {
   config_path: string;
   duration_minutes: number;
   interval_minutes: number;
+  autonomous_mode?: boolean;
 }
 
 interface PaperTradingStatus {

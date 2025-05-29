@@ -6,12 +6,18 @@ import { portfolioApi } from '../../api/portfolio';
 import { getMockAssetAllocation } from '../../api/mockData/mockAssetAllocation';
 
 // Check if @nivo/pie is installed
-let ResponsivePie: any;
+let NivoResponsivePie: any;
 try {
-  ResponsivePie = require('@nivo/pie').ResponsivePie;
+  NivoResponsivePie = require('@nivo/pie').ResponsivePie;
 } catch (e) {
   console.warn('Missing @nivo/pie dependency. Using fallback chart.');
 }
+
+// Create a wrapper component to avoid defaultProps warning
+const ResponsivePie = (props: any) => {
+  // Forward all props to the original component
+  return <NivoResponsivePie {...props} />;
+};
 
 interface AssetAllocationChartProps {
   onAssetSelect?: (symbol: string) => void;
@@ -23,7 +29,11 @@ interface AssetAllocationChartProps {
   }>;
 }
 
-const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ onAssetSelect, selectedAsset, data: propData }) => {
+const AssetAllocationChart: React.FC<AssetAllocationChartProps> = ({ 
+  onAssetSelect = undefined, 
+  selectedAsset = undefined, 
+  data: propData = undefined 
+}) => {
   useRenderLogger('AssetAllocationChart', { selectedAsset, propData });
   const { dataSource } = useDataSource();
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);

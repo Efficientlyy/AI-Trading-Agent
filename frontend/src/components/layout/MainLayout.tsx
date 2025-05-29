@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
 
-const MainLayout: React.FC = () => {
+interface MainLayoutProps {
+  children?: React.ReactNode;
+}
+
+const MainLayout: React.FC<MainLayoutProps> = ({ children }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   
@@ -57,7 +60,7 @@ const MainLayout: React.FC = () => {
           </button>
           
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-            <Outlet />
+            {children}
           </div>
         </main>
       </div>

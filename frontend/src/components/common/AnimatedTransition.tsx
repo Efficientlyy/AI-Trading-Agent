@@ -1,5 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { CSSTransition, TransitionGroup } from 'react-transition-group';
+import { Location } from 'react-router-dom';
 
 // Animation types
 export enum AnimationType {
@@ -18,6 +19,62 @@ export enum AnimationDuration {
   NORMAL = 250,
   SLOW = 350
 }
+
+// Hoisted getClassNames function
+const getClassNames = (type: AnimationType) => {
+  switch (type) {
+    case AnimationType.FADE:
+      return {
+        enter: 'opacity-0',
+        enterActive: 'opacity-100 transition-opacity',
+        exit: 'opacity-100',
+        exitActive: 'opacity-0 transition-opacity'
+      };
+    case AnimationType.SLIDE_UP:
+      return {
+        enter: 'opacity-0 transform translate-y-4',
+        enterActive: 'opacity-100 transform translate-y-0 transition-all',
+        exit: 'opacity-100 transform translate-y-0',
+        exitActive: 'opacity-0 transform translate-y-4 transition-all'
+      };
+    case AnimationType.SLIDE_DOWN:
+      return {
+        enter: 'opacity-0 transform -translate-y-4',
+        enterActive: 'opacity-100 transform translate-y-0 transition-all',
+        exit: 'opacity-100 transform translate-y-0',
+        exitActive: 'opacity-0 transform -translate-y-4 transition-all'
+      };
+    case AnimationType.SLIDE_LEFT:
+      return {
+        enter: 'opacity-0 transform translate-x-4',
+        enterActive: 'opacity-100 transform translate-x-0 transition-all',
+        exit: 'opacity-100 transform translate-x-0',
+        exitActive: 'opacity-0 transform -translate-x-4 transition-all'
+      };
+    case AnimationType.SLIDE_RIGHT:
+      return {
+        enter: 'opacity-0 transform -translate-x-4',
+        enterActive: 'opacity-100 transform translate-x-0 transition-all',
+        exit: 'opacity-100 transform translate-x-0',
+        exitActive: 'opacity-0 transform translate-x-4 transition-all'
+      };
+    case AnimationType.ZOOM:
+      return {
+        enter: 'opacity-0 transform scale-95',
+        enterActive: 'opacity-100 transform scale-100 transition-all',
+        exit: 'opacity-100 transform scale-100',
+        exitActive: 'opacity-0 transform scale-95 transition-all'
+      };
+    case AnimationType.NONE:
+    default:
+      return {
+        enter: '',
+        enterActive: '',
+        exit: '',
+        exitActive: ''
+      };
+  }
+};
 
 interface AnimatedTransitionProps {
   children: React.ReactNode;
@@ -39,70 +96,12 @@ export const AnimatedTransition: React.FC<AnimatedTransitionProps> = ({
 }) => {
   const nodeRef = useRef<HTMLDivElement | null>(null);
   
-  // Generate CSS classes based on animation type
-  const getClassNames = () => {
-    switch (type) {
-      case AnimationType.FADE:
-        return {
-          enter: 'opacity-0',
-          enterActive: 'opacity-100 transition-opacity',
-          exit: 'opacity-100',
-          exitActive: 'opacity-0 transition-opacity'
-        };
-      case AnimationType.SLIDE_UP:
-        return {
-          enter: 'opacity-0 transform translate-y-4',
-          enterActive: 'opacity-100 transform translate-y-0 transition-all',
-          exit: 'opacity-100 transform translate-y-0',
-          exitActive: 'opacity-0 transform translate-y-4 transition-all'
-        };
-      case AnimationType.SLIDE_DOWN:
-        return {
-          enter: 'opacity-0 transform -translate-y-4',
-          enterActive: 'opacity-100 transform translate-y-0 transition-all',
-          exit: 'opacity-100 transform translate-y-0',
-          exitActive: 'opacity-0 transform -translate-y-4 transition-all'
-        };
-      case AnimationType.SLIDE_LEFT:
-        return {
-          enter: 'opacity-0 transform translate-x-4',
-          enterActive: 'opacity-100 transform translate-x-0 transition-all',
-          exit: 'opacity-100 transform translate-x-0',
-          exitActive: 'opacity-0 transform translate-x-4 transition-all'
-        };
-      case AnimationType.SLIDE_RIGHT:
-        return {
-          enter: 'opacity-0 transform -translate-x-4',
-          enterActive: 'opacity-100 transform translate-x-0 transition-all',
-          exit: 'opacity-100 transform translate-x-0',
-          exitActive: 'opacity-0 transform -translate-x-4 transition-all'
-        };
-      case AnimationType.ZOOM:
-        return {
-          enter: 'opacity-0 transform scale-95',
-          enterActive: 'opacity-100 transform scale-100 transition-all',
-          exit: 'opacity-100 transform scale-100',
-          exitActive: 'opacity-0 transform scale-95 transition-all'
-        };
-      case AnimationType.NONE:
-      default:
-        return {
-          enter: '',
-          enterActive: '',
-          exit: '',
-          exitActive: ''
-        };
-    }
-  };
-  
-  const classNames = getClassNames();
-  
   return (
     <CSSTransition
       in={show}
       nodeRef={nodeRef as React.RefObject<HTMLElement>}
       timeout={duration}
-      classNames={classNames}
+      classNames={getClassNames(type)}
       unmountOnExit={unmountOnExit}
     >
       <div ref={nodeRef} className={className} style={{ transitionDuration: `${duration}ms` }}>
@@ -112,105 +111,44 @@ export const AnimatedTransition: React.FC<AnimatedTransitionProps> = ({
   );
 };
 
-// Component for animating between different elements/pages
 interface AnimatedSwitchProps {
   children: React.ReactNode;
-  type?: AnimationType;
-  duration?: AnimationDuration;
+  animationType?: AnimationType;
+  animationDuration?: AnimationDuration;
   className?: string;
+  location: Location;
 }
 
+// Component for animating transitions between different elements/pages (routes)
 export const AnimatedSwitch: React.FC<AnimatedSwitchProps> = ({
-  children,
-  type = AnimationType.FADE,
-  duration = AnimationDuration.NORMAL,
-  className = ''
+  children, 
+  animationType = AnimationType.FADE,
+  animationDuration = AnimationDuration.NORMAL,
+  className = '',
+  location
 }) => {
-  // Use React.Children.map to add keys if they don't exist
-  const childrenWithKeys = React.Children.map(children, (child, index) => {
-    if (React.isValidElement(child)) {
-      return React.cloneElement(child, { key: child.key || `animated-child-${index}` });
-    }
-    return child;
-  });
-  
-  // Generate CSS classes based on animation type
-  const getClassNames = () => {
-    switch (type) {
-      case AnimationType.FADE:
-        return {
-          enter: 'opacity-0',
-          enterActive: 'opacity-100 transition-opacity',
-          exit: 'opacity-100',
-          exitActive: 'opacity-0 transition-opacity'
-        };
-      case AnimationType.SLIDE_UP:
-        return {
-          enter: 'opacity-0 transform translate-y-4',
-          enterActive: 'opacity-100 transform translate-y-0 transition-all',
-          exit: 'opacity-100 transform translate-y-0',
-          exitActive: 'opacity-0 transform translate-y-4 transition-all'
-        };
-      case AnimationType.SLIDE_DOWN:
-        return {
-          enter: 'opacity-0 transform -translate-y-4',
-          enterActive: 'opacity-100 transform translate-y-0 transition-all',
-          exit: 'opacity-100 transform translate-y-0',
-          exitActive: 'opacity-0 transform -translate-y-4 transition-all'
-        };
-      case AnimationType.SLIDE_LEFT:
-        return {
-          enter: 'opacity-0 transform translate-x-4',
-          enterActive: 'opacity-100 transform translate-x-0 transition-all',
-          exit: 'opacity-100 transform translate-x-0',
-          exitActive: 'opacity-0 transform translate-x-4 transition-all'
-        };
-      case AnimationType.SLIDE_RIGHT:
-        return {
-          enter: 'opacity-0 transform -translate-x-4',
-          enterActive: 'opacity-100 transform translate-x-0 transition-all',
-          exit: 'opacity-100 transform translate-x-0',
-          exitActive: 'opacity-0 transform -translate-x-4 transition-all'
-        };
-      case AnimationType.ZOOM:
-        return {
-          enter: 'opacity-0 transform scale-95',
-          enterActive: 'opacity-100 transform scale-100 transition-all',
-          exit: 'opacity-100 transform scale-100',
-          exitActive: 'opacity-0 transform scale-95 transition-all'
-        };
-      case AnimationType.NONE:
-      default:
-        return {
-          enter: '',
-          enterActive: '',
-          exit: '',
-          exitActive: ''
-        };
-    }
-  };
-  
+  const nodeRef = useRef<HTMLDivElement | null>(null); // useRef for CSSTransition's nodeRef
+
   return (
-    <TransitionGroup className={className}>
-      {React.Children.map(childrenWithKeys, (child) => {
-        if (React.isValidElement(child)) {
-          const nodeRef = React.createRef<HTMLDivElement>();
-          
-          return (
-            <CSSTransition
-              key={child.key}
-              nodeRef={nodeRef as React.RefObject<HTMLElement>}
-              timeout={duration}
-              classNames={getClassNames()}
-            >
-              <div ref={nodeRef} style={{ transitionDuration: `${duration}ms` }}>
-                {child}
-              </div>
-            </CSSTransition>
-          );
-        }
-        return child;
-      })}
+    <TransitionGroup className={className} component={null}> {/* component={null} avoids an extra div from TransitionGroup */}
+      <CSSTransition
+        key={location.pathname} // Key the transition on the path. This is crucial.
+        nodeRef={nodeRef}       // Pass the ref to CSSTransition.
+        timeout={animationDuration}
+        classNames={getClassNames(animationType)}
+        unmountOnExit           // Unmount the old route's component after animation.
+        appear                  // Allow animation on initial mount if desired.
+      >
+        {/* CSSTransition expects a single child that can accept a ref.
+            We wrap the 'children' (which is <Routes>) in a div that takes the nodeRef.
+        */}
+        <div 
+          ref={nodeRef}
+          style={{ width: '100%', height: '100%', position: 'relative' }} // Added styling
+        >
+          {children}
+        </div>
+      </CSSTransition>
     </TransitionGroup>
   );
 };
@@ -251,5 +189,3 @@ export function useAnimation(
     }
   };
 }
-
-

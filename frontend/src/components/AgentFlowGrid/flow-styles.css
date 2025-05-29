@@ -1,0 +1,134 @@
+/* Custom styles for AgentFlowGrid visualization */
+
+/* Enhanced edge animations for data flow */
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 5, 5;
+  animation: flowAnimation 20s linear infinite;
+}
+
+/* Special styling for sentiment analysis data flows */
+.react-flow__edge.sentiment-edge .react-flow__edge-path {
+  stroke-dasharray: 3, 3;
+  animation: sentimentFlowAnimation 12s linear infinite;
+  filter: drop-shadow(0 0 3px rgba(76, 175, 80, 0.6));
+}
+
+@keyframes sentimentFlowAnimation {
+  0% {
+    stroke-dashoffset: 60;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes flowAnimation {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Enhanced edge interactions */
+.react-flow__edge:hover .react-flow__edge-path {
+  stroke-width: 3px !important;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 128, 0.9)) !important;
+}
+
+/* Edge label styling */
+.react-flow__edge .react-flow__edge-text {
+  font-size: 10px;
+  font-weight: bold;
+  text-shadow: 0 0 2px #000;
+}
+
+/* Node hover effects */
+.react-flow__node:hover {
+  z-index: 1000 !important;
+}
+
+/* Custom node styling */
+.react-flow__node-agentNode {
+  transition: transform 0.3s ease, filter 0.3s ease, box-shadow 0.3s ease;
+}
+
+.react-flow__node-agentNode:hover {
+  transform: translateY(-5px);
+}
+
+/* Special styling for sentiment analysis agent nodes */
+.react-flow__node.sentiment-agent-node {
+  box-shadow: 0 0 15px rgba(76, 175, 80, 0.4);
+}
+
+.react-flow__node.sentiment-agent-node:hover {
+  box-shadow: 0 0 20px rgba(76, 175, 80, 0.7);
+}
+
+.react-flow__node.sentiment-agent-node.running-node {
+  box-shadow: 0 0 25px rgba(76, 175, 80, 0.8);
+  animation: pulseSentiment 3s infinite alternate;
+}
+
+@keyframes pulseSentiment {
+  0% {
+    box-shadow: 0 0 15px rgba(76, 175, 80, 0.5);
+  }
+  100% {
+    box-shadow: 0 0 25px rgba(76, 175, 80, 0.8);
+  }
+}
+
+/* Connection handle styling */
+.react-flow__handle {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background-color: #555 !important;
+  border: 2px solid #777 !important;
+  transition: all 0.2s ease;
+}
+
+.react-flow__handle:hover {
+  background-color: #FFFF00 !important;
+  transform: scale(1.2);
+  border: 2px solid #fff !important;
+}
+
+/* Status-specific handle colors */
+.react-flow__node[data-status="running"] .react-flow__handle {
+  background-color: #4caf50 !important;
+  border-color: #81c784 !important;
+}
+
+.react-flow__node[data-status="error"] .react-flow__handle {
+  background-color: #f44336 !important;
+  border-color: #e57373 !important;
+}
+
+/* Enhanced controls */
+.react-flow__controls {
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5) !important;
+}
+
+.react-flow__controls button:hover {
+  background-color: #333 !important;
+  color: #FFFF00 !important;
+}
+
+/* Improved minimap */
+.react-flow__minimap {
+  border: 1px solid #555 !important;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Panel styling */
+.react-flow__panel {
+  transition: opacity 0.3s ease;
+}
+
+.react-flow__panel:hover {
+  opacity: 1 !important;
+}

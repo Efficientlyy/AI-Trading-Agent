@@ -426,3 +426,6 @@ const SentimentDashboard: React.FC = () => {
 };
 
 export default SentimentDashboard;
+
+// Export additional components for reuse
+export { SentimentScoreGauge, SentimentDistribution };

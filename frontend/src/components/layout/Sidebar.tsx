@@ -18,7 +18,10 @@ import {
   IconAlertTriangle,
   IconSpeedboat,
   IconChartCandle,
-  IconTestPipe
+  IconTestPipe,
+  IconDeviceAnalytics,
+  IconGauge,
+  IconBrain
 } from '@tabler/icons-react';
 
 interface SidebarProps {
@@ -32,13 +35,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen }) => {
     { path: '/', label: 'Dashboard', icon: <IconDashboard size={20} /> },
     { path: '/portfolio', label: 'Portfolio', icon: <IconWallet size={20} /> },
     { path: '/trade', label: 'Trading', icon: <IconChartLine size={20} /> },
+    { path: '/mexc-dashboard', label: 'MEXC Dashboard', icon: <IconChartCandle size={20} /> },
     { path: '/paper-trading', label: 'Paper Trading', icon: <IconTestPipe size={20} /> },
+    { path: '/system-control', label: 'System Control', icon: <IconGauge size={20} /> },
     { path: '/strategies', label: 'Strategies', icon: <IconRobot size={20} /> },
     { path: '/backtests', label: 'Backtest History', icon: <IconChartBar size={20} /> },
     { path: '/sentiment', label: 'Sentiment', icon: <IconReportAnalytics size={20} /> },
     { path: '/sentiment-analysis', label: 'Sentiment Analysis', icon: <IconBrandOpenai size={20} /> },
     { path: '/trading-signals', label: 'Trading Signals', icon: <IconChartCandle size={20} /> },
     { path: '/advanced-signals', label: 'Advanced Signals', icon: <IconChartLine size={20} /> },
+    { path: '/llm-oversight', label: 'LLM Oversight', icon: <IconBrain size={20} /> },
     { 
       path: '/api-health', 
       label: 'API Health', 
