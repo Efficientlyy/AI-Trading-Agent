@@ -16,7 +16,8 @@ export enum WebSocketTopic {
   AGENT_STATUS = 'agent_status',
   PAPER_TRADING = 'paper_trading',
   DRAWDOWN = 'drawdown',
-  TRADE_STATS = 'trade_stats'
+  TRADE_STATS = 'trade_stats',
+  SENTIMENT_PIPELINE = 'sentiment_pipeline'
 }
 
 // WebSocket message handler type
@@ -48,13 +49,14 @@ export class WebSocketService {
   private isConnected: boolean = false;
   private isConnecting: boolean = false;
   private reconnectAttempts: number = 0;
-  private maxReconnectAttempts: number = 5;
-  private reconnectDelay: number = 2000; // 2 seconds
+  private maxReconnectAttempts: number = 10; // Increased from 5 to 10
+  private reconnectDelay: number = 1000; // Base delay in ms (reduced from 2000)
   private pingInterval: number = 30000; // 30 seconds
   private pingTimer: NodeJS.Timeout | null = null;
   private topicHandlers: Map<string, Set<WebSocketEventHandler>> = new Map();
   private messageHandlers: Set<(message: WebSocketMessage) => void> = new Set();
   private connectionStatusHandlers: Set<ConnectionStatusHandler> = new Set();
+  private lastConnectionError: string | null = null;
 
   /**
    * Initialize the WebSocket service with a session ID
@@ -88,16 +90,25 @@ export class WebSocketService {
         this.subscribe(topics, () => {});
       }
     }
-    // If already connected or connecting, return
+    
+    // If already connected, return success
     if (this.isConnected) {
+      console.log('WebSocket already connected, reusing existing connection');
       return Promise.resolve();
     }
 
+    // If already connecting, return a pending promise
     if (this.isConnecting) {
+      console.log('WebSocket connection already in progress, waiting...');
       return Promise.reject(new Error('WebSocket connection already in progress'));
     }
 
+    // Reset reconnect attempts when manually connecting
+    this.reconnectAttempts = 0;
     this.isConnecting = true;
+    
+    // Notify that connection is being attempted
+    this.notifyConnectionStatusHandlers(false, 'Connecting to server...');
 
     return new Promise<void>((resolve, reject) => {
       try {
@@ -111,7 +122,13 @@ export class WebSocketService {
         }
 
         // Direct WebSocket URL
-        const wsUrl = `ws://localhost:8000/ws/${sessionIdToUse}`;
+        // Check if we're in development or production
+        const host = window.location.hostname;
+        const port = '8000'; // Backend port
+        const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        
+        // Construct WebSocket URL
+        const wsUrl = `${wsProtocol}//${host}:${port}/ws/${sessionIdToUse}`;
 
         console.log('Connecting to WebSocket URL:', wsUrl);
         console.log('Session ID:', sessionIdToUse);
@@ -120,9 +137,11 @@ export class WebSocketService {
         const connectionTimeout = setTimeout(() => {
           if (!this.isConnected) {
             this.isConnecting = false;
-            reject(new Error('WebSocket connection timeout'));
+            console.error('WebSocket connection timeout. Please ensure the backend server is running.');
+            this.notifyConnectionStatusHandlers(false, 'Connection timeout. Please ensure the backend server is running.');
+            reject(new Error('WebSocket connection timeout. Please ensure the backend server is running.'));
           }
-        }, 10000); // 10 seconds
+        }, 5000); // 5 seconds
 
         // Create WebSocket connection
         this.socket = new WebSocket(wsUrl);
@@ -318,144 +337,222 @@ export class WebSocketService {
     this.connectionStatusHandlers.delete(handler);
   }
 
-  /**
-   * Send a message to the WebSocket server
-   * 
-   * @param message - The message to send
-   */
-  private send(message: WebSocketMessage): void {
-    if (this.socket && this.isConnected) {
-      try {
-        this.socket.send(JSON.stringify(message));
-      } catch (error) {
-        console.error('Error sending WebSocket message:', error);
-      }
-    } else {
-      console.warn('Cannot send message, WebSocket not connected');
+/**
+ * Send a message to the WebSocket server
+ * 
+ * @param message - The message to send
+ */
+public send(message: WebSocketMessage): void {
+  if (this.socket && this.isConnected) {
+    try {
+      this.socket.send(JSON.stringify(message));
+      console.log('Sent message to WebSocket server:', message);
+    } catch (error) {
+      console.error('Error sending message to WebSocket server:', error);
     }
+  } else {
+    console.warn('Cannot send message, WebSocket not connected');
   }
+}
 
-  /**
-   * Send a subscription message for all registered topics
-   */
-  private sendSubscription(): void {
-    if (this.socket && this.isConnected) {
-      const topics = Array.from(this.topicHandlers.keys());
+/**
+ * Send a subscription message for all registered topics
+ */
+private sendSubscription(): void {
+  if (this.socket && this.isConnected) {
+    const topics = Array.from(this.topicHandlers.keys());
 
-      // If no topics, subscribe to 'performance' by default
-      if (topics.length === 0) {
-        topics.push('performance');
-      }
-
-      this.send({
-        type: 'subscribe',
-        data: {
-          topics
-        }
-      });
-    }
-  }
-
-  /**
-   * Handle a message received from the WebSocket server
-   * 
-   * @param message - The message received
-   */
-  private handleMessage(message: WebSocketMessage): void {
-    // Notify all message handlers
-    this.messageHandlers.forEach((handler) => {
-      try {
-        handler(message);
-      } catch (error) {
-        console.error('Error in message handler:', error);
-      }
-    });
-
-    // If message has a topic, notify topic handlers
-    if (message.topic && this.topicHandlers.has(message.topic)) {
-      const handlers = this.topicHandlers.get(message.topic);
-
-      if (handlers) {
-        handlers.forEach((handler) => {
-          try {
-            handler(message.data);
-          } catch (error) {
-            console.error(`Error in handler for topic ${message.topic}:`, error);
-          }
-        });
-      }
-    }
-  }
-
-  /**
-   * Start the ping timer to keep the connection alive
-   */
-  private startPingTimer(): void {
-    this.stopPingTimer();
-
-    this.pingTimer = setInterval(() => {
-      if (this.socket && this.isConnected) {
-        this.send({
-          type: 'ping',
-          data: {
-            timestamp: Date.now()
-          }
-        });
-      }
-    }, this.pingInterval);
-  }
-
-  /**
-   * Stop the ping timer
-   */
-  private stopPingTimer(): void {
-    if (this.pingTimer) {
-      clearInterval(this.pingTimer);
-      this.pingTimer = null;
-    }
-  }
-
-  /**
-   * Attempt to reconnect to the WebSocket server
-   */
-  private reconnect(): void {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error(`Maximum reconnect attempts (${this.maxReconnectAttempts}) reached`);
-      return;
+    // If no topics, subscribe to 'performance' by default
+    if (topics.length === 0) {
+      topics.push('performance');
     }
 
-    this.reconnectAttempts++;
-
-    const delay = this.reconnectDelay * this.reconnectAttempts;
-    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-
-    setTimeout(() => {
-      if (!this.isConnected && !this.isConnecting) {
-        console.log(`Reconnecting... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-        this.connect().catch((error) => {
-          console.error('Reconnection failed:', error);
-        });
-      }
-    }, delay);
-  }
-
-  /**
-   * Notify all connection status handlers of a change in connection status
-   * 
-   * @param isConnected - Whether the connection is established
-   * @param errorMessage - Optional error message if the connection failed
-   */
-  private notifyConnectionStatusHandlers(isConnected: boolean, errorMessage?: string): void {
-    this.connectionStatusHandlers.forEach((handler) => {
-      try {
-        handler(isConnected, errorMessage);
-      } catch (error) {
-        console.error('Error in connection status handler:', error);
+    this.send({
+      type: 'subscribe',
+      data: {
+        topics
       }
     });
   }
 }
 
+/**
+ * Handle a message received from the WebSocket server
+ * 
+ * @param message - The message received
+ */
+private handleMessage(message: WebSocketMessage): void {
+  // Notify all message handlers
+  this.messageHandlers.forEach((handler) => {
+    try {
+      handler(message);
+    } catch (error) {
+      console.error('Error in message handler:', error);
+    }
+  });
+
+  // If message has a topic, notify topic handlers
+  if (message.topic && this.topicHandlers.has(message.topic)) {
+    const handlers = this.topicHandlers.get(message.topic);
+
+    if (handlers) {
+      handlers.forEach((handler) => {
+        try {
+          handler(message.data);
+        } catch (error) {
+          console.error(`Error in handler for topic ${message.topic}:`, error);
+        }
+      });
+    }
+  }
+}
+
+/**
+ * Start the ping timer to keep the connection alive
+ */
+private startPingTimer(): void {
+  this.stopPingTimer();
+
+  this.pingTimer = setInterval(() => {
+    if (this.socket && this.isConnected) {
+      this.send({
+        type: 'ping',
+        data: {
+          timestamp: Date.now()
+        }
+      });
+    }
+  }, this.pingInterval);
+}
+
+/**
+ * Stop the ping timer
+ */
+private stopPingTimer(): void {
+  if (this.pingTimer) {
+    clearInterval(this.pingTimer);
+    this.pingTimer = null;
+  }
+}
+
+/**
+ * Attempt to reconnect to the WebSocket server with exponential backoff
+ */
+private reconnect(): void {
+  if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+    console.error(`Maximum reconnect attempts (${this.maxReconnectAttempts}) reached`);
+    this.notifyConnectionStatusHandlers(false, `Failed to reconnect after ${this.maxReconnectAttempts} attempts. Please reload the page.`);
+    return;
+  }
+
+  this.reconnectAttempts++;
+
+  // Use exponential backoff with jitter for reconnection attempts
+  const baseDelay = this.reconnectDelay;
+  const exponentialDelay = baseDelay * Math.pow(1.5, this.reconnectAttempts - 1);
+  const jitter = Math.random() * 0.3 * exponentialDelay; // Add up to 30% jitter
+  const delay = Math.min(exponentialDelay + jitter, 30000); // Cap at 30 seconds
+  
+  console.log(`Attempting to reconnect in ${Math.round(delay)}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+  
+  // Notify users about reconnection attempts
+  this.notifyConnectionStatusHandlers(
+    false, 
+    `Connection lost. Reconnecting in ${Math.round(delay / 1000)} seconds... (Attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+  );
+
+  setTimeout(() => {
+    if (!this.isConnected && !this.isConnecting) {
+      console.log(`Reconnecting... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      this.connect().catch((error) => {
+        console.error('Reconnection failed:', error);
+      });
+    }
+  }, delay);
+}
+
+/**
+ * Notify all connection status handlers of a change in connection status
+ * 
+ * @param isConnected - Whether the connection is established
+ * @param errorMessage - Optional error message if the connection failed
+ */
+private notifyConnectionStatusHandlers(isConnected: boolean, errorMessage?: string): void {
+  // Log connection status changes
+  if (isConnected) {
+    console.log('WebSocket connected successfully');
+  } else if (errorMessage) {
+    console.warn(`WebSocket connection issue: ${errorMessage}`);
+  }
+  
+  this.connectionStatusHandlers.forEach((handler) => {
+    try {
+      handler(isConnected, errorMessage);
+    } catch (error) {
+      console.error('Error in connection status handler:', error);
+    }
+  });
+}
+
+/**
+ * Check if the WebSocket connection is open
+ * @returns True if the connection is open, false otherwise
+ */
+public isConnectionOpen(): boolean {
+  return this.isConnected;
+}
+
+/**
+ * Add a handler for a specific topic
+ * @param topic - The topic to add a handler for
+ * @param handler - The handler function
+ */
+public addTopicHandler(topic: string | WebSocketTopic, handler: WebSocketEventHandler): void {
+  // Create a set for this topic if it doesn't exist
+  if (!this.topicHandlers.has(topic)) {
+    this.topicHandlers.set(topic, new Set());
+  }
+  
+  // Add the handler
+  const handlers = this.topicHandlers.get(topic);
+  if (handlers) {
+    handlers.add(handler);
+  }
+}
+
+/**
+ * Remove a handler for a specific topic
+ * @param topic - The topic to remove a handler for
+ * @param handler - The handler function to remove
+ */
+public removeTopicHandler(topic: string | WebSocketTopic, handler: WebSocketEventHandler): void {
+  // Remove the handler if the topic exists
+  const handlers = this.topicHandlers.get(topic);
+  if (handlers) {
+    handlers.delete(handler);
+  }
+}
+
+/**
+ * Add a connection status handler
+ * @param handler - The handler function
+ */
+public addConnectionStatusHandler(handler: ConnectionStatusHandler): void {
+  this.connectionStatusHandlers.add(handler);
+  
+  // Immediately notify with current status
+  handler(this.isConnected, this.lastConnectionError || undefined);
+}
+
+/**
+ * Remove a connection status handler
+ * @param handler - The handler function to remove
+ */
+public removeConnectionStatusHandler(handler: ConnectionStatusHandler): void {
+  this.connectionStatusHandlers.delete(handler);
+}
+
+}
+
 // Create singleton instance
-const webSocketService = new WebSocketService();
-export default webSocketService;
+export default new WebSocketService();

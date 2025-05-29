@@ -134,6 +134,7 @@ export interface WebSocketMessage {
 
 export interface OHLCV {
   timestamp: string;
+  time?: number;  // Unix timestamp in seconds for chart libraries
   open: number;
   high: number;
   low: number;

@@ -1,0 +1,191 @@
+/* TechnicalAnalysisChart.css */
+.technical-analysis-chart-container {
+  width: 100%;
+  border-radius: 8px;
+  background-color: #1e222d;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #2a2e39;
+}
+
+.symbol-selector, .timeframe-selector {
+  margin-right: 12px;
+}
+
+.symbol-selector select, .timeframe-selector select {
+  background-color: #2a2e39;
+  color: #d1d4dc;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.last-update {
+  margin-left: auto;
+  font-size: 12px;
+  color: #787b86;
+}
+
+.chart-toolbar {
+  display: flex;
+  padding: 8px 16px;
+  border-bottom: 1px solid #2a2e39;
+  background-color: #1e222d;
+}
+
+.toolbar-group {
+  display: flex;
+  margin-right: 16px;
+}
+
+.toolbar-group button {
+  background: none;
+  border: none;
+  color: #787b86;
+  padding: 6px 8px;
+  margin: 0 2px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.toolbar-group button:hover {
+  background-color: #2a2e39;
+  color: #d1d4dc;
+}
+
+.toolbar-group button.active {
+  background-color: #2962ff;
+  color: white;
+}
+
+.chart-container {
+  flex-grow: 1;
+}
+
+.chart-settings-panel {
+  background-color: #1e222d;
+  border-top: 1px solid #2a2e39;
+  padding: 16px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.chart-settings-panel h4 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  color: #d1d4dc;
+  font-size: 14px;
+}
+
+.indicator-list, .pattern-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.indicator-item, .pattern-item {
+  display: flex;
+  align-items: center;
+}
+
+.indicator-item input, .pattern-item input {
+  margin-right: 8px;
+}
+
+.indicator-color, .pattern-color {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+.indicator-item label, .pattern-item label {
+  display: flex;
+  align-items: center;
+  color: #d1d4dc;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.chart-loader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(30, 34, 45, 0.8);
+  z-index: 10;
+}
+
+.loader-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #2a2e39;
+  border-top: 3px solid #2962ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.chart-error {
+  padding: 16px;
+  background-color: rgba(255, 82, 82, 0.1);
+  color: #ff5252;
+  border-radius: 4px;
+  margin: 16px;
+}
+
+/* MEXC Integration Styles */
+.data-source-selector {
+  display: flex;
+  align-items: center;
+  margin-left: 10px;
+}
+  
+.chart-data-source-selector {
+  background-color: #2a2e39;
+  color: #d1d4dc;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 14px;
+  cursor: pointer;
+}
+  
+.connection-status {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+  font-size: 14px;
+}
+  
+.connection-status.connected {
+  color: #4caf50;
+}
+  
+.connection-status.disconnected {
+  color: #ff5252;
+}
