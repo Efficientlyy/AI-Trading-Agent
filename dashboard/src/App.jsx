@@ -29,6 +29,7 @@ import GitHubIcon from '@mui/icons-material/GitHub';
 // Import components
 import PaperTradingControl from './components/PaperTradingControl';
 import AgentVisualization from './components/AgentVisualization';
+import SystemDashboard from './components/SystemDashboard';
 
 // Create theme
 const theme = createTheme({
@@ -49,7 +50,8 @@ const theme = createTheme({
 
 function App() {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [activePage, setActivePage] = useState('paper-trading');
+  // Set default to 'system-control' to force SystemDashboard to render on startup for debug
+  const [activePage, setActivePage] = useState('system-control');
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleDrawerToggle = () => {
@@ -74,12 +76,24 @@ function App() {
       <List>
         <ListItem 
           button 
+          selected={activePage === 'system-control'} 
+          onClick={() => handlePageChange('system-control')}
+        >
+          <ListItemIcon>
+            <SettingsIcon />
+          </ListItemIcon>
+          <ListItemText primary="System Control" />
+        </ListItem>
+        <ListItem 
+          button 
           selected={activePage === 'paper-trading'} 
           onClick={() => handlePageChange('paper-trading')}
         >
           <ListItemIcon>
             <PlayArrowIcon />
           </ListItemIcon>
+          <ListItemText primary="Paper Trading" />
+        </ListItem>istItemIcon>
           <ListItemText primary="Paper Trading" />
         </ListItem>
         <ListItem 
@@ -155,6 +169,9 @@ function App() {
           }}
         >
           <Container maxWidth="xl">
+            {activePage === 'system-control' && (
+              <SystemDashboard />
+            )}
             {activePage === 'paper-trading' && (
               <PaperTradingControl />
             )}

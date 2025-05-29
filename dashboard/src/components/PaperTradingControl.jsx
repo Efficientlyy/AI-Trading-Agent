@@ -1,28 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import {
-  Box,
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CircularProgress,
-  Divider,
-  FormControl,
-  Grid,
-  InputLabel,
-  MenuItem,
-  Select,
-  TextField,
-  Typography,
-  Alert,
-  Snackbar
-} from '@mui/material';
-import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import StopIcon from '@mui/icons-material/Stop';
-import RefreshIcon from '@mui/icons-material/Refresh';
-
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000';
+import React from 'react';
+import SystemDashboard from './SystemDashboard';
 
 const PaperTradingControl = () => {
   // State
