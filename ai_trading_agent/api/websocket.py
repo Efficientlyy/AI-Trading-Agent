@@ -4,18 +4,29 @@ WebSocket handler for real-time updates.
 This module provides a WebSocket connection for real-time updates to the frontend.
 """
 
-import logging
-from typing import Dict, List, Any
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
-import json
 import asyncio
 from datetime import datetime
+from typing import Dict, List, Any
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+import json
+import logging
+
+# Import event bus module consistently
+from ..common.event_bus import get_event_bus
+
+# Import technical analysis agent API
+from .data_source_api import get_ta_agent
+from ..agent.technical_analysis_agent import DataMode
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Create router
+# Create router for main WebSocket endpoints
 router = APIRouter(tags=["websocket"])
+
+# Create separate routers for different WebSocket endpoints
+from .crypto_websocket import router as crypto_router
+from .mexc_websocket import router as mexc_router
 
 # Store active connections
 active_connections: Dict[str, WebSocket] = {}
@@ -44,12 +55,65 @@ async def websocket_endpoint(websocket: WebSocket, session_id: str):
                 message = json.loads(data)
                 logger.info(f"Received message from session {session_id}: {message}")
                 
-                # Echo the message back to the client
-                await websocket.send_json({
-                    "type": "echo",
-                    "data": message,
-                    "timestamp": datetime.utcnow().isoformat()
-                })
+                # Process message based on action
+                if 'action' in message:
+                    action = message['action']
+                    
+                    # Handle set_data_mode action
+                    if action == 'set_data_mode' and 'mode' in message:
+                        ta_agent = get_ta_agent()
+                        data_mode = message['mode']
+                        
+                        # Update the technical analysis agent's data mode
+                        if data_mode == 'mock' or data_mode == 'real':
+                            # Update data source config via the agent's method
+                            current_mode = ta_agent.get_data_source_type()
+                            
+                            # Only toggle if the requested mode is different from current mode
+                            if current_mode != data_mode:
+                                new_mode = ta_agent.toggle_data_source()
+                                logger.info(f"Changed Technical Analysis Agent data mode from {current_mode} to {new_mode}")
+                                
+                                # Publish event to notify orchestrator and other components
+                                event_bus = get_event_bus()
+                                event_bus.publish(
+                                    'data_source_toggled',
+                                    {'is_mock': new_mode == 'mock'},
+                                    source='websocket'
+                                )
+                                logger.info(f"Published data_source_toggled event: is_mock={new_mode == 'mock'}")
+                            else:
+                                logger.info(f"Technical Analysis Agent already in {data_mode} mode")
+                        
+                        # Send confirmation back to client
+                        await websocket.send_json({
+                            "type": "data_mode_update",
+                            "mode": ta_agent.get_data_source_type(),  # Get the actual current mode
+                            "timestamp": datetime.utcnow().isoformat()
+                        })
+                    
+                    # Handle ping action
+                    elif action == 'ping':
+                        await websocket.send_json({
+                            "type": "pong",
+                            "timestamp": datetime.utcnow().isoformat()
+                        })
+                    
+                    # Handle other actions - echo back for now
+                    else:
+                        await websocket.send_json({
+                            "type": "echo",
+                            "data": message,
+                            "timestamp": datetime.utcnow().isoformat()
+                        })
+                
+                # If no action specified, just echo back
+                else:
+                    await websocket.send_json({
+                        "type": "echo",
+                        "data": message,
+                        "timestamp": datetime.utcnow().isoformat()
+                    })
             except json.JSONDecodeError:
                 logger.error(f"Invalid JSON received from session {session_id}")
                 continue

@@ -1,5 +1,10 @@
 """
 Main API server for the AI Trading Agent.
+# Fix Python path for imports
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+
+
 
 This module provides the main FastAPI server for the AI Trading Agent,
 including endpoints for data, trading, and dashboard functionality.
@@ -33,22 +38,19 @@ except ImportError:
 
 # Import paper trading router directly
 try:
-    import sys
-    import os
-    
-    # Add the current directory to the path
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    if current_dir not in sys.path:
-        sys.path.insert(0, current_dir)
-    
-    # Import the direct_paper_trading module using an absolute import
-    import direct_paper_trading
-    paper_trading_router = direct_paper_trading.router
+    from ai_trading_agent.api import paper_trading_api
+    paper_trading_router = paper_trading_api.router
     has_paper_trading_api = True
-    logger.info("Using direct paper trading API with absolute import")
-except ImportError as e:
-    logger.error(f"Error importing direct paper trading API: {str(e)}")
-    has_paper_trading_api = False
+    logger.info("Registered paper_trading_api router via absolute import.")
+except ImportError as abs_err:
+    try:
+        from . import paper_trading_api
+        paper_trading_router = paper_trading_api.router
+        has_paper_trading_api = True
+        logger.info("Registered paper_trading_api router via relative import.")
+    except ImportError as rel_err:
+        logger.error(f"Failed to import paper_trading_api.py: Absolute error: {abs_err} | Relative error: {rel_err}")
+        has_paper_trading_api = False
 
 try:
     from ai_trading_agent.api.agent_visualization_api import router as agent_visualization_router
@@ -86,6 +88,43 @@ except ImportError:
         logger.warning("Agent API not available, endpoints will not be registered")
         has_agent_api = False
 
+# Import system control router
+try:
+    from ai_trading_agent.api.system_control import system_control_router
+    has_system_control_api = True
+except ImportError:
+    logger.warning("System Control API not available, endpoints will not be registered")
+    has_system_control_api = False
+    
+# Import data feed manager
+try:
+    from ai_trading_agent.api.data_feed_manager import data_feed_manager
+    has_data_feed_manager = True
+except ImportError:
+    logger.warning("Data Feed Manager not available, data feed connection may not work properly")
+    has_data_feed_manager = False
+
+# Import sentiment pipeline API
+try:
+    from ai_trading_agent.api.sentiment_pipeline_api import router as sentiment_pipeline_router
+    has_sentiment_pipeline_api = True
+except ImportError:
+    logger.warning("Sentiment Pipeline API not available, endpoints will not be registered")
+    has_sentiment_pipeline_api = False
+
+# Import technical analysis API
+try:
+    from ai_trading_agent.api.technical_analysis_api import router as technical_analysis_router
+    has_technical_analysis_api = True
+except ImportError:
+    try:
+        # Fallback to relative import for development environment
+        from .technical_analysis_api import router as technical_analysis_router
+        has_technical_analysis_api = True
+    except ImportError:
+        logger.warning("Technical Analysis API not available, endpoints will not be registered")
+        has_technical_analysis_api = False
+
 # Create FastAPI app
 app = FastAPI(
     title="AI Trading Agent API",
@@ -116,10 +155,69 @@ if has_agent_visualization_api:
 if has_websocket_api:
     app.include_router(websocket_router)
     logger.info("WebSocket API endpoints registered")
+    
+    # Register WebSocket startup and shutdown handlers
+    try:
+        from ai_trading_agent.api.websocket_api import startup_event, shutdown_event
+        
+        @app.on_event("startup")
+        async def start_mexc_streams():
+            await startup_event()
+            
+        @app.on_event("shutdown")
+        async def stop_mexc_streams():
+            await shutdown_event()
+            
+        logger.info("WebSocket API startup/shutdown handlers registered")
+    except Exception as e:
+        logger.warning(f"Failed to register WebSocket API event handlers: {e}")
+    
+    # Include MEXC WebSocket router
+    try:
+        from ai_trading_agent.api.mexc_websocket import router as mexc_ws_router
+        app.include_router(mexc_ws_router)
+        logger.info("MEXC WebSocket API endpoints registered at /ws/mexc/")
+        
+        # Import MEXC connector but don't crash if connection fails
+        try:
+            from ai_trading_agent.config.mexc_config import MEXC_CONFIG
+            logger.info(f"MEXC API Key configured: {'Yes' if MEXC_CONFIG.get('API_KEY') else 'No'}")
+            logger.info(f"MEXC API Secret configured: {'Yes' if MEXC_CONFIG.get('API_SECRET') else 'No'}")
+        except Exception as e:
+            logger.warning(f"Error loading MEXC configuration: {e}")
+    except ImportError:
+        try:
+            # Fallback to relative import for development environment
+            from .mexc_websocket import router as mexc_ws_router
+            app.include_router(mexc_ws_router)
+            logger.info("MEXC WebSocket API endpoints registered at /ws/mexc/")
+        except ImportError:
+            logger.warning("MEXC WebSocket API not available, endpoints will not be registered")
 
 if has_agent_api:
     app.include_router(agent_router)
     logger.info("Agent API endpoints registered")
+
+if has_system_control_api:
+    app.include_router(system_control_router, prefix="/api")
+    logger.info("System Control API endpoints registered at /api/system/")
+
+if has_sentiment_pipeline_api:
+    app.include_router(sentiment_pipeline_router)
+    logger.info("Sentiment Pipeline API endpoints registered at /api/sentiment/")
+
+if has_technical_analysis_api:
+    app.include_router(technical_analysis_router)
+    logger.info("Technical Analysis API endpoints registered")
+
+@app.on_event("startup")
+async def log_routes():
+    route_list = []
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            route_list.append(f"{route.path} - {route.methods}")
+    logger.info("Registered routes:\n" + "\n".join(route_list))
+
 
 # Include session management API
 try:
@@ -154,3 +252,28 @@ async def serve_dashboard(full_path: str):
     if os.path.exists(index_path):
         return FileResponse(index_path)
     raise HTTPException(status_code=404, detail="Dashboard not found")
+
+@app.on_event("startup")
+async def log_routes():
+    route_list = []
+    for route in app.routes:
+        if hasattr(route, 'path') and hasattr(route, 'methods'):
+            route_list.append(f"{route.path} - {route.methods}")
+    logger.info("Registered routes:\n" + "\n".join(route_list))
+
+
+# Enable direct execution of this file
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    host = os.environ.get("HOST", "0.0.0.0")
+    log_level = os.environ.get("LOG_LEVEL", "info")
+    
+    print(f"Starting API server on {host}:{port}")
+    
+    uvicorn.run(
+        "ai_trading_agent.api.main:app", 
+        host=host,
+        port=port,
+        log_level=log_level
+    )

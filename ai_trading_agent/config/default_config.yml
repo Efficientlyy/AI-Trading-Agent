@@ -1,0 +1,141 @@
+###############################################
+# AI Trading Agent - Default Configuration
+###############################################
+
+# System settings
+log_dir: "./logs"
+debug_mode: false
+
+# Market data settings
+tickers:
+  - SPY   # S&P 500 ETF
+  - QQQ   # Nasdaq 100 ETF
+  - IWM   # Russell 2000 ETF
+  - TLT   # 20+ Year Treasury Bond ETF
+  - GLD   # Gold ETF
+  - XLF   # Financial Sector ETF
+  - XLE   # Energy Sector ETF
+  - XLK   # Technology Sector ETF
+
+data_sources:
+  - yfinance
+  - alpaca  # Enable if API keys are provided
+
+data_update_interval: 60  # seconds
+
+# Technical indicators
+indicators:
+  - rsi
+  - macd
+  - bollinger
+  - stochastic
+  - atr
+  - vwap
+  - volume_profile
+  - price_momentum
+
+# Timeframes to analyze
+timeframes:
+  - 1h
+  - 4h
+  - 1d
+  - 1W
+
+# Strategy configuration
+strategies:
+  - momentum
+  - mean_reversion
+  - trend_following
+  - volatility_breakout
+  - ml_strategy
+
+default_strategy: trend_following
+
+# Aggregation methods for meta-strategy
+aggregation_methods:
+  - majority_vote
+  - weighted_average
+  - performance_weighted
+  - dynamic_threshold
+  - reinforcement_learning
+
+# Risk management parameters
+max_portfolio_risk: 0.02     # 2% max VaR
+max_position_size: 0.1       # 10% max per position
+risk_free_rate: 0.01         # 1%
+volatility_scaling: true     # Enable position sizing based on volatility
+
+# Portfolio settings
+initial_capital: 100000      # $100k starting capital
+enable_correlation_risk: true
+max_correlation: 0.7         # Maximum allowed correlation between positions
+
+# Market regime settings
+market_regime:
+  lookback_window: 20
+  enable_volatility_clustering: true
+  enable_correlation_regimes: true
+  enable_liquidity_analysis: true
+  enable_temporal_patterns: true
+  
+  # Volatility thresholds
+  volatility_thresholds:
+    low: 0.008     # < 0.8% daily volatility
+    medium: 0.016  # < 1.6% daily volatility
+    high: 0.03     # < 3% daily volatility
+  
+  # Momentum thresholds
+  momentum_thresholds:
+    weak: 0.05     # 5% trend
+    strong: 0.1    # 10% trend
+  
+  # Temporal pattern settings
+  temporal:
+    seasonality_periods:
+      - 5          # Weekly
+      - 21         # Monthly
+      - 63         # Quarterly
+    multi_timeframe_confirmation: true
+    transition_probability_lookback: 180  # days
+
+# Adaptive response settings
+adaptive_response:
+  adaptation_interval_minutes: 60
+  enable_strategy_switching: true
+  reinforcement_learning:
+    enabled: true
+    exploration_rate: 0.2
+    learning_rate: 0.1
+    discount_factor: 0.9
+  
+  # Strategy parameter boundaries
+  parameter_ranges:
+    position_size_scaling:
+      min: 0.5
+      max: 2.0
+    stop_loss_scaling:
+      min: 0.5
+      max: 1.5
+
+# Execution settings
+broker: paper       # paper, alpaca, interactive_brokers
+simulation_mode: true
+slippage_model: proportional  # fixed, proportional, market_impact
+slippage_factor: 0.0005       # 5 basis points
+
+# API credentials (replace with actual credentials in production)
+api_key: ""
+api_secret: ""
+
+# Health monitoring settings
+health_monitoring:
+  heartbeat_interval: 5.0
+  error_thresholds:
+    warning: 3
+    critical: 5
+    fatal: 10
+  circuit_breaker:
+    enabled: true
+    failure_threshold: 3
+    recovery_time_base: 5
+    max_recovery_time: 300

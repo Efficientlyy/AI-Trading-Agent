@@ -239,6 +239,35 @@ class StrategyError(TradingAgentError):
         )
 
 
+class IndicatorCalculationError(TradingAgentError):
+    """Exception raised for errors during indicator calculation."""
+    
+    def __init__(
+        self,
+        message: str,
+        error_code: ErrorCode = ErrorCode.STRATEGY_CALCULATION_ERROR, 
+        severity: ErrorSeverity = ErrorSeverity.ERROR,
+        details: Optional[Dict[str, Any]] = None,
+        cause: Optional[Exception] = None,
+        troubleshooting: Optional[List[str]] = None
+    ):
+        super().__init__(
+            message=message,
+            error_code=error_code,
+            error_category=ErrorCategory.STRATEGY, 
+            severity=severity,
+            details=details,
+            cause=cause,
+            troubleshooting=troubleshooting or [
+                "Check input data for the indicator (e.g., price series).",
+                "Verify indicator parameters (e.g., periods, window sizes).",
+                "Ensure there's enough historical data for the calculation.",
+                "Check for mathematical errors (e.g., division by zero) in the indicator logic.",
+                "If using Rust extensions, ensure they are compiled and accessible."
+            ]
+        )
+
+
 class ExecutionError(TradingAgentError):
     """Exception raised for errors related to order execution."""
     

@@ -3,10 +3,15 @@ Machine Learning Strategy Module
 
 This module implements trading strategies based on machine learning models
 that predict price movements using technical indicators and other features.
+
+Enhanced with reinforcement learning for meta-parameter optimization and
+automated feature engineering for dynamic feature selection and creation.
 """
 
 import numpy as np
 import pandas as pd
+import time
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple, Any, Union
 import logging
 import joblib
@@ -17,23 +22,31 @@ from sklearn.model_selection import train_test_split, TimeSeriesSplit
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
 
 from .strategy import BaseStrategy, RichSignal, RichSignalsDict
+from .market_regime import MarketRegimeClassifier
 from ..common import logger
 from ..indicators import calculate_rsi, calculate_macd, calculate_bollinger_bands
+from ..ml.reinforcement_learning import create_trading_rl_agent, TradingRLAgent
+from ..ml.feature_engineering import create_feature_engineer, FeatureEngineer
+from ..risk.risk_manager import RiskManager
+from ..coordination.strategy_coordinator import StrategyCoordinator
+from ..coordination.performance_attribution import PerformanceAttributor
 
 
 class MLStrategy(BaseStrategy):
     """
-    Trading strategy based on machine learning predictions.
+    Trading strategy based on machine learning predictions with reinforcement learning optimization.
     
-    This strategy:
-    1. Extracts features from price data using technical indicators
-    2. Uses a trained ML model to predict price direction
-    3. Generates trading signals based on prediction confidence
+    This enhanced strategy:
+    1. Uses automated feature engineering to dynamically select and create features
+    2. Employs ML models to predict price direction and generate base signals
+    3. Optimizes strategy parameters using reinforcement learning
+    4. Adapts to different market regimes for improved performance
+    5. Self-tunes its features and parameters based on performance feedback
     """
     
     def __init__(self, config: Dict[str, Any]):
         """
-        Initialize the MLStrategy.
+        Initialize the enhanced MLStrategy.
         
         Args:
             config: Configuration dictionary with parameters for the strategy.
@@ -45,9 +58,94 @@ class MLStrategy(BaseStrategy):
                 - confidence_threshold: Minimum prediction probability to generate a signal
                 - features: List of features/indicators to use
                 - model_path: Optional path to save/load trained models
+                - enable_rl: Whether to enable reinforcement learning optimization
+                - enable_feature_engineering: Whether to enable automated feature engineering
+                - rl_config: Configuration for the reinforcement learning agent
+                - feature_engineering_config: Configuration for the feature engineering system
+                - market_regime_config: Configuration for market regime detection
         """
         super().__init__(config)
-        self.name = config.get("name", "MLStrategy")
+        self.name = config.get("name", "EnhancedMLStrategy")
+        
+        # Core ML strategy parameters
+        self.model_type = config.get("model_type", "random_forest")
+        self.prediction_horizon = config.get("prediction_horizon", 1)
+        self.training_lookback = config.get("training_lookback", 500)
+        self.retrain_frequency = config.get("retrain_frequency", 20)
+        self.confidence_threshold = config.get("confidence_threshold", 0.65)
+        self.feature_list = config.get("features", ["rsi", "macd", "bb", "price_momentum", "volume_momentum"])
+        self.model_path = config.get("model_path", None)
+        
+        # Enhanced capabilities flags
+        self.enable_rl = config.get("enable_rl", True)
+        self.enable_feature_engineering = config.get("enable_feature_engineering", True)
+        self.enable_regime_adaptation = config.get("enable_regime_adaptation", True)
+        
+        # Initialize models and tracking
+        self.models = {}
+        self.last_train_time = {}
+        self.performance_history = {}
+        self.current_params = {}
+        self.feature_sets = {}
+        self.current_regimes = {}
+        
+        # Initialize risk manager for risk-adjusted rewards
+        self.risk_manager = RiskManager(config.get("risk_config", {}))
+        
+        # Initialize market regime classifier if enabled
+        if self.enable_regime_adaptation:
+            regime_config = config.get("market_regime_config", {})
+            self.regime_classifier = MarketRegimeClassifier(regime_config)
+        else:
+            self.regime_classifier = None
+        
+        # Initialize feature engineering system if enabled
+        if self.enable_feature_engineering:
+            feature_eng_config = config.get("feature_engineering_config", {})
+            self.feature_engineer = create_feature_engineer(
+                feature_eng_config, 
+                self.regime_classifier
+            )
+        else:
+            self.feature_engineer = None
+            
+        # Initialize reinforcement learning agent if enabled
+        if self.enable_rl:
+            rl_config = config.get("rl_config", {})
+            self.rl_agent = create_trading_rl_agent(
+                rl_config,
+                self.risk_manager
+            )
+        else:
+            self.rl_agent = None
+            
+        # Initialize cross-strategy coordination if enabled
+        self.enable_coordination = config.get("enable_coordination", True)
+        if self.enable_coordination:
+            coord_config = config.get("coordination_config", {})
+            self.strategy_coordinator = StrategyCoordinator(coord_config)
+        else:
+            self.strategy_coordinator = None
+            
+        # Initialize performance attribution if enabled
+        self.enable_attribution = config.get("enable_attribution", True)
+        if self.enable_attribution:
+            attr_config = config.get("attribution_config", {})
+            self.performance_attributor = PerformanceAttributor(attr_config)
+        else:
+            self.performance_attributor = None
+            
+        # Strategy parameter ranges for RL optimization
+        self.param_ranges = {
+            "confidence_threshold": (0.55, 0.95),
+            "prediction_horizon": (1, 10),
+            "training_window_scale": (0.5, 2.0),  # Scaling factor for training_lookback
+            "position_size_factor": (0.1, 1.0)
+        }
+        
+        logger.info(f"{self.name} initialized with RL: {self.enable_rl}, "
+                   f"Feature Engineering: {self.enable_feature_engineering}, "
+                   f"Regime Adaptation: {self.enable_regime_adaptation}")
         self.model_type = config.get("model_type", "random_forest")
         self.prediction_horizon = config.get("prediction_horizon", 1)
         self.training_lookback = config.get("training_lookback", 500)
@@ -69,7 +167,7 @@ class MLStrategy(BaseStrategy):
     
     def generate_signals(self, data: Dict[str, pd.DataFrame], **kwargs) -> RichSignalsDict:
         """
-        Generate trading signals based on ML model predictions.
+        Generate trading signals based on ML model predictions with reinforcement learning optimization.
         
         Args:
             data: Dictionary mapping symbols to their historical data
@@ -93,28 +191,106 @@ class MLStrategy(BaseStrategy):
                 logger.warning(f"{self.name}: Not enough data for {symbol}, skipping")
                 continue
             
-            # Initialize period counter for this symbol if needed
-            if symbol not in self.period_counter:
-                self.period_counter[symbol] = 0
-            else:
-                self.period_counter[symbol] += 1
+            try:
+                # 1. Detect market regime if enabled
+                if self.enable_regime_adaptation and self.regime_classifier is not None:
+                    regime = self.detect_market_regime(symbol, df)
+                    self.current_regimes[symbol] = regime
+                    logger.info(f"{self.name}: Current regime for {symbol}: {regime}")
+                
+                # Initialize period counter for this symbol if needed
+                if symbol not in self.period_counter:
+                    self.period_counter[symbol] = 0
+                else:
+                    self.period_counter[symbol] += 1
+                
+                # 2. Apply automated feature engineering if enabled
+                if self.enable_feature_engineering and self.feature_engineer is not None:
+                    features = self.engineer_features(symbol, df)
+                else:
+                    # Use traditional feature extraction
+                    features = self._extract_features(df)
+                
+                if features is None or features.empty:
+                    logger.warning(f"{self.name}: Could not extract features for {symbol}")
+                    continue
+                
+                # 3. Apply reinforcement learning for parameter optimization if enabled
+                if self.enable_rl and self.rl_agent is not None and symbol in self.performance_history:
+                    # Get recent performance data
+                    recent_performance = self.performance_history[symbol][-1] if self.performance_history[symbol] else {}
+                    
+                    # Optimize parameters using RL
+                    optimized_params = self.optimize_parameters(symbol, df, recent_performance)
+                    
+                    # Apply the optimized parameters
+                    self.apply_optimized_parameters(symbol)
+                
+                # 4. Check if we need to train/retrain the model
+                if (symbol not in self.models or 
+                    self.period_counter[symbol] >= self.retrain_frequency):
+                    # Train with potentially new features from feature engineering
+                    self._train_model(symbol, df)
+                    self.period_counter[symbol] = 0
+                
+                # 5. Make prediction with optimized parameters
+                signal_data = self._predict_and_generate_signal(symbol, features, timestamp)
+                
+                if signal_data:
+                    # Apply position sizing from RL if available
+                    if (self.enable_rl and self.rl_agent is not None and
+                        symbol in self.current_params and "position_size_factor" in self.current_params[symbol]):
+                        position_size_factor = self.current_params[symbol]["position_size_factor"]
+                        
+                        # Apply position sizing to signal while preserving direction
+                        for ts, signal in signal_data.items():
+                            if signal.action != 0:  # If not a HOLD signal
+                                original_quantity = signal.quantity
+                                signal.quantity = original_quantity * position_size_factor
+                                if signal.metadata is None:
+                                    signal.metadata = {}
+                                signal.metadata["position_size_factor"] = position_size_factor
+                                logger.info(f"{self.name}: Applied position sizing factor {position_size_factor} "
+                                           f"to {symbol} signal: {original_quantity} -> {signal.quantity}")
+                    
+                    signals[symbol] = signal_data
+                    
+                    # Calculate returns and drawdown for RL feedback if we have sufficient future data
+                    current_price_idx = df.index.get_indexer([timestamp], method='pad')[0]
+                    if current_price_idx >= 0 and current_price_idx + self.prediction_horizon < len(df):
+                        current_price = df['close'].iloc[current_price_idx]
+                        future_price = df['close'].iloc[current_price_idx + self.prediction_horizon]
+                        
+                        # Calculate returns aligned with signal direction
+                        raw_return = (future_price - current_price) / current_price
+                        
+                        # Get the main signal (using the first one in the dictionary)
+                        main_signal = next(iter(signal_data.values()))
+                        
+                        # Align return with signal direction (positive for correct prediction)
+                        if main_signal.action < 0:  # Short position
+                            period_return = -raw_return  # Invert for short positions
+                        else:
+                            period_return = raw_return
+                        
+                        # Calculate drawdown
+                        price_window = df['close'].iloc[current_price_idx:current_price_idx + self.prediction_horizon + 1]
+                        if len(price_window) > 1:
+                            if main_signal.action > 0:  # For long positions
+                                peak = price_window.max()
+                                trough = price_window.min()
+                                drawdown = (peak - trough) / peak if peak > 0 else 0
+                            else:  # For short positions (drawdown is when price goes up)
+                                trough = price_window.min()
+                                peak = price_window.max()
+                                drawdown = (peak - trough) / trough if trough > 0 else 0
+                            
+                            # Update performance history for RL feedback
+                            self.update_performance_history(symbol, signal_data, period_return, drawdown)
             
-            # Check if we need to train/retrain the model
-            if (symbol not in self.models or 
-                self.period_counter[symbol] >= self.retrain_frequency):
-                self._train_model(symbol, df)
-                self.period_counter[symbol] = 0
-            
-            # Extract features for prediction
-            features = self._extract_features(df)
-            if features is None or features.empty:
-                logger.warning(f"{self.name}: Could not extract features for {symbol}")
+            except Exception as e:
+                logger.error(f"{self.name}: Error generating signals for {symbol}: {e}")
                 continue
-            
-            # Make prediction
-            signal_data = self._predict_and_generate_signal(symbol, features, timestamp)
-            if signal_data:
-                signals[symbol] = signal_data
         
         return signals
     
@@ -384,6 +560,220 @@ class MLStrategy(BaseStrategy):
             logger.error(f"{self.name}: Error making prediction for {symbol}: {e}")
             return None
             
+    def detect_market_regime(self, symbol: str, data: pd.DataFrame) -> str:
+        """
+        Detect the current market regime for a symbol.
+        
+        Args:
+            symbol: The trading symbol
+            data: Historical price data
+            
+        Returns:
+            String identifying the market regime
+        """
+        if not self.enable_regime_adaptation or self.regime_classifier is None:
+            return "default"
+            
+        try:
+            regime = self.regime_classifier.classify_regime(data)
+            self.current_regimes[symbol] = regime
+            logger.info(f"{self.name}: Detected {regime} regime for {symbol}")
+            return regime
+        except Exception as e:
+            logger.error(f"{self.name}: Error detecting market regime for {symbol}: {e}")
+            return "default"
+    
+    def engineer_features(self, symbol: str, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Apply automated feature engineering to improve prediction quality.
+        
+        Args:
+            symbol: The trading symbol
+            data: Historical price data
+            
+        Returns:
+            DataFrame with engineered features
+        """
+        if not self.enable_feature_engineering or self.feature_engineer is None:
+            # Use basic feature extraction if automated feature engineering is disabled
+            return self._extract_features(data)
+            
+        try:
+            # Detect current market regime
+            regime = self.current_regimes.get(symbol, self.detect_market_regime(symbol, data))
+            
+            # Get optimal feature set for this regime
+            enhanced_data = self.feature_engineer.get_optimal_feature_set(data, regime)
+            
+            # Save the feature set for this symbol
+            self.feature_sets[symbol] = enhanced_data.columns.tolist()
+            
+            logger.info(f"{self.name}: Generated {len(enhanced_data.columns)} features for {symbol} in {regime} regime")
+            return enhanced_data
+            
+        except Exception as e:
+            logger.error(f"{self.name}: Error in feature engineering for {symbol}: {e}")
+            # Fall back to basic feature extraction
+            return self._extract_features(data)
+    
+    def optimize_parameters(self, symbol: str, data: pd.DataFrame, performance: Dict[str, float]) -> Dict[str, float]:
+        """
+        Use reinforcement learning to optimize strategy parameters.
+        
+        Args:
+            symbol: The trading symbol
+            data: Historical price data
+            performance: Dictionary of performance metrics
+            
+        Returns:
+            Dictionary of optimized parameters
+        """
+        if not self.enable_rl or self.rl_agent is None:
+            # Return current parameters if RL is disabled
+            return self.current_params.get(symbol, {})
+            
+        try:
+            # Prepare current state for RL agent
+            regime = self.current_regimes.get(symbol, self.detect_market_regime(symbol, data))
+            
+            # Normalize strategy parameters to [0,1] range for RL
+            normalized_params = {}
+            for param, (min_val, max_val) in self.param_ranges.items():
+                if param == "confidence_threshold":
+                    current_val = self.confidence_threshold
+                elif param == "prediction_horizon":
+                    current_val = self.prediction_horizon
+                elif param == "training_window_scale":
+                    current_val = 1.0  # Default scale factor
+                elif param == "position_size_factor":
+                    # Get from performance data or use default
+                    current_val = performance.get("position_size_factor", 0.5)
+                else:
+                    continue
+                    
+                # Normalize to [0,1]
+                param_range = max_val - min_val
+                normalized_params[param] = (current_val - min_val) / param_range
+            
+            # Create state dict for RL agent
+            current_state = {
+                "strategy_params": normalized_params,
+                "performance": performance,
+                "market_regime": regime
+            }
+            
+            # Get optimized parameters from RL agent
+            updated_normalized_params = self.rl_agent.adapt_strategy(
+                current_state,
+                data
+            )
+            
+            # Convert back to actual parameter values
+            updated_params = {}
+            for param, norm_val in updated_normalized_params.items():
+                min_val, max_val = self.param_ranges[param]
+                param_range = max_val - min_val
+                actual_val = min_val + (norm_val * param_range)
+                updated_params[param] = actual_val
+            
+            # Save the updated parameters
+            self.current_params[symbol] = updated_params
+            
+            # Log the parameter updates
+            logger.info(f"{self.name}: RL optimized parameters for {symbol} in {regime} regime: {updated_params}")
+            
+            return updated_params
+            
+        except Exception as e:
+            logger.error(f"{self.name}: Error in RL parameter optimization for {symbol}: {e}")
+            # Return current parameters as fallback
+            return self.current_params.get(symbol, {})
+    
+    def apply_optimized_parameters(self, symbol: str) -> None:
+        """
+        Apply optimized parameters from RL to the strategy.
+        
+        Args:
+            symbol: The trading symbol
+        """
+        if symbol not in self.current_params:
+            return
+            
+        params = self.current_params[symbol]
+        
+        # Apply parameters selectively
+        if "confidence_threshold" in params:
+            self.confidence_threshold = params["confidence_threshold"]
+            
+        if "prediction_horizon" in params:
+            # Ensure prediction_horizon is an integer
+            self.prediction_horizon = int(round(params["prediction_horizon"]))
+            
+        if "training_window_scale" in params:
+            # Apply scaling to training_lookback
+            scale = params["training_window_scale"]
+            self.training_lookback = int(self.config.get("training_lookback", 500) * scale)
+            
+        logger.info(f"{self.name}: Applied optimized parameters for {symbol}: "
+                   f"confidence_threshold={self.confidence_threshold}, "
+                   f"prediction_horizon={self.prediction_horizon}, "
+                   f"training_lookback={self.training_lookback}")
+    
+    def update_performance_history(self, symbol: str, signals: RichSignalsDict, 
+                                 returns: float, drawdown: float) -> None:
+        """
+        Update performance history for reinforcement learning feedback.
+        
+        Args:
+            symbol: The trading symbol
+            signals: Generated trading signals
+            returns: Period returns
+            drawdown: Maximum drawdown
+        """
+        # Calculate performance metrics
+        signal_count = len([s for s in signals.values() if s.action != 0])
+        
+        # Calculate volatility from returns
+        if symbol in self.performance_history and len(self.performance_history[symbol]) > 0:
+            prev_returns = [p["returns"] for p in self.performance_history[symbol][-20:]]
+            volatility = np.std(prev_returns + [returns])
+        else:
+            volatility = 0.01  # Default value
+        
+        # Create performance record
+        performance = {
+            "timestamp": datetime.now().isoformat(),
+            "returns": returns,
+            "volatility": volatility,
+            "drawdown": drawdown,
+            "sharpe_ratio": returns / max(volatility, 1e-8),
+            "trade_count": signal_count,
+            "market_regime": self.current_regimes.get(symbol, "default")
+        }
+        
+        # Initialize performance history for this symbol if needed
+        if symbol not in self.performance_history:
+            self.performance_history[symbol] = []
+            
+        # Add to history
+        self.performance_history[symbol].append(performance)
+        
+        # Trim history to avoid memory bloat
+        max_history = 100
+        if len(self.performance_history[symbol]) > max_history:
+            self.performance_history[symbol] = self.performance_history[symbol][-max_history:]
+            
+        # Update feature engineering with performance feedback if enabled
+        if self.enable_feature_engineering and self.feature_engineer is not None:
+            try:
+                regime = self.current_regimes.get(symbol, "default")
+                self.feature_engineer.adapt_features_to_regime(
+                    regime, 
+                    performance["sharpe_ratio"]
+                )
+            except Exception as e:
+                logger.error(f"{self.name}: Error updating feature engineering: {e}")
+    
     def update_config(self, config_updates: Dict[str, Any]) -> None:
         """
         Update the strategy's configuration parameters dynamically.
@@ -424,5 +814,15 @@ class MLStrategy(BaseStrategy):
             
         if "model_path" in config_updates:
             self.model_path = config_updates["model_path"]
+            
+        # Update enhanced capabilities flags
+        if "enable_rl" in config_updates:
+            self.enable_rl = config_updates["enable_rl"]
+            
+        if "enable_feature_engineering" in config_updates:
+            self.enable_feature_engineering = config_updates["enable_feature_engineering"]
+            
+        if "enable_regime_adaptation" in config_updates:
+            self.enable_regime_adaptation = config_updates["enable_regime_adaptation"]
             
         logger.info(f"{self.name} configuration updated")

@@ -12,6 +12,10 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional, Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+# Import MEXC data provider
+from ai_trading_agent.data_acquisition.mexc_spot_v3_client import MexcSpotV3Client
+from ai_trading_agent.config.mexc_config import MEXC_CONFIG, TRADING_PAIRS
+
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -59,8 +63,121 @@ active_sessions: Set[str] = set()
 # Mock data generation tasks
 mock_data_tasks: Dict[str, asyncio.Task] = {}
 
+# MEXC client
+mexc_client = None
+mexc_ws_tasks: Dict[str, asyncio.Task] = {}
+
 # Create API router - updated for WebSocket endpoint
 router = APIRouter()
+
+# Add a WebSocket endpoint specifically for crypto data
+@router.websocket("/ws/crypto/{symbol}/{interval}")
+async def crypto_websocket_endpoint(websocket: WebSocket, symbol: str, interval: str = "1m"):
+    """WebSocket endpoint for real-time crypto data."""
+    logger.info(f"Crypto WebSocket connection attempt for {symbol} ({interval})")
+    
+    # Accept the connection
+    await websocket.accept()
+    logger.info(f"Crypto WebSocket connection accepted for {symbol} ({interval})")
+    
+    # Format the symbol to match MEXC format if needed
+    formatted_symbol = symbol.replace("-", "/").upper()
+    
+    # Subscribe to the appropriate topics
+    topics = ["crypto_ticker", "crypto_kline", "crypto_orderbook"]
+    client_id = f"crypto_{symbol}_{interval}_{id(websocket)}"
+    
+    # Connect to the manager
+    await manager.connect(websocket, client_id, topics)
+    
+    # Ensure MEXC client is initialized
+    if mexc_client is None:
+        await initialize_mexc_client()
+    
+    # Subscribe to MEXC data streams if not already subscribed
+    if mexc_client is not None and formatted_symbol in TRADING_PAIRS:
+        try:
+            if f"ticker_{formatted_symbol}" not in mexc_ws_tasks:
+                ticker_task = await mexc_client.subscribe_ticker(formatted_symbol, handle_mexc_ticker_update)
+                mexc_ws_tasks[f"ticker_{formatted_symbol}"] = ticker_task
+            
+            if f"kline_{formatted_symbol}_{interval}" not in mexc_ws_tasks:
+                kline_task = await mexc_client.subscribe_kline(formatted_symbol, interval, handle_mexc_kline_update)
+                mexc_ws_tasks[f"kline_{formatted_symbol}_{interval}"] = kline_task
+            
+            if f"orderbook_{formatted_symbol}" not in mexc_ws_tasks:
+                orderbook_task = await mexc_client.subscribe_depth(formatted_symbol, handle_mexc_orderbook_update)
+                mexc_ws_tasks[f"orderbook_{formatted_symbol}"] = orderbook_task
+                
+            # Send initial data if available
+            if mexc_client is not None:
+                try:
+                    # Send initial ticker data
+                    ticker = await mexc_client.get_ticker(formatted_symbol)
+                    if ticker:
+                        await websocket.send_json({
+                            "type": "crypto_ticker",
+                            "data": {
+                                "timestamp": datetime.now().isoformat(),
+                                "symbol": formatted_symbol,
+                                "price": ticker.get("lastPrice", 0),
+                                "source": "MEXC"
+                            }
+                        })
+                    
+                    # Send initial kline data
+                    klines = await mexc_client.get_klines(formatted_symbol, interval, limit=100)
+                    if klines:
+                        await websocket.send_json({
+                            "type": "crypto_kline",
+                            "data": {
+                                "timestamp": datetime.now().isoformat(),
+                                "symbol": formatted_symbol,
+                                "interval": interval,
+                                "klines": klines,
+                                "source": "MEXC"
+                            }
+                        })
+                        
+                except Exception as e:
+                    logger.error(f"Error sending initial data: {e}")
+        except Exception as e:
+            logger.error(f"Error subscribing to MEXC data streams: {e}")
+            
+            # Send error message to client
+            await websocket.send_json({
+                "type": "error",
+                "data": {
+                    "message": f"Error subscribing to MEXC data: {str(e)}"
+                }
+            })
+    
+    try:
+        # Keep the connection alive until client disconnects
+        while True:
+            data = await websocket.receive_text()
+            logger.debug(f"Received data from crypto client: {data}")
+            
+            # Process client messages if needed
+            try:
+                message = json.loads(data)
+                # Handle ping messages
+                if message.get('type') == 'ping':
+                    await websocket.send_json({
+                        "type": "pong",
+                        "data": {
+                            "timestamp": datetime.now().isoformat()
+                        }
+                    })
+            except json.JSONDecodeError:
+                logger.warning(f"Invalid JSON received from crypto client")
+                
+    except WebSocketDisconnect:
+        logger.info(f"Crypto WebSocket disconnected for {symbol} ({interval})")
+        await manager.disconnect(websocket, topics)
+    except Exception as e:
+        logger.error(f"Error in crypto WebSocket: {e}")
+        await manager.disconnect(websocket, topics)
 
 @router.websocket("/ws/{session_id}")
 async def websocket_endpoint(websocket: WebSocket, session_id: str):
@@ -162,6 +279,10 @@ class WebSocketTopic:
     PAPER_TRADING = 'paper_trading'
     DRAWDOWN = 'drawdown'
     TRADE_STATS = 'trade_stats'
+    MARKET_DATA = 'market_data'
+    CRYPTO_TICKER = 'crypto_ticker'
+    CRYPTO_KLINE = 'crypto_kline'
+    CRYPTO_ORDERBOOK = 'crypto_orderbook'
 
 async def generate_mock_performance_data(session_id: str):
     """
@@ -594,6 +715,181 @@ async def handle_agent_activity_update(data):
     
     # Broadcast to agent_status topic
     await manager.broadcast('agent_status', activity_data)
+
+# MEXC API integration functions
+async def initialize_mexc_client():
+    """Initialize the MEXC client for WebSocket data."""
+    global mexc_client
+    
+    try:
+        # Create MEXC client if not already created
+        if mexc_client is None:
+            mexc_client = MexcSpotV3Client()
+            logger.info("MEXC client initialized successfully")
+    except Exception as e:
+        logger.error(f"Error initializing MEXC client: {e}")
+
+async def handle_mexc_ticker_update(data):
+    """Handle ticker updates from MEXC."""
+    try:
+        if not data or not isinstance(data, dict):
+            return
+            
+        # Extract the symbol and ticker data
+        if 'data' in data and 's' in data.get('data', {}):
+            symbol = data['data']['s']
+            ticker_data = data['data']
+            
+            # Format the data for WebSocket broadcast
+            formatted_data = {
+                'timestamp': datetime.now().isoformat(),
+                'symbol': symbol,
+                'price': ticker_data.get('c', 0),  # Current price
+                'change': ticker_data.get('P', 0),  # 24h percent change
+                'high': ticker_data.get('h', 0),  # 24h high
+                'low': ticker_data.get('l', 0),  # 24h low
+                'volume': ticker_data.get('v', 0),  # 24h volume
+                'source': 'MEXC'
+            }
+            
+            # Broadcast to crypto_ticker topic
+            await manager.broadcast('crypto_ticker', formatted_data)
+            
+            # Also update the general market_data topic
+            await manager.broadcast('market_data', {
+                'timestamp': datetime.now().isoformat(),
+                'symbol': symbol,
+                'price': ticker_data.get('c', 0),
+                'source': 'MEXC'
+            })
+    except Exception as e:
+        logger.error(f"Error handling MEXC ticker update: {e}")
+
+async def handle_mexc_kline_update(data):
+    """Handle kline (candlestick) updates from MEXC."""
+    try:
+        if not data or not isinstance(data, dict):
+            return
+            
+        # Extract the symbol and kline data
+        if 'data' in data and 's' in data.get('data', {}):
+            symbol = data['data']['s']
+            interval = data['data'].get('i', '1m')
+            kline_data = data['data']
+            
+            # Format the data for WebSocket broadcast
+            formatted_data = {
+                'timestamp': datetime.now().isoformat(),
+                'symbol': symbol,
+                'interval': interval,
+                'open': float(kline_data.get('o', 0)),
+                'high': float(kline_data.get('h', 0)),
+                'low': float(kline_data.get('l', 0)),
+                'close': float(kline_data.get('c', 0)),
+                'volume': float(kline_data.get('v', 0)),
+                'source': 'MEXC'
+            }
+            
+            # Broadcast to crypto_kline topic
+            await manager.broadcast('crypto_kline', formatted_data)
+    except Exception as e:
+        logger.error(f"Error handling MEXC kline update: {e}")
+
+async def handle_mexc_orderbook_update(data):
+    """Handle orderbook updates from MEXC."""
+    try:
+        if not data or not isinstance(data, dict):
+            return
+            
+        # Extract the symbol and orderbook data
+        if 'data' in data and 's' in data.get('data', {}):
+            symbol = data['data']['s']
+            orderbook_data = data['data']
+            
+            # Format the data for WebSocket broadcast
+            formatted_data = {
+                'timestamp': datetime.now().isoformat(),
+                'symbol': symbol,
+                'bids': orderbook_data.get('b', [])[:10],  # Top 10 bids
+                'asks': orderbook_data.get('a', [])[:10],  # Top 10 asks
+                'source': 'MEXC'
+            }
+            
+            # Broadcast to crypto_orderbook topic
+            await manager.broadcast('crypto_orderbook', formatted_data)
+    except Exception as e:
+        logger.error(f"Error handling MEXC orderbook update: {e}")
+
+async def start_mexc_data_streams():
+    """Start MEXC data streams for all trading pairs."""
+    global mexc_ws_tasks
+    
+    await initialize_mexc_client()
+    
+    if mexc_client is None:
+        logger.error("MEXC client not initialized, cannot start data streams")
+        return
+        
+    # Start streams for each trading pair
+    for symbol in TRADING_PAIRS:
+        try:
+            # Subscribe to ticker
+            ticker_task = await mexc_client.subscribe_ticker(symbol, handle_mexc_ticker_update)
+            mexc_ws_tasks[f"ticker_{symbol}"] = ticker_task
+            logger.info(f"MEXC ticker stream started for {symbol}")
+            
+            # Subscribe to klines (different timeframes)
+            for interval in ['1m', '5m', '15m', '1h', '4h', '1d']:
+                kline_task = await mexc_client.subscribe_kline(symbol, interval, handle_mexc_kline_update)
+                mexc_ws_tasks[f"kline_{symbol}_{interval}"] = kline_task
+                logger.info(f"MEXC kline stream started for {symbol} ({interval})")
+            
+            # Subscribe to orderbook
+            orderbook_task = await mexc_client.subscribe_depth(symbol, handle_mexc_orderbook_update)
+            mexc_ws_tasks[f"orderbook_{symbol}"] = orderbook_task
+            logger.info(f"MEXC orderbook stream started for {symbol}")
+            
+        except Exception as e:
+            logger.error(f"Error starting MEXC data streams for {symbol}: {e}")
+
+async def stop_mexc_data_streams():
+    """Stop all MEXC data streams."""
+    global mexc_ws_tasks, mexc_client
+    
+    # Cancel all WebSocket tasks
+    for name, task in mexc_ws_tasks.items():
+        try:
+            task.cancel()
+            logger.info(f"MEXC data stream {name} stopped")
+        except Exception as e:
+            logger.error(f"Error stopping MEXC data stream {name}: {e}")
+    
+    # Clear tasks
+    mexc_ws_tasks = {}
+    
+    # Close MEXC client
+    if mexc_client is not None:
+        try:
+            await mexc_client.close()
+            mexc_client = None
+            logger.info("MEXC client closed")
+        except Exception as e:
+            logger.error(f"Error closing MEXC client: {e}")
+
+# Define startup and shutdown event handlers that will be registered in main.py
+async def startup_event():
+    """Start the MEXC data streams on startup."""
+    logger.info("Starting MEXC data streams")
+    await start_mexc_data_streams()
+
+async def shutdown_event():
+    """Stop the MEXC data streams on shutdown."""
+    logger.info("Stopping MEXC data streams")
+    await stop_mexc_data_streams()
+
+# Export event handlers
+startup_handlers = [startup_event]
+shutdown_handlers = [shutdown_event]
 
 # Subscribe to events
 global_event_emitter.subscribe_async('paper_trading_status', handle_paper_trading_status)

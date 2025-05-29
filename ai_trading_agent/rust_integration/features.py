@@ -26,18 +26,31 @@ from decimal import Decimal, InvalidOperation
 logger = logging.getLogger(__name__)
 
 # Try to import Rust extensions, but provide robust fallback if not available
+_create_lag_features_rs_rust = None
+_create_rolling_window_features_rs_rust = None
+
+RUST_FEATURES_AVAILABLE = False # This module's flag for Rust feature availability
+
 try:
-    from ai_trading_agent_rs import rust_extensions
-    RUST_AVAILABLE = True
-    logger.info("Successfully loaded Rust extensions for feature engineering.")
+    from ai_trading_agent_rs import create_lag_features_rs as _create_lag_features_rs_rust
+    from ai_trading_agent_rs import create_rolling_window_features_rs as _create_rolling_window_features_rs_rust
+
+    # Check if the primary functions intended for use by this module are callable
+    if callable(_create_lag_features_rs_rust) and callable(_create_rolling_window_features_rs_rust):
+        RUST_FEATURES_AVAILABLE = True
+        logger.info("Successfully imported callable Rust functions (create_lag_features_rs, create_rolling_window_features_rs) from ai_trading_agent_rs.")
+    else:
+        logger.warning("ai_trading_agent_rs module imported, but required Rust functions are not callable. Falling back to Python for feature engineering.")
+        # Ensure placeholders are None if they weren't properly imported or aren't callable
+        _create_lag_features_rs_rust = None
+        _create_rolling_window_features_rs_rust = None
+
 except ImportError as e:
-    RUST_AVAILABLE = False
-    logger.warning(f"Rust extensions not available. Falling back to Python implementations. Error: {e}")
+    logger.warning(f"Failed to import from ai_trading_agent_rs. Rust extensions not available for feature engineering. Error: {e}")
 except Exception as e:
-    RUST_AVAILABLE = False
-    logger.error(f"Error loading Rust extensions: {e}")
+    logger.error(f"An unexpected error occurred while importing from ai_trading_agent_rs: {e}")
     logger.error(f"Traceback: {traceback.format_exc()}")
-    logger.warning("Falling back to Python implementations.")
+    logger.warning("Falling back to Python implementations for Rust feature engineering.")
 
 
 def create_lag_feature(series: Union[List[float], np.ndarray], lag: int) -> List[float]:
@@ -98,9 +111,9 @@ def create_lag_features(series: Union[List[Union[float, Decimal]], np.ndarray, p
         raise ValueError("series must be non-empty")
     
     # Try to use Rust implementation
-    if RUST_AVAILABLE:
+    if RUST_FEATURES_AVAILABLE:
         try:
-            return rust_extensions.create_lag_features_rs(series_array, lags)
+            return _create_lag_features_rs_rust(series_array, lags)
         except Exception as e:
             logger.warning(f"Rust extension failed for lag features: {e}")
             logger.warning(f"Traceback: {traceback.format_exc()}")
@@ -324,9 +337,9 @@ def create_rolling_window_features(
         raise ValueError("series must be non-empty")
     
     # Try to use Rust implementation
-    if RUST_AVAILABLE:
+    if RUST_FEATURES_AVAILABLE:
         try:
-            return rust_extensions.create_rolling_window_features_rs(series_array, window_sizes, feature_type)
+            return _create_rolling_window_features_rs_rust(series_array, window_sizes, feature_type)
         except Exception as e:
             logger.warning(f"Rust extension failed for rolling {feature_type} features: {e}")
             logger.warning(f"Traceback: {traceback.format_exc()}")

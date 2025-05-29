@@ -36,11 +36,14 @@ class CcxtProvider(BaseDataProvider):
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(config)
-        self.exchange_id = self.config.get('exchange_id', 'binance') # Default to binance
+        self.exchange_id = self.config.get('exchange_id', 'mexc') # Default to MEXC
         self.api_key = self.config.get('api_key')
         self.secret_key = self.config.get('secret_key')
         self.password = self.config.get('password') # For exchanges like KuCoin
         self.exchange_options = self.config.get('options', {}) # Custom exchange options
+        
+        # Default trading pair (BTC/USDC on MEXC)
+        self.default_pair = self.config.get('default_pair', 'BTC/USDC')
 
         self.exchange: ccxt.Exchange = self._initialize_exchange()
         self.rate_limit_delay = self.exchange.rateLimit / 1000 # Seconds

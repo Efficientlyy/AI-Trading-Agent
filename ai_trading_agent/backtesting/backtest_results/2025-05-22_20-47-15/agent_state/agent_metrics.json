@@ -1,0 +1,47 @@
+{
+  "signals_generated": 0,
+  "signals_validated": 0,
+  "signals_rejected": 0,
+  "avg_signal_confidence": 0.0,
+  "regime_changes": 0,
+  "parameter_adaptations": 0,
+  "timeframes_analyzed": 3,
+  "last_execution_time_ms": 0,
+  "strategies": {
+    "MA_Cross": {
+      "signals_generated": 0,
+      "avg_execution_time_ms": 0,
+      "win_rate": null,
+      "profit_factor": null
+    },
+    "RSI_OB_OS": {
+      "signals_generated": 0,
+      "avg_execution_time_ms": 0,
+      "win_rate": null,
+      "profit_factor": null
+    },
+    "MA_Cross_Multi_TF": {
+      "signals_generated": 0,
+      "avg_execution_time_ms": 0,
+      "win_rate": null,
+      "profit_factor": null
+    }
+  },
+  "current_regime": "unknown",
+  "signal_validator": {
+    "model_type": "random_forest",
+    "min_confidence": 0.6,
+    "feature_count": 7,
+    "features": [
+      "signal_strength",
+      "volatility_percent",
+      "volume_ratio",
+      "price_change_percent",
+      "rsi_value",
+      "ma_diff_percent",
+      "confirmation_count"
+    ],
+    "feature_importance": {},
+    "ml_available": true
+  }
+}

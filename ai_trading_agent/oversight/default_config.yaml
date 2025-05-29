@@ -1,0 +1,39 @@
+# Default Configuration for LLM Oversight in AI Trading Agent
+# This file contains the default settings for the LLM oversight system
+
+llm:
+  # LLM provider settings
+  provider: openai  # Options: openai, anthropic, azure_openai, local, custom
+  model_name: gpt-4  # Model name/identifier for the provider
+  temperature: 0.2  # Temperature parameter (randomness)
+  max_tokens: 1000  # Maximum tokens in response
+  api_base: null  # Optional API base URL override
+  timeout: 30.0  # Request timeout in seconds
+  retry_attempts: 3  # Number of retry attempts for failed requests
+  system_prompt: null  # Optional custom system prompt
+
+oversight:
+  # Oversight system settings
+  level: advise  # Options: monitor, advise, approve, override, autonomous
+  enable_market_analysis: true  # Enable market regime analysis
+  enable_signal_validation: true  # Enable trading signal validation
+  enable_order_validation: true  # Enable order execution validation
+  enable_error_analysis: true  # Enable error analysis
+  enable_autonomous_recovery: true  # Enable autonomous recovery mechanisms
+  decision_log_path: logs/oversight_decisions  # Path for decision logs
+  max_decision_cache_size: 100  # Maximum number of decisions to cache
+
+circuit_breaker:
+  # Circuit breaker settings for error handling
+  warning_threshold: 3  # Number of failures before warning
+  failure_threshold: 5  # Number of failures before opening circuit
+  recovery_time_base: 30.0  # Base recovery time in seconds
+  max_recovery_time: 600.0  # Maximum recovery time in seconds
+  exponential_factor: 2.0  # Exponential backoff factor
+  reset_timeout: 300.0  # Timeout for automatic reset in seconds
+
+integrations:
+  # Integration settings
+  slack_notifications: false  # Enable Slack notifications
+  email_alerts: false  # Enable email alerts
+  dashboard_metrics: true  # Enable dashboard metrics

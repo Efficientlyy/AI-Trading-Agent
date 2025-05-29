@@ -10,14 +10,10 @@ import logging
 import numpy as np
 from typing import List, Union, Optional
 
-# Try to import Rust implementation
-try:
-    from rust_test_extension import create_lag_feature, create_diff_feature, create_pct_change_feature
-    RUST_AVAILABLE = True
-    logging.info("Using Rust implementation for lag features")
-except ImportError:
-    RUST_AVAILABLE = False
-    logging.warning("Rust implementation not available, using Python fallback")
+# This module now provides pure Python implementations.
+# Rust-accelerated versions are handled by ai_trading_agent.rust_integration.features
+RUST_AVAILABLE = False 
+logging.info("ai_trading_agent.features.lag_features is using Python implementations. For Rust acceleration, use functions from ai_trading_agent.rust_integration.features.")
 
 # Python fallback implementations
 def py_create_lag_feature(series: List[float], lag: int) -> List[float]:
@@ -89,9 +85,22 @@ def py_create_pct_change_feature(series: List[float], period: int) -> List[float
 
 # Use Rust implementation if available, otherwise use Python fallback
 if RUST_AVAILABLE:
-    lag_feature = create_lag_feature
-    diff_feature = create_diff_feature
-    pct_change_feature = create_pct_change_feature
+    # This block should ideally not be reached if RUST_AVAILABLE is hardcoded to False.
+    # Keeping for structural consistency but it's effectively dead code now.
+    try:
+        # This import would fail if RUST_AVAILABLE was True and rust_test_extension didn't exist
+        from rust_test_extension import create_lag_feature as rust_create_lag_feature
+        from rust_test_extension import create_diff_feature as rust_create_diff_feature
+        from rust_test_extension import create_pct_change_feature as rust_create_pct_change_feature
+        lag_feature = rust_create_lag_feature
+        diff_feature = rust_create_diff_feature
+        pct_change_feature = rust_create_pct_change_feature
+        logging.info("This line in lag_features.py should not be logged if RUST_AVAILABLE is False.")
+    except ImportError:
+        # Fallback to Python if the specific import fails even if RUST_AVAILABLE was hypothetically True
+        lag_feature = py_create_lag_feature
+        diff_feature = py_create_diff_feature
+        pct_change_feature = py_create_pct_change_feature
 else:
     lag_feature = py_create_lag_feature
     diff_feature = py_create_diff_feature

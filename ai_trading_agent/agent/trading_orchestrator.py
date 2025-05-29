@@ -1,1247 +1,722 @@
-"""
-Trading orchestrator module for the AI Trading Agent.
-
-This module coordinates the interaction between different components of the trading system.
-"""
-
-from typing import Dict, Any, Optional, List, Union, Callable
-from datetime import datetime, timedelta
-import pandas as pd
-import numpy as np
+from typing import Dict, List, Optional, Any, Tuple
+from collections import deque
+import logging
 import time
+import os
+import json
+from datetime import datetime
 import threading
-import asyncio
-from copy import deepcopy
 
-from ..common import logger
-from ..common.event_emitter import global_event_emitter
-from ..common.error_handling import (
-    TradingAgentError,
-    ErrorCode,
-    ErrorCategory,
-    ErrorSeverity,
-    retry,
-    circuit_breaker,
-    error_handler,
-    log_error
-)
-from ..common.circuit_breaker_executor import CircuitBreakerExecutor
+# Assuming agent_definitions.py is in the same directory or accessible via PYTHONPATH
+try:
+    from .agent_definitions import BaseAgent, AgentStatus
+    from .recovery_manager import RecoveryManager, RecoveryState, RecoveryStrategy
+except ImportError:
+    # Fallback for environments where the relative import might not work directly (e.g. some test runners)
+    from agent_definitions import BaseAgent, AgentStatus
+    from recovery_manager import RecoveryManager, RecoveryState, RecoveryStrategy
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 class TradingOrchestrator:
     """
-    Coordinates the flow of data and actions between all components of the trading system.
+    Manages a collection of agents and orchestrates the flow of data and signals
+    between them based on their defined inputs and outputs.
     
-    This class is responsible for:
-    1. Managing the trading loop (backtest or live)
-    2. Passing data between components
-    3. Executing the trading logic
-    4. Collecting and reporting results
+    Features:
+    - Dynamic agent registration and dependency resolution
+    - Automated execution order determination
+    - Data routing between agents
+    - Fault detection and recovery
+    - Transaction journaling and recovery
+    - Agent state preservation and restoration
     """
-    
-    def __init__(self, data_manager, strategy_manager, risk_manager, 
-                portfolio_manager, execution_handler):
-        """
-        Initialize the trading orchestrator.
+    def __init__(self, recovery_data_dir: str = "./data/recovery"):
+        self.agents: Dict[str, BaseAgent] = {}
+        self.agent_execution_order: List[str] = [] # To be determined by dependencies
+        self.data_queues: Dict[str, deque] = {} # agent_id -> deque of pending data/signals
         
-        Args:
-            data_manager: Data manager instance
-            strategy_manager: Strategy manager instance
-            risk_manager: Risk manager instance
-            portfolio_manager: Portfolio manager instance
-            execution_handler: Execution handler instance
-        """
-        self.data_manager = data_manager
-        self.strategy_manager = strategy_manager
-        self.risk_manager = risk_manager
-        self.portfolio_manager = portfolio_manager
-        self.execution_handler = execution_handler
+        # Fault tolerance and recovery
+        self.recovery_manager = RecoveryManager(data_dir=recovery_data_dir)
+        self.agent_health: Dict[str, Dict[str, Any]] = {} # agent_id -> health metrics
+        self.last_checkpoint_time: Dict[str, float] = {} # agent_id -> last checkpoint time
+        self.checkpoint_interval = 60  # seconds
         
-        self._running = False
-        self._stop_requested = False
-        self._trading_thread = None
-        self._start_time = None
+        # Transaction tracking
+        self.transactions: Dict[str, Dict[str, Any]] = {} # transaction_id -> transaction info
         
-        self.results = {
-            'trades': [],
-            'portfolio_history': [],
-            'performance_metrics': {}
+        # Background monitoring thread
+        self.monitoring_thread = None
+        self.monitoring_active = False
+        self.monitoring_interval = 10  # seconds
+
+    def register_agent(self, agent: BaseAgent):
+        """Registers an agent with the orchestrator."""
+        if agent.agent_id in self.agents:
+            logger.warning(f"Agent with ID {agent.agent_id} already registered. Overwriting.")
+        self.agents[agent.agent_id] = agent
+        self.data_queues[agent.agent_id] = deque()
+        
+        # Initialize health tracking
+        self.agent_health[agent.agent_id] = {
+            "status": "initialized",
+            "last_successful_run": None,
+            "error_count": 0,
+            "consecutive_errors": 0,
+            "last_error": None,
+            "recovery_attempts": 0
         }
         
-        # Initialize circuit breaker executors for different components
-        self.data_executor = CircuitBreakerExecutor(
-            name="data_provider",
-            failure_threshold=3,
-            reset_timeout=60.0,
-            retry_attempts=3,
-            retry_delay=1.0,
-            retry_backoff_factor=2.0,
-            on_circuit_open=self._on_data_circuit_open,
-            on_circuit_close=self._on_data_circuit_close
-        )
+        # Initialize checkpoint tracking
+        self.last_checkpoint_time[agent.agent_id] = time.time()
         
-        self.strategy_executor = CircuitBreakerExecutor(
-            name="strategy",
-            failure_threshold=3,
-            reset_timeout=30.0,
-            retry_attempts=2,
-            retry_delay=0.5,
-            retry_backoff_factor=2.0,
-            on_circuit_open=self._on_strategy_circuit_open,
-            on_circuit_close=self._on_strategy_circuit_close
-        )
-        
-        self.execution_executor = CircuitBreakerExecutor(
-            name="execution",
-            failure_threshold=3,
-            reset_timeout=60.0,
-            retry_attempts=3,
-            retry_delay=1.0,
-            retry_backoff_factor=2.0,
-            on_circuit_open=self._on_execution_circuit_open,
-            on_circuit_close=self._on_execution_circuit_close
-        )
-        
-        # Error handling state
-        self.error_state = {
-            "data_provider": {
-                "errors": [],
-                "last_error_time": 0,
-                "recovery_attempts": 0
-            },
-            "strategy": {
-                "errors": [],
-                "last_error_time": 0,
-                "recovery_attempts": 0
-            },
-            "execution": {
-                "errors": [],
-                "last_error_time": 0,
-                "recovery_attempts": 0
-            }
-        }
-        
-        logger.info("TradingOrchestrator initialized with error handling capabilities")
-        
-    def get_uptime_seconds(self) -> int:
+        logger.info(f"Agent {agent.agent_id} ({agent.name}) registered.")
+        self._determine_execution_order()
+
+    def _determine_execution_order(self):
         """
-        Get the number of seconds the orchestrator has been running.
-        
-        Returns:
-            Uptime in seconds
+        Determines a valid execution order for agents based on dependencies
+        using Kahn's algorithm for topological sorting.
+        This helps in processing agents in an order where their data dependencies are met.
+        It also detects circular dependencies.
         """
-        if not hasattr(self, '_start_time') or self._start_time is None:
-            return 0
-        
-        return int(time.time() - self._start_time)
-        
-    def get_symbols(self) -> List[str]:
-        """
-        Get the list of symbols being traded.
-        
-        Returns:
-            List of symbols
-        """
-        if self.data_manager:
-            try:
-                return self.data_manager.get_symbols()
-            except Exception as e:
-                logger.error(f"Error getting symbols: {e}", exc_info=True)
-                return []
-        return []
-        
-    def get_recent_trades(self, count: int = 5) -> List[Dict[str, Any]]:
-        """
-        Get the most recent trades.
-        
-        Args:
-            count: Number of recent trades to return
-            
-        Returns:
-            List of recent trades
-        """
-        if not self.results or 'trades' not in self.results:
-            return []
-            
-        trades = self.results.get('trades', [])
-        return trades[-count:] if trades else []
-        
-    def get_current_portfolio(self) -> Optional[Dict[str, Any]]:
-        """
-        Get the current portfolio.
-        
-        Returns:
-            Current portfolio or None if not available
-        """
-        if not self.results or 'portfolio_history' not in self.results:
-            return None
-            
-        portfolio_history = self.results.get('portfolio_history', [])
-        return portfolio_history[-1] if portfolio_history else None
-        
-    def get_performance_metrics(self) -> Dict[str, Any]:
-        """
-        Get the current performance metrics.
-        
-        Returns:
-            Performance metrics
-        """
-        if not self.results or 'performance_metrics' not in self.results:
-            return {
-                'total_return': 0.0,
-                'annualized_return': 0.0,
-                'sharpe_ratio': 0.0,
-                'max_drawdown': 0.0,
-                'win_rate': 0.0
-            }
-            
-        return self.results.get('performance_metrics', {})
-        
-    async def cleanup(self) -> None:
-        """
-        Clean up resources used by the orchestrator.
-        
-        This method should be called when the orchestrator is no longer needed.
-        """
-        self._running = False
-        self._stop_requested = True
-        
-        # Clean up data manager
-        if self.data_manager:
-            try:
-                if hasattr(self.data_manager, 'cleanup'):
-                    await self.data_manager.cleanup()
-            except Exception as e:
-                logger.error(f"Error cleaning up data manager: {e}", exc_info=True)
-                
-        # Clean up execution handler
-        if self.execution_handler:
-            try:
-                if hasattr(self.execution_handler, 'cleanup'):
-                    await self.execution_handler.cleanup()
-            except Exception as e:
-                logger.error(f"Error cleaning up execution handler: {e}", exc_info=True)
-                
-        logger.info("TradingOrchestrator cleaned up")
-    
-    def run_backtest(self, start_date: datetime, end_date: datetime) -> Dict[str, Any]:
-        """
-        Run a backtest from start_date to end_date.
-        
-        Args:
-            start_date: Start date for the backtest
-            end_date: End date for the backtest
-        
-        Returns:
-            Dictionary with backtest results
-        """
-        logger.info(f"Starting backtest from {start_date} to {end_date}")
-        
-        # Reset results
-        self.results = {
-            'trades': [],
-            'portfolio_history': [],
-            'performance_metrics': {}
-        }
-        
-        # Set running flag
-        self._running = True
-        self._stop_requested = False
-        
-        # Get all dates in the backtest period
-        dates = self.data_manager.get_dates_in_range(start_date, end_date)
-        
-        if not dates:
-            logger.warning("No dates available in the specified range")
-            self._running = False
-            return self.results
-        
-        # Initialize portfolio
-        initial_portfolio = {
-            'total_value': self.portfolio_manager.initial_capital,
-            'cash': self.portfolio_manager.initial_capital,
-            'positions': {},
-            'position_values': {}
-        }
-        
-        current_portfolio = deepcopy(initial_portfolio)
-        
-        # Run backtest for each date
-        for current_date in dates:
-            if self._stop_requested:
-                logger.info("Backtest stopped by user request")
-                break
-            
-            logger.info(f"Processing date: {current_date}")
-            
-            # Get current market data
-            current_data = self.data_manager.get_current_data(current_date)
-            
-            if not current_data:
-                logger.warning(f"No data available for {current_date}")
-                continue
-            
-            # Get historical data
-            historical_data = self.data_manager.get_historical_data(
-                end_date=current_date,
-                lookback_periods=100  # Use last 100 periods
-            )
-            
-            # Generate signals
-            signals = self.strategy_manager.process_data_and_generate_signals(
-                current_data=current_data,
-                historical_data=historical_data,
-                current_portfolio=current_portfolio
-            )
-            
-            # Apply risk management
-            risk_adjusted_signals = self.risk_manager.apply_risk_constraints(
-                signals=signals,
-                current_portfolio=current_portfolio,
-                market_data=current_data
-            )
-            
-            # Calculate position sizes
-            target_positions = self.portfolio_manager.calculate_position_sizes(
-                signals=risk_adjusted_signals,
-                current_portfolio=current_portfolio,
-                market_data=current_data
-            )
-            
-            # Get current positions
-            current_positions = current_portfolio.get('positions', {})
-            
-            # Calculate position adjustments
-            position_adjustments = self.portfolio_manager.rebalance_portfolio(
-                current_positions=current_positions,
-                target_positions=target_positions
-            )
-            
-            # Generate orders from position adjustments
-            orders = []
-            for symbol, adjustment in position_adjustments.items():
-                if adjustment != 0:
-                    # Create order
-                    from ai_trading_agent.agent.execution_handler_new import Order
-                    order = Order(
-                        symbol=symbol,
-                        quantity=adjustment
-                    )
-                    orders.append(order)
-            
-            # Execute orders
-            executed_orders = self.execution_handler.submit_orders(
-                orders=orders,
-                market_data=current_data
-            )
-            
-            # Update portfolio
-            for order in executed_orders:
-                if order.status == 'FILLED':
-                    # Update positions
-                    symbol = order.symbol
-                    quantity = order.executed_quantity
-                    price = order.executed_price
-                    commission = order.commission
-                    
-                    # Update current positions
-                    if symbol not in current_positions:
-                        current_positions[symbol] = 0
-                    
-                    current_positions[symbol] += quantity
-                    
-                    # If position is now zero, remove it
-                    if current_positions[symbol] == 0:
-                        del current_positions[symbol]
-                    
-                    # Update cash
-                    current_portfolio['cash'] -= (quantity * price + commission)
-                    
-                    # Record trade
-                    trade = {
-                        'timestamp': current_date,
-                        'symbol': symbol,
-                        'quantity': quantity,
-                        'price': price,
-                        'commission': commission,
-                        'order_id': order.order_id,
-                        'pnl': 0.0  # Will be updated later
-                    }
-                    
-                    self.results['trades'].append(trade)
-            
-            # Update portfolio value
-            prices = {symbol: data.get('close', 0.0) if isinstance(data, dict) else data['close'] 
-                     for symbol, data in current_data.items()}
-            
-            portfolio_value = self.portfolio_manager.update_portfolio_value(
-                positions=current_positions,
-                prices=prices,
-                timestamp=current_date
-            )
-            
-            # Update current portfolio
-            current_portfolio = self.portfolio_manager.get_current_portfolio()
-            
-            # Add to portfolio history
-            self.results['portfolio_history'].append(current_portfolio)
-        
-        # Calculate performance metrics
-        self._calculate_performance_metrics()
-        
-        # Set running flag
-        self._running = False
-        
-        logger.info("Backtest completed")
-        
-        return self.results
-    
-    async def run_paper_trading(self, duration: timedelta, update_interval: timedelta, stop_event=None) -> Dict[str, Any]:
-        """
-        Run paper trading for a specified duration.
-        
-        Args:
-            duration: Duration to run paper trading
-            update_interval: Interval between updates
-            stop_event: Optional asyncio.Event to signal stopping
-        
-        Returns:
-            Dictionary with paper trading results
-        """
-        import asyncio
-        
-        logger.info(f"Starting paper trading for {duration} with {update_interval} updates")
-        
-        # Reset results
-        self.results = {
-            'trades': [],
-            'portfolio_history': [],
-            'performance_metrics': {}
-        }
-        
-        # Set running flag and start time
-        self._running = True
-        self._stop_requested = False
-        self._start_time = time.time()
-        
-        # Emit status update event
-        global_event_emitter.emit('paper_trading_status', {
-            'status': 'running',
-            'uptime_seconds': 0,
-            'symbols': [],
-            'current_portfolio': None,
-            'recent_trades': [],
-            'performance_metrics': None
-        })
-        
-        # Calculate end time
-        start_time = datetime.now()
-        end_time = start_time + duration
-        
-        # Initialize portfolio
-        initial_portfolio = {
-            'total_value': self.portfolio_manager.initial_capital,
-            'cash': self.portfolio_manager.initial_capital,
-            'positions': {},
-            'position_values': {},
-            'timestamp': start_time.isoformat()
-        }
-        
-        current_portfolio = deepcopy(initial_portfolio)
-        self.results['portfolio_history'].append(current_portfolio)
-        
-        # Get available symbols using circuit breaker
-        try:
-            symbols = self.data_executor.execute(
-                self.data_manager.get_symbols,
-                retry_on_exceptions=Exception
-            )
-            if not symbols:
-                logger.warning("No symbols available for paper trading")
-                symbols = ["BTC/USDT", "ETH/USDT"]  # Default symbols if none available
-                
-                # Emit error event
-                global_event_emitter.emit('paper_trading_error', {
-                    'error_category': 'data_provider',
-                    'error_code': ErrorCode.DATA_PROVIDER_SYMBOL_ERROR.value,
-                    'message': 'No symbols available for paper trading. Using default symbols.',
-                    'severity': ErrorSeverity.WARNING.value,
-                    'timestamp': time.time(),
-                    'details': {
-                        'default_symbols': symbols
-                    }
-                })
-        except TradingAgentError as e:
-            logger.error(f"Error getting symbols: {e}", exc_info=True)
-            symbols = ["BTC/USDT", "ETH/USDT"]  # Default symbols if error
-            
-            # Emit error event
-            global_event_emitter.emit('paper_trading_error', {
-                'error_category': e.error_category.value,
-                'error_code': e.error_code.value,
-                'message': f"Error getting symbols: {e.message}",
-                'severity': e.severity.value,
-                'timestamp': time.time(),
-                'details': e.details,
-                'troubleshooting': e.troubleshooting
-            })
-            
-        logger.info(f"Paper trading with symbols: {symbols}")
-        
-        # Main paper trading loop
-        current_time = start_time
-        try:
-            while current_time < end_time and not self._stop_requested:
-                if stop_event and stop_event.is_set():
-                    logger.info("Stop event received, ending paper trading")
-                    break
-                
-                logger.info(f"Processing time: {current_time}")
-                
-                # Get current market data for all symbols using circuit breaker
-                current_data = {}
-                for symbol in symbols:
-                    try:
-                        # Define an async wrapper for the circuit breaker executor
-                        async def get_data_with_circuit_breaker():
-                            return await self.data_manager.get_latest_data(symbol)
-                            
-                        # Fetch latest market data with circuit breaker
-                        latest_data = await self.data_executor.execute_async(
-                            get_data_with_circuit_breaker,
-                            retry_on_exceptions=Exception
-                        )
-                        
-                        if latest_data:
-                            current_data[symbol] = latest_data
-                    except TradingAgentError as e:
-                        logger.error(f"Error fetching data for {symbol}: {e}", exc_info=True)
-                        
-                        # Emit error event
-                        global_event_emitter.emit('paper_trading_error', {
-                            'error_category': e.error_category.value,
-                            'error_code': e.error_code.value,
-                            'message': f"Error fetching data for {symbol}: {e.message}",
-                            'severity': e.severity.value,
-                            'timestamp': time.time(),
-                            'details': e.details,
-                            'troubleshooting': e.troubleshooting
-                        })
-                
-                if not current_data:
-                    logger.warning("No data available")
-                    await asyncio.sleep(update_interval.total_seconds())
-                    current_time = datetime.now()
-                    continue
-                
-                # Emit market data update event
-                global_event_emitter.emit('market_data_update', {
-                    'timestamp': current_time.isoformat(),
-                    'data': current_data
-                })
-                
-                # Get historical data using circuit breaker
-                historical_data = {}
-                for symbol in symbols:
-                    try:
-                        # Define an async wrapper for the circuit breaker executor
-                        async def get_history_with_circuit_breaker():
-                            return await self.data_manager.get_historical_data(
-                                symbol=symbol,
-                                lookback_periods=100  # Use last 100 periods
-                            )
-                            
-                        # Fetch historical data with circuit breaker
-                        symbol_history = await self.data_executor.execute_async(
-                            get_history_with_circuit_breaker,
-                            retry_on_exceptions=Exception
-                        )
-                        
-                        if symbol_history is not None and len(symbol_history) > 0:
-                            historical_data[symbol] = symbol_history
-                    except TradingAgentError as e:
-                        logger.error(f"Error fetching historical data for {symbol}: {e}", exc_info=True)
-                        
-                        # Emit error event
-                        global_event_emitter.emit('paper_trading_error', {
-                            'error_category': e.error_category.value,
-                            'error_code': e.error_code.value,
-                            'message': f"Error fetching historical data for {symbol}: {e.message}",
-                            'severity': e.severity.value,
-                            'timestamp': time.time(),
-                            'details': e.details,
-                            'troubleshooting': e.troubleshooting
-                        })
-                
-                # Generate signals using circuit breaker
-                try:
-                    # Use strategy circuit breaker for signal generation
-                    signals = self.strategy_executor.execute(
-                        self.strategy_manager.process_data_and_generate_signals,
-                        current_data=current_data,
-                        historical_data=historical_data,
-                        current_portfolio=current_portfolio,
-                        retry_on_exceptions=Exception
-                    )
-                    
-                    # Apply risk management with strategy circuit breaker
-                    risk_adjusted_signals = self.strategy_executor.execute(
-                        self.risk_manager.apply_risk_constraints,
-                        signals=signals,
-                        current_portfolio=current_portfolio,
-                        market_data=current_data,
-                        retry_on_exceptions=Exception
-                    )
-                except TradingAgentError as e:
-                    logger.error(f"Error in strategy processing: {e}", exc_info=True)
-                    signals = {}
-                    risk_adjusted_signals = {}
-                    
-                    # Emit error event
-                    global_event_emitter.emit('paper_trading_error', {
-                        'error_category': e.error_category.value,
-                        'error_code': e.error_code.value,
-                        'message': f"Strategy error: {e.message}",
-                        'severity': e.severity.value,
-                        'timestamp': time.time(),
-                        'details': e.details,
-                        'troubleshooting': e.troubleshooting
-                    })
-                    
-                    # Emit signal generation event
-                    global_event_emitter.emit('signal_update', {
-                        'timestamp': current_time.isoformat(),
-                        'raw_signals': signals,
-                        'risk_adjusted_signals': risk_adjusted_signals
-                    })
-                    
-                    # Calculate position sizes
-                    target_positions = self.portfolio_manager.calculate_position_sizes(
-                        signals=risk_adjusted_signals,
-                        current_portfolio=current_portfolio,
-                        market_data=current_data
-                    )
-                    
-                    # Get current positions
-                    current_positions = current_portfolio.get('positions', {})
-                    
-                    # Calculate position adjustments
-                    position_adjustments = self.portfolio_manager.rebalance_portfolio(
-                        current_positions=current_positions,
-                        target_positions=target_positions
-                    )
-                    
-                    # Generate orders from position adjustments
-                    orders = []
-                    for symbol, adjustment in position_adjustments.items():
-                        if adjustment != 0:
-                            # Create order
-                            try:
-                                from ai_trading_agent.agent.execution_handler_new import Order
-                                order = Order(
-                                    symbol=symbol,
-                                    quantity=adjustment
-                                )
-                                orders.append(order)
-                            except ImportError:
-                                # Fallback if Order class not available
-                                order = {
-                                    'symbol': symbol,
-                                    'quantity': adjustment,
-                                    'type': 'market'
-                                }
-                                orders.append(order)
-                    
-                    # Execute orders using circuit breaker
-                    try:
-                        # Define an async wrapper for the circuit breaker executor
-                        async def execute_orders_with_circuit_breaker():
-                            return await self.execution_handler.submit_orders(
-                                orders=orders,
-                                market_data=current_data
-                            )
-                            
-                        # Execute orders with circuit breaker
-                        executed_orders = await self.execution_executor.execute_async(
-                            execute_orders_with_circuit_breaker,
-                            retry_on_exceptions=Exception
-                        )
-                    except TradingAgentError as e:
-                        logger.error(f"Error executing orders: {e}", exc_info=True)
-                        executed_orders = []
-                        
-                        # Emit error event
-                        global_event_emitter.emit('paper_trading_error', {
-                            'error_category': e.error_category.value,
-                            'error_code': e.error_code.value,
-                            'message': f"Order execution error: {e.message}",
-                            'severity': e.severity.value,
-                            'timestamp': time.time(),
-                            'details': e.details,
-                            'troubleshooting': e.troubleshooting
-                        })
-                    
-                    # Emit order execution event
-                    global_event_emitter.emit('order_execution', {
-                        'timestamp': current_time.isoformat(),
-                        'orders': [order.__dict__ if hasattr(order, '__dict__') else order for order in executed_orders]
-                    })
-                    
-                    # Update portfolio
-                    for order in executed_orders:
-                        try:
-                            # Handle both Order objects and dictionaries
-                            if hasattr(order, 'status') and order.status == 'FILLED':
-                                symbol = order.symbol
-                                quantity = order.executed_quantity
-                                price = order.executed_price
-                                commission = order.commission
-                                order_id = order.order_id
-                            elif isinstance(order, dict) and order.get('status') == 'FILLED':
-                                symbol = order['symbol']
-                                quantity = order['executed_quantity']
-                                price = order['executed_price']
-                                commission = order.get('commission', 0.0)
-                                order_id = order.get('order_id', 'unknown')
-                            else:
-                                continue
-                                
-                            # Update current positions
-                            if symbol not in current_positions:
-                                current_positions[symbol] = 0
-                            
-                            current_positions[symbol] += quantity
-                            
-                            # If position is now zero, remove it
-                            if current_positions[symbol] == 0:
-                                del current_positions[symbol]
-                            
-                            # Update cash
-                            current_portfolio['cash'] -= (quantity * price + commission)
-                            
-                            # Record trade
-                            trade = {
-                                'timestamp': current_time.isoformat(),
-                                'symbol': symbol,
-                                'quantity': quantity,
-                                'price': price,
-                                'commission': commission,
-                                'order_id': order_id,
-                                'pnl': 0.0  # Will be updated later
-                            }
-                            
-                            self.results['trades'].append(trade)
-                        except Exception as e:
-                            logger.error(f"Error processing executed order: {e}", exc_info=True)
-                    
-                    # Update portfolio value using circuit breaker
-                    try:
-                        prices = {}
-                        for symbol, data in current_data.items():
-                            if isinstance(data, dict) and 'close' in data:
-                                prices[symbol] = data['close']
-                            elif hasattr(data, 'close'):
-                                prices[symbol] = data.close
-                            elif isinstance(data, (list, tuple)) and len(data) > 0:
-                                last_item = data[-1]
-                                if isinstance(last_item, dict) and 'close' in last_item:
-                                    prices[symbol] = last_item['close']
-                        
-                        # Update portfolio value with circuit breaker
-                        portfolio_value = self.strategy_executor.execute(
-                            self.portfolio_manager.update_portfolio_value,
-                            positions=current_positions,
-                            prices=prices,
-                            timestamp=current_time,
-                            retry_on_exceptions=Exception
-                        )
-                        
-                        # Update current portfolio
-                        current_portfolio = self.portfolio_manager.get_current_portfolio()
-                        current_portfolio['timestamp'] = current_time.isoformat()
-                    except TradingAgentError as e:
-                        logger.error(f"Error updating portfolio value: {e}", exc_info=True)
-                        
-                        # Emit error event
-                        global_event_emitter.emit('paper_trading_error', {
-                            'error_category': e.error_category.value,
-                            'error_code': e.error_code.value,
-                            'message': f"Portfolio error: {e.message}",
-                            'severity': e.severity.value,
-                            'timestamp': time.time(),
-                            'details': e.details,
-                            'troubleshooting': e.troubleshooting
-                        })
-                        
-                        # Add to portfolio history
-                        self.results['portfolio_history'].append(deepcopy(current_portfolio))
-                        
-                        # Emit portfolio update event
-                        global_event_emitter.emit('portfolio_update', {
-                            'timestamp': current_time.isoformat(),
-                            'portfolio': deepcopy(current_portfolio)
-                        })
-                        
-                        # Emit status update event with all current information
-                        global_event_emitter.emit('paper_trading_status', {
-                            'status': 'running',
-                            'uptime_seconds': self.get_uptime_seconds(),
-                            'symbols': self.get_symbols(),
-                            'current_portfolio': deepcopy(current_portfolio),
-                            'recent_trades': self.get_recent_trades(10),
-                            'performance_metrics': self.results.get('performance_metrics')
-                        })
-                    except Exception as e:
-                        logger.error(f"Error updating portfolio value: {e}", exc_info=True)
-                
-                except Exception as e:
-                    logger.error(f"Error in trading cycle: {e}", exc_info=True)
-                
-                    # Sleep until next update
-                await asyncio.sleep(update_interval.total_seconds())
-                current_time = datetime.now()
-            
-            # Calculate performance metrics
-            try:
-                self._calculate_performance_metrics()
-                
-                # Emit performance metrics event
-                global_event_emitter.emit('performance_metrics', {
-                    'timestamp': datetime.now().isoformat(),
-                    'metrics': deepcopy(self.results['performance_metrics'])
-                })
-            except Exception as e:
-                logger.error(f"Error calculating performance metrics: {e}", exc_info=True)
-                self.results['performance_metrics'] = {
-                    'total_return': 0.0,
-                    'annualized_return': 0.0,
-                    'sharpe_ratio': 0.0,
-                    'max_drawdown': 0.0,
-                    'win_rate': 0.0
-                }
-                
-                # Emit error performance metrics event
-                global_event_emitter.emit('performance_metrics', {
-                    'timestamp': datetime.now().isoformat(),
-                    'metrics': deepcopy(self.results['performance_metrics']),
-                    'error': str(e)
-                })
-        
-        except asyncio.CancelledError:
-            logger.info("Paper trading task cancelled")
-            raise
-        except Exception as e:
-            logger.error(f"Error in paper trading: {e}", exc_info=True)
-        finally:
-            # Set running flag to false
-            self._running = False
-            
-            # Emit completion status update event
-            status = "completed"
-            if self._stop_requested:
-                status = "stopped"
-            
-            global_event_emitter.emit('paper_trading_status', {
-                'status': status,
-                'uptime_seconds': self.get_uptime_seconds(),
-                'symbols': self.get_symbols(),
-                'current_portfolio': self.get_current_portfolio(),
-                'recent_trades': self.get_recent_trades(10),
-                'performance_metrics': self.results.get('performance_metrics')
-            })
-            
-            # Ensure we have performance metrics
-            if not self.results['performance_metrics']:
-                try:
-                    self._calculate_performance_metrics()
-                except Exception as e:
-                    logger.error(f"Error calculating performance metrics: {e}", exc_info=True)
-                    self.results['performance_metrics'] = {
-                        'total_return': 0.0,
-                        'annualized_return': 0.0,
-                        'sharpe_ratio': 0.0,
-                        'max_drawdown': 0.0,
-                        'win_rate': 0.0
-                    }
-            
-            logger.info("Paper trading completed")
-        
-        return self.results
-    
-    def run_live_trading(self, update_interval: timedelta) -> None:
-        """
-        Run live trading in a separate thread.
-        
-        Args:
-            update_interval: Interval between updates
-        """
-        logger.info(f"Starting live trading with {update_interval} updates")
-        
-        # Reset results
-        self.results = {
-            'trades': [],
-            'portfolio_history': [],
-            'performance_metrics': {}
-        }
-        
-        # Set running flag
-        self._running = True
-        self._stop_requested = False
-        
-        # Start trading thread
-        self._trading_thread = threading.Thread(
-            target=self._live_trading_loop,
-            args=(update_interval,)
-        )
-        
-        self._trading_thread.daemon = True
-        self._trading_thread.start()
-        
-        logger.info("Live trading thread started")
-    
-    def _live_trading_loop(self, update_interval: timedelta) -> None:
-        """
-        Live trading loop to be run in a separate thread.
-        
-        Args:
-            update_interval: Interval between updates
-        """
-        # Initialize portfolio
-        initial_portfolio = {
-            'total_value': self.portfolio_manager.initial_capital,
-            'cash': self.portfolio_manager.initial_capital,
-            'positions': {},
-            'position_values': {}
-        }
-        
-        current_portfolio = deepcopy(initial_portfolio)
-        
-        # Run live trading loop
-        while not self._stop_requested:
-            current_time = datetime.now()
-            logger.info(f"Processing time: {current_time}")
-            
-            try:
-                # Get current market data
-                current_data = self.data_manager.get_latest_data()
-                
-                if not current_data:
-                    logger.warning("No data available")
-                    time.sleep(update_interval.total_seconds())
-                    continue
-                
-                # Get historical data
-                historical_data = self.data_manager.get_historical_data(
-                    lookback_periods=100  # Use last 100 periods
-                )
-                
-                # Generate signals
-                signals = self.strategy_manager.process_data_and_generate_signals(
-                    current_data=current_data,
-                    historical_data=historical_data,
-                    current_portfolio=current_portfolio
-                )
-                
-                # Apply risk management
-                risk_adjusted_signals = self.risk_manager.apply_risk_constraints(
-                    signals=signals,
-                    current_portfolio=current_portfolio,
-                    market_data=current_data
-                )
-                
-                # Calculate position sizes
-                target_positions = self.portfolio_manager.calculate_position_sizes(
-                    signals=risk_adjusted_signals,
-                    current_portfolio=current_portfolio,
-                    market_data=current_data
-                )
-                
-                # Get current positions
-                current_positions = current_portfolio.get('positions', {})
-                
-                # Calculate position adjustments
-                position_adjustments = self.portfolio_manager.rebalance_portfolio(
-                    current_positions=current_positions,
-                    target_positions=target_positions
-                )
-                
-                # Generate orders from position adjustments
-                orders = []
-                for symbol, adjustment in position_adjustments.items():
-                    if adjustment != 0:
-                        # Create order
-                        from ai_trading_agent.agent.execution_handler_new import Order
-                        order = Order(
-                            symbol=symbol,
-                            quantity=adjustment
-                        )
-                        orders.append(order)
-                
-                # Execute orders
-                executed_orders = self.execution_handler.submit_orders(
-                    orders=orders,
-                    market_data=current_data
-                )
-                
-                # Update portfolio
-                for order in executed_orders:
-                    if order.status == 'FILLED':
-                        # Update positions
-                        symbol = order.symbol
-                        quantity = order.executed_quantity
-                        price = order.executed_price
-                        commission = order.commission
-                        
-                        # Update current positions
-                        if symbol not in current_positions:
-                            current_positions[symbol] = 0
-                        
-                        current_positions[symbol] += quantity
-                        
-                        # If position is now zero, remove it
-                        if current_positions[symbol] == 0:
-                            del current_positions[symbol]
-                        
-                        # Update cash
-                        current_portfolio['cash'] -= (quantity * price + commission)
-                        
-                        # Record trade
-                        trade = {
-                            'timestamp': current_time,
-                            'symbol': symbol,
-                            'quantity': quantity,
-                            'price': price,
-                            'commission': commission,
-                            'order_id': order.order_id,
-                            'pnl': 0.0  # Will be updated later
-                        }
-                        
-                        self.results['trades'].append(trade)
-                
-                # Update portfolio value
-                prices = {symbol: data.get('close', 0.0) if isinstance(data, dict) else data['close'] 
-                         for symbol, data in current_data.items()}
-                
-                portfolio_value = self.portfolio_manager.update_portfolio_value(
-                    positions=current_positions,
-                    prices=prices,
-                    timestamp=current_time
-                )
-                
-                # Update current portfolio
-                current_portfolio = self.portfolio_manager.get_current_portfolio()
-                
-                # Add to portfolio history
-                self.results['portfolio_history'].append(current_portfolio)
-                
-                # Calculate performance metrics periodically
-                if len(self.results['portfolio_history']) % 10 == 0:
-                    self._calculate_performance_metrics()
-            
-            except Exception as e:
-                logger.error(f"Error in live trading loop: {e}")
-            
-            # Sleep until next update
-            time.sleep(update_interval.total_seconds())
-        
-        # Set running flag
-        self._running = False
-        
-        logger.info("Live trading stopped")
-    
-    def stop_live_trading(self) -> None:
-        """Stop live trading."""
-        if self._running:
-            logger.info("Stopping live trading")
-            self._stop_requested = True
-            
-            if self._trading_thread:
-                self._trading_thread.join(timeout=30)
-                
-                if self._trading_thread.is_alive():
-                    logger.warning("Trading thread did not stop gracefully")
+        if not self.agents:
+            self.agent_execution_order = []
+            print("No agents registered. Execution order is empty.")
+            return
+
+        # Graph representation: adjacency list (agent_id -> list of agents it outputs to)
+        adj: Dict[str, List[str]] = {agent_id: [] for agent_id in self.agents}
+        # In-degree: number of incoming edges (dependencies) for each agent
+        in_degree: Dict[str, int] = {agent_id: 0 for agent_id in self.agents}
+
+        for agent_id, agent_instance in self.agents.items():
+            # For each agent, look at who it receives input FROM (its dependencies)
+            # If agent A receives input from agent B, then B is a prerequisite for A.
+            # So, an edge goes from B to A.
+            for source_agent_id in agent_instance.inputs_from:
+                if source_agent_id in self.agents: # Ensure the source agent is registered
+                    adj[source_agent_id].append(agent_id)
+                    in_degree[agent_id] += 1
                 else:
-                    logger.info("Trading thread stopped")
+                    print(f"Warning: Agent {agent_id} lists unregistered agent {source_agent_id} as an input. Ignoring this dependency.")
+        
+        # Initialize a queue with all agents having an in-degree of 0 (no prerequisites)
+        queue = deque([agent_id for agent_id, degree in in_degree.items() if degree == 0])
+        
+        sorted_order: List[str] = []
+        
+        while queue:
+            current_agent_id = queue.popleft()
+            sorted_order.append(current_agent_id)
             
-            self._running = False
+            # For each neighbor (agent that depends on current_agent_id)
+            for neighbor_agent_id in adj.get(current_agent_id, []):
+                in_degree[neighbor_agent_id] -= 1
+                if in_degree[neighbor_agent_id] == 0:
+                    queue.append(neighbor_agent_id)
+                    
+        if len(sorted_order) == len(self.agents):
+            self.agent_execution_order = sorted_order
+            print(f"Determined agent execution order: {self.agent_execution_order}")
         else:
-            logger.info("Live trading not running")
-    
-    # Circuit breaker callback methods
-    def _on_data_circuit_open(self) -> None:
-        """Callback when the data provider circuit breaker opens."""
-        logger.warning("Data provider circuit breaker opened - too many failures")
-        self.error_state["data_provider"]["last_error_time"] = time.time()
+            # If sorted_order is shorter, there's a cycle
+            self.agent_execution_order = [] # Or could be partially filled, but an error state is better
+            
+            # Identify agents involved in the cycle (those with in_degree > 0)
+            # This is a simplified way to show problematic agents; more complex cycle detection might be needed for exact cycle paths.
+            remaining_agents = [agent_id for agent_id, degree in in_degree.items() if degree > 0]
+            print(f"Error: Circular dependency detected in agent graph. Could not determine execution order. Problematic agents (or part of cycle): {remaining_agents}")
+            # Fallback: use registration order or alphabetical, but this is not ideal
+            # For safety, set to empty and let run_cycle fail if no order.
+            # self.agent_execution_order = list(self.agents.keys())
+            # print(f"Warning: Using fallback execution order (registration order) due to cycle: {self.agent_execution_order}")
+
+
+    def get_agent(self, agent_id: str) -> Optional[BaseAgent]:
+        """Retrieves a registered agent by its ID."""
+        return self.agents.get(agent_id)
+
+    def start_all_agents(self):
+        """Starts all registered agents."""
+        for agent_id, agent in self.agents.items():
+            try:
+                agent.start()
+                
+                # Update agent health status
+                self.agent_health[agent_id]["status"] = "running"
+                
+                logger.info(f"Started agent {agent_id} ({agent.name})")
+            except Exception as e:
+                logger.error(f"Failed to start agent {agent_id}: {str(e)}")
+                
+                # Record failure in health tracking
+                self.agent_health[agent_id]["status"] = "failed"
+                self.agent_health[agent_id]["last_error"] = {
+                    "time": datetime.now().isoformat(),
+                    "error": str(e),
+                    "phase": "startup"
+                }
+                self.agent_health[agent_id]["error_count"] += 1
+                self.agent_health[agent_id]["consecutive_errors"] += 1
+                
+                # Attempt recovery
+                self._attempt_agent_recovery(agent_id, {
+                    "type": "startup_failure",
+                    "severity": "high",
+                    "reason": str(e)
+                })
         
-        # Emit event for frontend notification
-        global_event_emitter.emit('paper_trading_error', {
-            'error_category': 'data_provider',
-            'error_code': ErrorCode.DATA_PROVIDER_CONNECTION_ERROR.value,
-            'message': 'Data provider connection issues detected. Automatic recovery in progress.',
-            'severity': ErrorSeverity.ERROR.value,
-            'timestamp': time.time(),
-            'details': {
-                'circuit_state': 'OPEN',
-                'recovery_in_progress': True
-            }
-        })
-    
-    def _on_data_circuit_close(self) -> None:
-        """Callback when the data provider circuit breaker closes."""
-        logger.info("Data provider circuit breaker closed - connection restored")
-        self.error_state["data_provider"]["recovery_attempts"] = 0
-        
-        # Emit event for frontend notification
-        global_event_emitter.emit('paper_trading_error', {
-            'error_category': 'data_provider',
-            'error_code': ErrorCode.DATA_PROVIDER_CONNECTION_ERROR.value,
-            'message': 'Data provider connection restored.',
-            'severity': ErrorSeverity.INFO.value,
-            'timestamp': time.time(),
-            'details': {
-                'circuit_state': 'CLOSED',
-                'recovery_successful': True
-            }
-        })
-    
-    def _on_strategy_circuit_open(self) -> None:
-        """Callback when the strategy circuit breaker opens."""
-        logger.warning("Strategy circuit breaker opened - too many calculation failures")
-        self.error_state["strategy"]["last_error_time"] = time.time()
-        
-        # Emit event for frontend notification
-        global_event_emitter.emit('paper_trading_error', {
-            'error_category': 'strategy',
-            'error_code': ErrorCode.STRATEGY_CALCULATION_ERROR.value,
-            'message': 'Strategy calculation issues detected. Automatic recovery in progress.',
-            'severity': ErrorSeverity.ERROR.value,
-            'timestamp': time.time(),
-            'details': {
-                'circuit_state': 'OPEN',
-                'recovery_in_progress': True
-            }
-        })
-    
-    def _on_strategy_circuit_close(self) -> None:
-        """Callback when the strategy circuit breaker closes."""
-        logger.info("Strategy circuit breaker closed - calculations restored")
-        self.error_state["strategy"]["recovery_attempts"] = 0
-        
-        # Emit event for frontend notification
-        global_event_emitter.emit('paper_trading_error', {
-            'error_category': 'strategy',
-            'error_code': ErrorCode.STRATEGY_CALCULATION_ERROR.value,
-            'message': 'Strategy calculations restored.',
-            'severity': ErrorSeverity.INFO.value,
-            'timestamp': time.time(),
-            'details': {
-                'circuit_state': 'CLOSED',
-                'recovery_successful': True
-            }
-        })
-    
-    def _on_execution_circuit_open(self) -> None:
-        """Callback when the execution circuit breaker opens."""
-        logger.warning("Execution circuit breaker opened - too many execution failures")
-        self.error_state["execution"]["last_error_time"] = time.time()
-        
-        # Emit event for frontend notification
-        global_event_emitter.emit('paper_trading_error', {
-            'error_category': 'execution',
-            'error_code': ErrorCode.EXECUTION_ORDER_ERROR.value,
-            'message': 'Order execution issues detected. Automatic recovery in progress.',
-            'severity': ErrorSeverity.ERROR.value,
-            'timestamp': time.time(),
-            'details': {
-                'circuit_state': 'OPEN',
-                'recovery_in_progress': True
-            }
-        })
-    
-    def _on_execution_circuit_close(self) -> None:
-        """Callback when the execution circuit breaker closes."""
-        logger.info("Execution circuit breaker closed - execution restored")
-        self.error_state["execution"]["recovery_attempts"] = 0
-        
-        # Emit event for frontend notification
-        global_event_emitter.emit('paper_trading_error', {
-            'error_category': 'execution',
-            'error_code': ErrorCode.EXECUTION_ORDER_ERROR.value,
-            'message': 'Order execution restored.',
-            'severity': ErrorSeverity.INFO.value,
-            'timestamp': time.time(),
-            'details': {
-                'circuit_state': 'CLOSED',
-                'recovery_successful': True
-            }
-        })
-    
-    def _calculate_performance_metrics(self) -> None:
-        """Calculate performance metrics from backtest results."""
-        if not self.results['portfolio_history']:
-            logger.warning("No portfolio history available for performance calculation")
+        # Start monitoring if not already running
+        self._start_monitoring()
+
+    def stop_all_agents(self):
+        """Stops all registered agents."""
+        print("Stopping all registered agents...")
+        # Stop in reverse order of execution if necessary, or just iterate
+        for agent_id in reversed(self.agent_execution_order):
+            agent = self.agents.get(agent_id)
+            if agent:
+                try:
+                    agent.stop()
+                except Exception as e:
+                    print(f"Error stopping agent {agent.agent_id}: {e}")
+                    # Status might already be STOPPED or ERROR
+
+    def route_output(self, producing_agent_id: str, output_data: Optional[any]): # Output can be Dict or List[Dict]
+        """
+        Routes the output of an agent to its designated recipients.
+        Handles both single dictionary outputs and lists of dictionaries.
+        """
+        if not output_data:
+            return
+
+        producer = self.agents.get(producing_agent_id)
+        if not producer:
+            print(f"Error: Producer agent {producing_agent_id} not found for routing.")
+            return
+
+        outputs_to_route = []
+        if isinstance(output_data, list):
+            outputs_to_route.extend(output_data)
+        elif isinstance(output_data, dict):
+            outputs_to_route.append(output_data)
+        else:
+            print(f"Warning: Agent {producing_agent_id} produced output of unexpected type: {type(output_data)}. Expected Dict or List[Dict].")
+            return
+
+        for item in outputs_to_route:
+            if not isinstance(item, dict):
+                print(f"Warning: Agent {producing_agent_id} produced a list containing a non-dictionary item: {type(item)}. Skipping this item.")
+                continue
+            for recipient_id in producer.outputs_to:
+                if recipient_id in self.data_queues:
+                    self.data_queues[recipient_id].append(item)
+                    # print(f"Routed output from {producing_agent_id} to {recipient_id}: {item}")
+                else:
+                    print(f"Warning: Recipient agent {recipient_id} (from {producing_agent_id}) not found or has no queue for item: {item}.")
+
+    def run_cycle(self, external_inputs: Optional[Dict[str, List[Dict]]] = None):
+        """
+        Runs one cycle of processing for all agents in the determined order.
+        External inputs are keyed by agent_id.
+        """
+        if not self.agent_execution_order:
+            logger.warning("No agent execution order determined. Cannot run processing cycle.")
             return
         
-        # Convert portfolio history to DataFrame
-        if isinstance(self.results['portfolio_history'][0], dict):
-            portfolio_df = pd.DataFrame(self.results['portfolio_history'])
-        else:
-            portfolio_df = self.results['portfolio_history']
-        
-        # Calculate metrics
-        try:
-            # Extract portfolio values
-            if 'total_value' in portfolio_df.columns:
-                portfolio_values = portfolio_df['total_value'].values
-                
-                # Calculate returns
-                returns = np.diff(portfolio_values) / portfolio_values[:-1]
-                
-                # Calculate metrics
-                total_return = (portfolio_values[-1] / portfolio_values[0] - 1) * 100
-                
-                # Annualized return
-                n_periods = len(portfolio_values)
-                annualized_return = ((1 + total_return / 100) ** (252 / n_periods) - 1) * 100
-                
-                # Volatility
-                daily_volatility = np.std(returns) * 100
-                annualized_volatility = daily_volatility * np.sqrt(252)
-                
-                # Sharpe ratio
-                risk_free_rate = 0.0  # Assume zero risk-free rate
-                sharpe_ratio = (annualized_return - risk_free_rate) / annualized_volatility if annualized_volatility > 0 else 0
-                
-                # Maximum drawdown
-                peak = np.maximum.accumulate(portfolio_values)
-                drawdown = (peak - portfolio_values) / peak
-                max_drawdown = np.max(drawdown) * 100
-                
-                # Win rate
-                if self.results['trades']:
-                    trades_df = pd.DataFrame(self.results['trades'])
-                    win_count = len(trades_df[trades_df['pnl'] > 0])
-                    total_trades = len(trades_df)
-                    win_rate = (win_count / total_trades * 100) if total_trades > 0 else 0
+        # Process external inputs
+        if external_inputs:
+            for agent_id, inputs in external_inputs.items():
+                if agent_id in self.data_queues:
+                    for input_item in inputs:
+                        self.data_queues[agent_id].append(input_item)
                 else:
-                    win_rate = 0
-                
-                # Store metrics
-                self.results['performance_metrics'] = {
-                    'total_return': total_return,
-                    'annualized_return': annualized_return,
-                    'daily_volatility': daily_volatility,
-                    'annualized_volatility': annualized_volatility,
-                    'sharpe_ratio': sharpe_ratio,
-                    'max_drawdown': max_drawdown,
-                    'win_rate': win_rate
-                }
-                
-                logger.info(f"Performance metrics calculated: {self.results['performance_metrics']}")
-            else:
-                logger.warning("Portfolio history does not contain 'total_value' column")
-                self.results['performance_metrics'] = {'error': 'No total_value in portfolio history'}
+                    logger.warning(f"External input for unknown agent {agent_id}. Ignoring.")
         
-        except Exception as e:
-            logger.error(f"Error calculating performance metrics: {e}")
-            self.results['performance_metrics'] = {'error': str(e)}
+        # Check for and reconcile any orphaned transactions
+        self.recovery_manager.reconcile_orphaned_transactions()
+        
+        # Process each agent in the execution order
+        for agent_id in self.agent_execution_order:
+            agent = self.agents[agent_id]
+            
+            # Early skip if agent is not active
+            if agent.status != AgentStatus.ACTIVE:
+                logger.info(f"Agent {agent_id} is not active (status: {agent.status}). Skipping.")
+                continue
+            
+            # Get any queued data for this agent
+            inputs = []
+            if self.data_queues[agent_id]:
+                while self.data_queues[agent_id]:
+                    inputs.append(self.data_queues[agent_id].popleft())
+                
+                logger.debug(f"Agent {agent_id} processing {len(inputs)} queued inputs")
+                
+                # Process the inputs for this agent
+                try:
+                    cycle_start_time = time.time()
+                    
+                    # Checkpoint state if needed
+                    self._maybe_checkpoint_agent_state(agent_id)
+                    
+                    # Process inputs
+                    output = agent.process(inputs)
+                    
+                    # Record successful processing
+                    cycle_end_time = time.time()
+                    process_time_ms = (cycle_end_time - cycle_start_time) * 1000
+                    
+                    # Update health metrics
+                    self.agent_health[agent_id]["last_successful_run"] = datetime.now().isoformat()
+                    self.agent_health[agent_id]["consecutive_errors"] = 0
+                    self.agent_health[agent_id]["status"] = "running"
+                    self.agent_health[agent_id]["last_process_time_ms"] = process_time_ms
+                    
+                    if output is not None:
+                        # Route the output to other agents that depend on this one
+                        self.route_output(agent_id, output)
+                        
+                except Exception as e:
+                    logger.error(f"Error processing agent {agent_id}: {str(e)}")
+                    
+                    # Update health metrics
+                    self.agent_health[agent_id]["error_count"] += 1
+                    self.agent_health[agent_id]["consecutive_errors"] += 1
+                    self.agent_health[agent_id]["last_error"] = {
+                        "time": datetime.now().isoformat(),
+                        "error": str(e),
+                        "phase": "processing"
+                    }
+                    
+                    # Attempt recovery if needed
+                    if self.agent_health[agent_id]["consecutive_errors"] >= 3:
+                        logger.warning(f"Agent {agent_id} has failed {self.agent_health[agent_id]['consecutive_errors']} consecutive times. Attempting recovery.")
+                        self._attempt_agent_recovery(agent_id, {
+                            "type": "consecutive_failures",
+                            "severity": "medium",
+                            "reason": str(e)
+                        })
+            else:
+                # No inputs for this agent, still allow it to run if needed (e.g., for agents that poll or generate data)
+                logger.debug(f"Agent {agent_id} has no queued inputs, but running process cycle")
+                try:
+                    cycle_start_time = time.time()
+                    
+                    # Checkpoint state if needed
+                    self._maybe_checkpoint_agent_state(agent_id)
+                    
+                    # Process
+                    output = agent.process([])
+                    
+                    # Record successful processing
+                    cycle_end_time = time.time()
+                    process_time_ms = (cycle_end_time - cycle_start_time) * 1000
+                    
+                    # Update health metrics
+                    self.agent_health[agent_id]["last_successful_run"] = datetime.now().isoformat()
+                    self.agent_health[agent_id]["consecutive_errors"] = 0
+                    self.agent_health[agent_id]["status"] = "running"
+                    self.agent_health[agent_id]["last_process_time_ms"] = process_time_ms
+                    
+                    if output is not None:
+                        # Route the output to other agents that depend on this one
+                        self.route_output(agent_id, output)
+                except Exception as e:
+                    logger.error(f"Error processing agent {agent_id}: {str(e)}")
+                    
+                    # Update health metrics
+                    self.agent_health[agent_id]["error_count"] += 1
+                    self.agent_health[agent_id]["consecutive_errors"] += 1
+                    self.agent_health[agent_id]["last_error"] = {
+                        "time": datetime.now().isoformat(),
+                        "error": str(e),
+                        "phase": "processing"
+                    }
+                    
+                    # Attempt recovery if needed
+                    if self.agent_health[agent_id]["consecutive_errors"] >= 3:
+                        logger.warning(f"Agent {agent_id} has failed {self.agent_health[agent_id]['consecutive_errors']} consecutive times. Attempting recovery.")
+                        self._attempt_agent_recovery(agent_id, {
+                            "type": "consecutive_failures",
+                            "severity": "medium",
+                            "reason": str(e)
+                        })
+
+    def get_all_agent_info(self):
+        """Returns a list of info dictionaries for all registered agents."""
+        agent_info = []
+        for agent_id, agent in self.agents.items():
+            # Get basic agent info
+            info = agent.get_info()
+            
+            # Add health information
+            if agent_id in self.agent_health:
+                info["health"] = self.agent_health[agent_id]
+            
+            agent_info.append(info)
+            
+        return agent_info
+        
+    def _start_monitoring(self):
+        """Start the background monitoring thread."""
+        if self.monitoring_thread is not None and self.monitoring_active:
+            logger.info("Monitoring thread already running")
+            return
+        
+        self.monitoring_active = True
+        self.monitoring_thread = threading.Thread(target=self._monitoring_loop, daemon=True)
+        self.monitoring_thread.start()
+        logger.info("Started agent monitoring thread")
+    
+    def _stop_monitoring(self):
+        """Stop the background monitoring thread."""
+        self.monitoring_active = False
+        if self.monitoring_thread is not None:
+            self.monitoring_thread.join(timeout=2.0)
+            self.monitoring_thread = None
+            logger.info("Stopped agent monitoring thread")
+    
+    def _monitoring_loop(self):
+        """Background thread for monitoring agent health."""
+        while self.monitoring_active:
+            try:
+                # Check each agent's health
+                for agent_id, agent in self.agents.items():
+                    if agent.status == AgentStatus.ACTIVE:
+                        # Check if agent is responsive
+                        if not self._is_agent_healthy(agent_id):
+                            logger.warning(f"Agent {agent_id} appears to be unresponsive")
+                            
+                            # Update health metrics
+                            self.agent_health[agent_id]["status"] = "unresponsive"
+                            
+                            # Attempt recovery
+                            self._attempt_agent_recovery(agent_id, {
+                                "type": "unresponsive",
+                                "severity": "high",
+                                "reason": "Agent is not responding to health checks"
+                            })
+                
+                # Sleep for monitoring interval
+                time.sleep(self.monitoring_interval)
+            except Exception as e:
+                logger.error(f"Error in monitoring loop: {str(e)}")
+                time.sleep(5)  # Sleep briefly on error
+    
+    def _is_agent_healthy(self, agent_id: str) -> bool:
+        """Check if an agent is responsive and healthy."""
+        agent = self.agents.get(agent_id)
+        if not agent:
+            return False
+        
+        # If agent has a health_check method, use it
+        if hasattr(agent, 'health_check') and callable(getattr(agent, 'health_check')):
+            try:
+                result = agent.health_check()
+                return result.get('healthy', False)
+            except Exception as e:
+                logger.error(f"Error in health check for agent {agent_id}: {str(e)}")
+                return False
+        
+        # Otherwise use basic checks
+        if agent.status != AgentStatus.ACTIVE:
+            return False
+        
+        # Check last successful run (if any)
+        health = self.agent_health.get(agent_id, {})
+        last_run = health.get("last_successful_run")
+        if not last_run:
+            # New agent, no runs yet
+            return True
+        
+        # Check if agent has run recently - timeout based on agent type
+        # Different agent types might have different expected cycle times
+        max_inactive_time = 300  # Default: 5 minutes
+        
+        # Agent-specific timeouts could be defined here
+        # For example, real-time agents might have shorter timeouts
+        
+        try:
+            last_run_time = datetime.fromisoformat(last_run)
+            seconds_since_last_run = (datetime.now() - last_run_time).total_seconds()
+            return seconds_since_last_run < max_inactive_time
+        except Exception:
+            return False
+    
+    def _attempt_agent_recovery(self, agent_id: str, failure_info: Dict[str, Any]) -> bool:
+        """Attempt to recover a failed agent."""
+        logger.info(f"Attempting to recover agent {agent_id}: {failure_info.get('reason', 'Unknown failure')}")
+        
+        # Update recovery attempt count
+        self.agent_health[agent_id]["recovery_attempts"] += 1
+        
+        # Get agent instance
+        agent = self.agents.get(agent_id)
+        if not agent:
+            logger.error(f"Cannot recover unknown agent {agent_id}")
+            return False
+        
+        # Use recovery manager to determine and apply recovery strategy
+        success, strategy = self.recovery_manager.handle_agent_failure(agent_id, failure_info)
+        if not success:
+            logger.error(f"Failed to determine recovery strategy for agent {agent_id}")
+            return False
+        
+        # Apply recovery strategy
+        success = self.recovery_manager.apply_recovery_strategy(agent_id, strategy, agent)
+        
+        # Update health status based on recovery result
+        if success:
+            logger.info(f"Successfully recovered agent {agent_id} using strategy {strategy.value}")
+            self.agent_health[agent_id]["status"] = "recovered"
+            self.agent_health[agent_id]["consecutive_errors"] = 0
+        else:
+            logger.error(f"Failed to recover agent {agent_id} using strategy {strategy.value}")
+            self.agent_health[agent_id]["status"] = "failed"
+        
+        return success
+    
+    def _checkpoint_agent_state(self, agent_id: str) -> bool:
+        """Checkpoint agent state for potential recovery."""
+        agent = self.agents.get(agent_id)
+        if not agent:
+            logger.warning(f"Cannot checkpoint unknown agent {agent_id}")
+            return False
+        
+        # Get agent state
+        state = None
+        if hasattr(agent, 'get_state') and callable(getattr(agent, 'get_state')):
+            try:
+                state = agent.get_state()
+            except Exception as e:
+                logger.error(f"Error getting state for agent {agent_id}: {str(e)}")
+                return False
+        else:
+            # Create basic state from agent attributes
+            state = {}
+            # Safely copy serializable attributes
+            for attr in dir(agent):
+                if not attr.startswith('_') and not callable(getattr(agent, attr)):
+                    try:
+                        value = getattr(agent, attr)
+                        # Try to serialize - only include serializable values
+                        json.dumps({attr: value})
+                        state[attr] = value
+                    except (TypeError, OverflowError, ValueError):
+                        # Skip non-serializable attributes
+                        pass
+        
+        # Save state using recovery manager
+        if state:
+            success = self.recovery_manager.checkpoint_agent_state(agent_id, state)
+            if success:
+                self.last_checkpoint_time[agent_id] = time.time()
+                logger.debug(f"Checkpointed state for agent {agent_id}")
+            return success
+        else:
+            logger.warning(f"No state to checkpoint for agent {agent_id}")
+            return False
+    
+    def _maybe_checkpoint_agent_state(self, agent_id: str) -> None:
+        """Checkpoint agent state if enough time has passed since last checkpoint."""
+        last_time = self.last_checkpoint_time.get(agent_id, 0)
+        current_time = time.time()
+        
+        if current_time - last_time >= self.checkpoint_interval:
+            self._checkpoint_agent_state(agent_id)
+    
+    def journal_transaction(self, transaction_type: str, transaction_data: Dict[str, Any], agent_id: str) -> str:
+        """Journal a transaction for recovery purposes."""
+        # Use recovery manager to journal the transaction
+        transaction_id = self.recovery_manager.journal_transaction(transaction_type, transaction_data, agent_id)
+        
+        # Track transaction locally
+        self.transactions[transaction_id] = {
+            "type": transaction_type,
+            "agent_id": agent_id,
+            "data": transaction_data,
+            "status": "pending",
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        return transaction_id
+    
+    def update_transaction_status(self, transaction_id: str, status: str, result: Optional[Dict[str, Any]] = None) -> bool:
+        """Update the status of a journaled transaction."""
+        if transaction_id not in self.transactions:
+            logger.warning(f"Unknown transaction ID: {transaction_id}")
+            return False
+        
+        # Update local tracking
+        self.transactions[transaction_id]["status"] = status
+        if result:
+            self.transactions[transaction_id]["result"] = result
+        self.transactions[transaction_id]["updated_at"] = datetime.now().isoformat()
+        
+        # Update in recovery manager
+        return self.recovery_manager.update_transaction_status(transaction_id, status, result)
+    
+    def get_recovery_status(self) -> Dict[str, Any]:
+        """Get current recovery status information."""
+        return self.recovery_manager.get_recovery_status()
+    
+    def get_agent_health_metrics(self) -> Dict[str, Dict[str, Any]]:
+        """Get health metrics for all agents."""
+        return self.agent_health.copy()
+
+if __name__ == '__main__':
+    # Import example agents for testing
+    from agent_definitions import (
+        SentimentAnalysisAgent, TechnicalAnalysisAgent, NewsEventAgent, FundamentalAnalysisAgent,
+        DecisionAgent, ExecutionLayerAgent, AgentRole, AgentStatus
+    )
+
+    orchestrator = TradingOrchestrator()
+
+    # Instantiate agents
+    # Sentiment Agents
+    sentiment_agent_btc = SentimentAnalysisAgent(
+        agent_id_suffix="av_news_btc", name="AV BTC News Sentiment",
+        agent_type="AlphaVantageNews", symbols=["BTC/USD"],
+        config_details={"api_key": "YOUR_AV_KEY_HERE"}
+    )
+    sentiment_agent_eth = SentimentAnalysisAgent(
+        agent_id_suffix="av_news_eth", name="AV ETH News Sentiment",
+        agent_type="AlphaVantageNews", symbols=["ETH/USD"],
+        config_details={"api_key": "YOUR_AV_KEY_HERE"}
+    )
+
+    # Technical Agents
+    technical_agent_btc = TechnicalAnalysisAgent(
+        agent_id_suffix="ta_btc", name="TA BTC",
+        agent_type="RSIMACDStrategy", symbols=["BTC/USD"],
+        config_details={"rsi_period": 14, "macd_fast": 12}
+    )
+    technical_agent_eth = TechnicalAnalysisAgent(
+        agent_id_suffix="ta_eth", name="TA ETH",
+        agent_type="RSIMACDStrategy", symbols=["ETH/USD"]
+    )
+
+    # News Event Agent
+    news_event_agent_global = NewsEventAgent(
+        agent_id_suffix="global_events", name="Global News Event Monitor",
+        agent_type="GeneralEventScanner",
+        symbols=["BTC/USD", "ETH/USD", "X", "PHRM"], # Monitors multiple symbols for events
+        event_keywords=["earnings", "fda approval", "regulatory change", "guidance", "partnership"]
+    )
+    
+    # Fundamental Analysis Agent
+    fundamental_agent_x = FundamentalAnalysisAgent(
+        agent_id_suffix="stock_x_fundamentals", name="Stock X Fundamentals",
+        agent_type="CompanyValuator", symbols=["X"] # Focuses on specific stock "X"
+    )
+    fundamental_agent_phrm = FundamentalAnalysisAgent(
+        agent_id_suffix="stock_phrm_fundamentals", name="Stock PHRM Fundamentals",
+        agent_type="CompanyValuator", symbols=["PHRM"]
+    )
+
+    # Decision Agent
+    decision_agent_main = DecisionAgent(
+        agent_id_suffix="main_v1", name="Main Decision Logic V1",
+        agent_type="WeightedSignalAggregator",
+        config_details={
+            "min_signals_for_decision": 2,
+            "buy_threshold": 0.55,
+            "sell_threshold": -0.45,
+            "signal_weights": {
+                "sentiment_signal": 0.3,
+                "technical_signal": 0.35,
+                "news_event_signal": 0.25,
+                "fundamental_signal": 0.1
+            },
+            "risk_management": { # Added risk management configuration
+                "default_trade_quantity": 0.05,
+                "max_trade_value_usd": 150.0,
+                "per_symbol_max_quantity": {
+                    "BTC/USD": 0.1,
+                    "ETH/USD": 0.5,
+                    "X": 10,
+                    "PHRM": 20
+                }
+            }
+        }
+    )
+    
+    # Execution Agent
+    execution_agent_paper = ExecutionLayerAgent(
+        agent_id_suffix="paper_trader", name="Paper Trading Executor",
+        agent_type="InternalPaperBroker"
+    )
+
+    # Define connections: All specialized agents output to the main decision agent
+    sentiment_agent_btc.outputs_to = [decision_agent_main.agent_id]
+    sentiment_agent_eth.outputs_to = [decision_agent_main.agent_id]
+    technical_agent_btc.outputs_to = [decision_agent_main.agent_id]
+    technical_agent_eth.outputs_to = [decision_agent_main.agent_id]
+    news_event_agent_global.outputs_to = [decision_agent_main.agent_id]
+    fundamental_agent_x.outputs_to = [decision_agent_main.agent_id]
+    fundamental_agent_phrm.outputs_to = [decision_agent_main.agent_id]
+
+    decision_agent_main.inputs_from = [
+        sentiment_agent_btc.agent_id, sentiment_agent_eth.agent_id,
+        technical_agent_btc.agent_id, technical_agent_eth.agent_id,
+        news_event_agent_global.agent_id,
+        fundamental_agent_x.agent_id, fundamental_agent_phrm.agent_id
+    ]
+    decision_agent_main.outputs_to = [execution_agent_paper.agent_id]
+    execution_agent_paper.inputs_from = [decision_agent_main.agent_id]
+
+    # Register all agents
+    orchestrator.register_agent(sentiment_agent_btc)
+    orchestrator.register_agent(sentiment_agent_eth)
+    orchestrator.register_agent(technical_agent_btc)
+    orchestrator.register_agent(technical_agent_eth)
+    orchestrator.register_agent(news_event_agent_global)
+    orchestrator.register_agent(fundamental_agent_x)
+    orchestrator.register_agent(fundamental_agent_phrm)
+    orchestrator.register_agent(decision_agent_main)
+    orchestrator.register_agent(execution_agent_paper)
+    
+    print("\n--- Orchestrator Initialized ---")
+    print(f"Execution Order: {orchestrator.agent_execution_order}")
+
+    orchestrator.start_all_agents()
+
+    print("\n--- Simulating Trading Cycle 1 (Agents fetch their own data) ---")
+    orchestrator.run_cycle()
+    # At this point, specialized agents should have processed and their outputs (signals)
+    # should be in the decision_agent_main's queue.
+
+    print("\n--- Simulating Trading Cycle 2 (Decision agent processes queued signals) ---")
+    orchestrator.run_cycle()
+    # decision_agent_main processes signals from cycle 1. If a directive is created,
+    # it's queued for execution_agent_paper.
+
+    print("\n--- Simulating Trading Cycle 3 (Execution agent processes directive if any) ---")
+    orchestrator.run_cycle()
+    # execution_agent_paper processes directive from cycle 2. Feedback might be generated.
+
+    print("\n--- Simulating Trading Cycle 4 (Optional: Feedback processing or new external data) ---")
+    # Example: Manually push a query to the execution agent for a position
+    # This would typically originate from a user interface or another management agent.
+    if execution_agent_paper.agent_id in orchestrator.data_queues:
+         print(f"\n--- Manually queueing position query for {execution_agent_paper.agent_id} ---")
+         orchestrator.data_queues[execution_agent_paper.agent_id].append(
+             {"type": "query_position", "payload": {"symbol": "BTC/USD"}}
+         )
+    orchestrator.run_cycle() # Execution agent processes query, its output is routed.
+    
+    # If execution agent sent feedback to decision agent (if configured), one more cycle for that.
+    # For now, feedback is not explicitly routed back in this example setup.
+
+    print("\n--- All Agent Info from Orchestrator ---")
+    all_info = orchestrator.get_all_agent_info()
+    for info in all_info:
+        print(info)
+
+    orchestrator.stop_all_agents()
+    print("\n--- Orchestration Test Complete ---")

@@ -11,6 +11,7 @@ import pandas as pd
 from typing import Dict, List, Optional, Tuple, Any, Union
 from enum import Enum
 import logging
+from sklearn.cluster import KMeans
 
 from .strategy import BaseStrategy, RichSignal, RichSignalsDict
 from ..common import logger
@@ -292,6 +293,332 @@ class MarketRegimeDetector:
         
         # Default case
         return MarketRegimeType.UNKNOWN
+
+
+class MarketRegimeClassifier:
+    """
+    Advanced market regime classifier that uses machine learning techniques
+    to identify and classify market regimes.
+    
+    This class extends the basic MarketRegimeDetector with:
+    1. ML-based clustering to identify regimes
+    2. Multiple features for regime classification
+    3. Automatic regime transition detection
+    4. Regime persistence tracking 
+    5. External factor integration
+    """
+    
+    def __init__(self, config: Dict[str, Any]):
+        """
+        Initialize the MarketRegimeClassifier.
+        
+        Args:
+            config: Configuration dictionary with parameters
+                - lookback_window: Window for feature calculation (default: 20)
+                - features: List of features to use for classification
+                - regime_types: List of regime types to identify
+                - cluster_count: Number of clusters for unsupervised classification
+                - calibration_window: Number of periods for classifier calibration
+                - smoothing_window: Window for regime smoothing to prevent noise
+        """
+        self.config = config
+        self.lookback_window = config.get("lookback_window", 20)
+        self.features = config.get("features", ["returns", "volatility", "volume"])
+        self.regime_types = config.get("regime_types", ["bull", "bear", "sideways", "volatile"])
+        self.cluster_count = config.get("cluster_count", len(self.regime_types))
+        self.calibration_window = config.get("calibration_window", 100)
+        self.smoothing_window = config.get("smoothing_window", 5)
+        
+        # Initialize clusterer
+        self.clusterer = KMeans(n_clusters=self.cluster_count, random_state=42)
+        
+        # Store regime history and mappings
+        self.regime_history = {}
+        self.feature_cache = {}
+        self.is_calibrated = False
+        self.cluster_to_regime_mapping = {}
+        
+        logger.info(f"MarketRegimeClassifier initialized with {len(self.features)} features")
+    
+    def classify_regime(self, data: pd.DataFrame) -> str:
+        """
+        Classify the current market regime based on historical data.
+        
+        Args:
+            data: DataFrame with OHLCV data
+            
+        Returns:
+            String representing the identified market regime
+        """
+        if data is None or data.empty or len(data) < self.lookback_window:
+            logger.warning("Insufficient data for regime classification")
+            return "unknown"
+            
+        # Extract features
+        features_df = self._extract_features(data)
+        
+        # Calibrate classifier if needed
+        if not self.is_calibrated and len(data) >= self.calibration_window:
+            self._calibrate(data)
+        
+        # If not calibrated, use simplified classification
+        if not self.is_calibrated:
+            return self._simple_classification(data)
+        
+        # Predict cluster for the latest data point
+        latest_features = features_df.iloc[-1].values.reshape(1, -1)
+        cluster = self.clusterer.predict(latest_features)[0]
+        
+        # Map cluster to regime
+        regime = self.cluster_to_regime_mapping.get(cluster, "unknown")
+        
+        # Apply smoothing if we have history
+        if len(self.regime_history) >= self.smoothing_window:
+            regime = self._apply_regime_smoothing(regime)
+        
+        # Update history
+        timestamp = data.index[-1]
+        self.regime_history[timestamp] = regime
+        
+        return regime
+    
+    def _extract_features(self, data: pd.DataFrame) -> pd.DataFrame:
+        """
+        Extract features for regime classification.
+        
+        Args:
+            data: DataFrame with OHLCV data
+            
+        Returns:
+            DataFrame with extracted features
+        """
+        # Use cached features if available
+        cache_key = id(data)
+        if cache_key in self.feature_cache:
+            return self.feature_cache[cache_key]
+            
+        features_dict = {}
+        
+        # Calculate various features based on configuration
+        for feature in self.features:
+            if feature == "returns":
+                if "close" in data.columns:
+                    features_dict["returns"] = data["close"].pct_change().fillna(0)
+                else:
+                    features_dict["returns"] = data.iloc[:, 0].pct_change().fillna(0)
+                    
+            elif feature == "volatility":
+                if "returns" in features_dict:
+                    returns = features_dict["returns"]
+                else:
+                    returns = data["close"].pct_change().fillna(0) if "close" in data.columns else data.iloc[:, 0].pct_change().fillna(0)
+                features_dict["volatility"] = returns.rolling(window=self.lookback_window).std().fillna(0)
+                
+            elif feature == "volume":
+                if "volume" in data.columns:
+                    vol = data["volume"]
+                    features_dict["volume_change"] = vol.pct_change().fillna(0)
+                    
+            elif feature == "trend":
+                if "close" in data.columns:
+                    prices = data["close"]
+                else:
+                    prices = data.iloc[:, 0]
+                    
+                # Calculate price relative to moving average
+                ma = prices.rolling(window=self.lookback_window).mean()
+                features_dict["price_to_ma"] = (prices / ma - 1).fillna(0)
+                
+            elif feature == "momentum":
+                if "close" in data.columns:
+                    prices = data["close"]
+                else:
+                    prices = data.iloc[:, 0]
+                    
+                # Simple momentum calculation
+                features_dict["momentum"] = (prices / prices.shift(self.lookback_window) - 1).fillna(0)
+        
+        # Create DataFrame from features
+        features_df = pd.DataFrame(features_dict, index=data.index)
+        
+        # Cache the features
+        self.feature_cache[cache_key] = features_df
+        
+        return features_df
+    
+    def _calibrate(self, data: pd.DataFrame) -> None:
+        """
+        Calibrate the classifier using historical data.
+        
+        Args:
+            data: DataFrame with OHLCV data
+        """
+        # Extract features for calibration
+        features_df = self._extract_features(data)
+        
+        # Perform clustering
+        if len(features_df) >= self.calibration_window:
+            calibration_data = features_df.iloc[-self.calibration_window:].dropna()
+            if len(calibration_data) > self.cluster_count:  # Need more samples than clusters
+                self.clusterer.fit(calibration_data.values)
+                
+                # Map clusters to regimes based on characteristics
+                self._map_clusters_to_regimes(calibration_data)
+                self.is_calibrated = True
+                logger.info("Market regime classifier calibrated")
+    
+    def _map_clusters_to_regimes(self, features_df: pd.DataFrame) -> None:
+        """
+        Map identified clusters to named regimes.
+        
+        Args:
+            features_df: DataFrame with extracted features
+        """
+        # Predict clusters for all data points
+        clusters = self.clusterer.predict(features_df.values)
+        
+        # Calculate cluster centers
+        cluster_centers = self.clusterer.cluster_centers_
+        
+        # Get feature names
+        feature_names = features_df.columns.tolist()
+        
+        # Create mapping based on cluster characteristics
+        mapping = {}
+        
+        for cluster_idx in range(self.cluster_count):
+            # Get center for this cluster
+            center = cluster_centers[cluster_idx]
+            
+            # Analyze center characteristics
+            returns_idx = feature_names.index('returns') if 'returns' in feature_names else None
+            volatility_idx = feature_names.index('volatility') if 'volatility' in feature_names else None
+            
+            if returns_idx is not None and volatility_idx is not None:
+                returns = center[returns_idx]
+                volatility = center[volatility_idx]
+                
+                # Simple regime mapping based on returns and volatility
+                if returns > 0.001:  # Positive returns
+                    if volatility < 0.01:  # Low volatility
+                        mapping[cluster_idx] = "bull"
+                    else:  # High volatility
+                        mapping[cluster_idx] = "volatile_bull"
+                elif returns < -0.001:  # Negative returns
+                    if volatility < 0.01:  # Low volatility
+                        mapping[cluster_idx] = "bear"
+                    else:  # High volatility
+                        mapping[cluster_idx] = "volatile_bear"
+                else:  # Neutral returns
+                    if volatility < 0.005:  # Very low volatility
+                        mapping[cluster_idx] = "sideways"
+                    else:  # Some volatility
+                        mapping[cluster_idx] = "choppy"
+            else:
+                # Default mapping if we don't have returns or volatility
+                mapping[cluster_idx] = f"regime_{cluster_idx}"
+        
+        # Store the mapping
+        self.cluster_to_regime_mapping = mapping
+    
+    def _simple_classification(self, data: pd.DataFrame) -> str:
+        """
+        Perform simple classification when not enough data for ML approach.
+        
+        Args:
+            data: DataFrame with OHLCV data
+            
+        Returns:
+            String representing the identified market regime
+        """
+        if len(data) < 2:
+            return "unknown"
+            
+        # Simple regime detection based on returns and volatility
+        if "close" in data.columns:
+            prices = data["close"]
+        else:
+            prices = data.iloc[:, 0]
+            
+        returns = prices.pct_change().dropna()
+        
+        # Recent return (using last lookback_window periods)
+        window = min(self.lookback_window, len(returns))
+        recent_return = returns.iloc[-window:].mean()
+        recent_volatility = returns.iloc[-window:].std()
+        
+        # Simple classification
+        if recent_return > 0.001:  # Positive trend
+            if recent_volatility < 0.01:
+                return "bull"
+            else:
+                return "volatile_bull"
+        elif recent_return < -0.001:  # Negative trend
+            if recent_volatility < 0.01:
+                return "bear"
+            else:
+                return "volatile_bear"
+        else:  # Sideways
+            if recent_volatility < 0.005:
+                return "sideways"
+            else:
+                return "choppy"
+    
+    def _apply_regime_smoothing(self, current_regime: str) -> str:
+        """
+        Apply smoothing to prevent regime oscillation.
+        
+        Args:
+            current_regime: Currently detected regime
+            
+        Returns:
+            Smoothed regime classification
+        """
+        # Get recent regimes
+        recent_regimes = list(self.regime_history.values())[-self.smoothing_window:]
+        
+        # Count occurrences
+        regime_counts = {}
+        for regime in recent_regimes:
+            regime_counts[regime] = regime_counts.get(regime, 0) + 1
+        
+        # Add current regime
+        regime_counts[current_regime] = regime_counts.get(current_regime, 0) + 1
+        
+        # Find most common regime
+        most_common_regime = max(regime_counts.items(), key=lambda x: x[1])[0]
+        
+        # Only switch if the new regime is dominant
+        if current_regime != most_common_regime:
+            current_regime_count = regime_counts.get(current_regime, 0)
+            most_common_count = regime_counts.get(most_common_regime, 0)
+            
+            # Require clear dominance to switch
+            if most_common_count > current_regime_count + 1:
+                return most_common_regime
+        
+        return current_regime
+    
+    def classify_multiple(self, data_dict: Dict[str, pd.DataFrame]) -> Dict[str, str]:
+        """
+        Classify market regimes for multiple symbols.
+        
+        Args:
+            data_dict: Dictionary mapping symbols to their OHLCV DataFrames
+            
+        Returns:
+            Dictionary mapping symbols to their classified regimes
+        """
+        regimes = {}
+        for symbol, data in data_dict.items():
+            regimes[symbol] = self.classify_regime(data)
+        
+        return regimes
+    
+    def reset_calibration(self) -> None:
+        """Reset classifier calibration for re-training."""
+        self.is_calibrated = False
+        self.cluster_to_regime_mapping = {}
 
 
 class MarketRegimeStrategy(BaseStrategy):

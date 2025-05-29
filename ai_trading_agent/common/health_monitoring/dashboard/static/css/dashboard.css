@@ -1,0 +1,171 @@
+/* Dashboard styles */
+
+body {
+    padding-bottom: 60px;
+    background-color: #f5f5f5;
+}
+
+.navbar-brand {
+    font-weight: bold;
+}
+
+.status-badge {
+    padding: 5px 10px;
+    border-radius: 15px;
+    font-weight: bold;
+    display: inline-block;
+    margin-right: 5px;
+    color: white;
+}
+
+.status-badge.healthy {
+    background-color: #28a745;
+}
+
+.status-badge.degraded {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.status-badge.recovering {
+    background-color: #17a2b8;
+}
+
+.status-badge.unhealthy {
+    background-color: #dc3545;
+}
+
+.status-badge.critical {
+    background-color: #6f1515;
+}
+
+.status-badge.unknown {
+    background-color: #6c757d;
+}
+
+#system-status-indicator {
+    margin-right: 20px;
+}
+
+.system-health-summary {
+    padding: 15px;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+}
+
+.component-row:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+}
+
+.component-details {
+    display: none;
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    margin-top: 10px;
+}
+
+.metric-card {
+    height: 300px;
+    margin-bottom: 20px;
+}
+
+.alert-critical {
+    background-color: #ffebee;
+    border-left: 5px solid #dc3545;
+}
+
+.alert-error {
+    background-color: #fff3e0;
+    border-left: 5px solid #fd7e14;
+}
+
+.alert-warning {
+    background-color: #fffde7;
+    border-left: 5px solid #ffc107;
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    border-left: 5px solid #17a2b8;
+}
+
+.agent-control-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid #dee2e6;
+}
+
+.agent-status-running {
+    color: #28a745;
+}
+
+.agent-status-stopped {
+    color: #6c757d;
+}
+
+.agent-status-error {
+    color: #dc3545;
+}
+
+.footer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    height: 60px;
+    background-color: #f5f5f5;
+    border-top: 1px solid #dee2e6;
+    z-index: 100;
+}
+
+/* Agent controls specific styles */
+.agent-controls {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 5px;
+    padding: 15px;
+    margin-top: 10px;
+}
+
+.agent-controls .form-check {
+    margin-bottom: 10px;
+}
+
+.agent-group {
+    margin-bottom: 15px;
+    background-color: #ffffff;
+    padding: 15px;
+    border-radius: 5px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.agent-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.metrics-chart-container {
+    height: 300px;
+    margin-bottom: 20px;
+}
+
+.recovery-history-item {
+    padding: 10px;
+    margin-bottom: 5px;
+    border-radius: 5px;
+}
+
+.recovery-success {
+    background-color: rgba(40, 167, 69, 0.2);
+}
+
+.recovery-failure {
+    background-color: rgba(220, 53, 69, 0.2);
+}

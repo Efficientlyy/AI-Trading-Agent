@@ -19,6 +19,12 @@ from ..common import logger
 from .integrated_manager import IntegratedStrategyManager
 from .data_manager import DataManagerABC
 from .market_analyzer import MarketAnalyzer
+from ..market_regime import (
+    MarketRegimeType,
+    TemporalPatternRecognition,
+    TemporalPatternOptimizer
+)
+from ..optimization.reinforcement_learning import StrategyRL
 
 class DynamicAggregationMetaStrategy:
     """
@@ -38,6 +44,9 @@ class DynamicAggregationMetaStrategy:
                 - 'lookback_window': Number of days to look back for performance evaluation
                 - 'update_frequency': How often to update the best method (in days)
                 - 'default_method': Default aggregation method if no best method can be determined
+                - 'enable_predictive_switching': Whether to use predictive strategy switching
+                - 'enable_reinforcement_learning': Whether to use RL for strategy selection
+                - 'rl_model_path': Path to load/save reinforcement learning model
             data_manager: Data manager instance
         """
         self.config = config
@@ -67,6 +76,31 @@ class DynamicAggregationMetaStrategy:
         self.update_frequency = config.get('update_frequency', 7)  # Update every 7 days by default
         self.default_method = config.get('default_method', 'weighted_average')
         
+        # Advanced strategy switching features
+        self.enable_predictive_switching = config.get('enable_predictive_switching', True)
+        self.enable_reinforcement_learning = config.get('enable_reinforcement_learning', False)
+        self.rl_model_path = config.get('rl_model_path', None)
+        
+        # Initialize temporal pattern recognition if predictive switching is enabled
+        if self.enable_predictive_switching:
+            self.temporal_pattern_recognizer = TemporalPatternRecognition()
+            self.strategy_optimizer = TemporalPatternOptimizer(self.temporal_pattern_recognizer)
+            logger.info("Predictive strategy switching enabled with temporal pattern recognition")
+            
+        # Initialize reinforcement learning if enabled
+        if self.enable_reinforcement_learning:
+            # Initialize with default market regimes
+            market_regimes = [regime.value for regime in MarketRegimeType]
+            aggregation_methods = ['weighted_average', 'dynamic_contextual', 'rule_based', 'majority_vote']
+            
+            self.strategy_rl = StrategyRL(
+                available_strategies=aggregation_methods,
+                market_regimes=market_regimes,
+                observation_window=10,
+                model_path=self.rl_model_path
+            )
+            logger.info("Reinforcement learning enabled for strategy selection")
+        
         # Initialize the strategy managers for each aggregation method
         self.strategy_managers = {}
         self.initialize_strategy_managers()
@@ -75,6 +109,22 @@ class DynamicAggregationMetaStrategy:
         self.performance_history = {}
         self.last_update = None
         self.current_best_method = self.default_method
+        
+        # Method effectiveness by regime
+        self.regime_effectiveness = {
+            regime.value: {method: [] for method in self.meta_config['market_condition_mapping'].values()}
+            for regime in MarketRegimeType
+        }
+        
+        # Ensemble weights based on effectiveness (initialize with equal weights)
+        aggregation_methods = list(set(self.meta_config['market_condition_mapping'].values()))
+        self.ensemble_weights = {method: 1.0 / len(aggregation_methods) for method in aggregation_methods}
+        
+        # Tracking for reinforcement learning
+        self.last_method = self.current_best_method
+        self.last_regime = None
+        self.last_signals = {}
+        self.last_metrics = {}
         
         logger.info(f"DynamicAggregationMetaStrategy initialized with default method: {self.default_method}")
     
@@ -176,14 +226,25 @@ class DynamicAggregationMetaStrategy:
         """
         Select the best aggregation method based on market conditions.
         
+        Features:
+        - Basic mapping based on detected market regime
+        - Performance-based override using historical performance
+        - Predictive strategy switching using temporal pattern recognition
+        - Reinforcement learning for optimized strategy selection
+        - Ensemble weighting based on regime effectiveness
+        
         Args:
             market_conditions: Dictionary with market condition analysis
-        
+            
         Returns:
             Name of the best aggregation method
         """
         overall_regime = market_conditions['overall_regime']
         
+        # Track the last regime for reinforcement learning
+        self.last_regime = overall_regime
+        
+        # 1. BASIC MAPPING-BASED SELECTION
         # Use the mapping from the meta-strategy configuration
         if 'market_condition_mapping' in self.meta_config:
             mapping = self.meta_config['market_condition_mapping']
@@ -193,8 +254,12 @@ class DynamicAggregationMetaStrategy:
                 base_method = self.default_method
         else:
             base_method = self.default_method
+            
+        logger.info(f"Base method: {base_method} based on {overall_regime} market regime")
         
-        # Consider recent performance if available
+        # 2. PERFORMANCE-BASED OVERRIDE
+        performance_method = base_method
+        
         if self.performance_history:
             # Get recent performance for each method
             performance = {m: self.get_recent_performance(m) for m in self.strategy_managers.keys()}
@@ -202,13 +267,120 @@ class DynamicAggregationMetaStrategy:
             # Find the method with the best performance
             best_performing_method = max(performance.items(), key=lambda x: x[1])[0]
             
-            # If the best performing method is significantly better than the base method,
-            # use it instead of the one selected based on market conditions
+            # Only override if the best method is significantly better
             if performance[best_performing_method] > performance.get(base_method, 0.0) * 1.2:  # 20% better
-                logger.info(f"Overriding method selection based on performance: {best_performing_method} (performance: {performance[best_performing_method]:.2f}) vs {base_method} (performance: {performance.get(base_method, 0.0):.2f})")
-                return best_performing_method
+                performance_method = best_performing_method
+                logger.info(f"Performance override: {performance_method} based on superior performance")
+                
+            # Update regime effectiveness tracking
+            for method, perf_value in performance.items():
+                if overall_regime in self.regime_effectiveness:
+                    if method in self.regime_effectiveness[overall_regime]:
+                        self.regime_effectiveness[overall_regime][method].append(perf_value)
+                        # Keep only the last 20 performance measurements
+                        if len(self.regime_effectiveness[overall_regime][method]) > 20:
+                            self.regime_effectiveness[overall_regime][method] = \
+                                self.regime_effectiveness[overall_regime][method][-20:]
         
-        # Consider symbol-specific conditions
+        # 3. PREDICTIVE STRATEGY SWITCHING
+        predictive_method = performance_method
+        
+        if self.enable_predictive_switching and hasattr(self, 'temporal_pattern_recognizer'):
+            # Extract price data for temporal analysis
+            symbol_data = {}
+            for symbol, conditions in market_conditions.get('symbol_conditions', {}).items():
+                if 'data' in market_conditions and symbol in market_conditions['data']:
+                    symbol_data[symbol] = market_conditions['data'][symbol]
+            
+            if symbol_data:
+                # Use the first symbol for temporal analysis (could be enhanced to use all symbols)
+                symbol = next(iter(symbol_data))
+                data = symbol_data[symbol]
+                
+                if len(data) > 60:  # Need enough data for meaningful analysis
+                    # Perform temporal pattern analysis
+                    try:
+                        temporal_result = self.temporal_pattern_recognizer.analyze_temporal_patterns(
+                            prices=data['close'] if 'close' in data else data.iloc[:, 0],
+                            volumes=data.get('volume', None),
+                            asset_id=f"{symbol}_meta"
+                        )
+                        
+                        # Look for regime transition opportunities
+                        transition_opp = self.temporal_pattern_recognizer.detect_regime_transition_opportunity(f"{symbol}_meta")
+                        
+                        if transition_opp.get('transition_opportunity', False):
+                            next_regime = transition_opp.get('potential_next_regime')
+                            
+                            if next_regime and next_regime in self.meta_config.get('market_condition_mapping', {}):
+                                # Look ahead to the method that would be best in the predicted regime
+                                predictive_method = self.meta_config['market_condition_mapping'][next_regime]
+                                logger.info(f"Predictive override: {predictive_method} based on anticipated transition to {next_regime}")
+                                
+                                # Store the transition opportunity for later use
+                                market_conditions['temporal_analysis'] = {
+                                    'transition_opportunity': True,
+                                    'potential_next_regime': next_regime,
+                                    'confidence': transition_opp.get('confidence', 0.0)
+                                }
+                        
+                        # Check for timeframe agreement
+                        alignment = self.temporal_pattern_recognizer.get_timeframe_alignment_signal(f"{symbol}_meta")
+                        
+                        if alignment.get('has_alignment', False):
+                            # With high alignment, be more confident in our regime detection
+                            alignment_score = alignment.get('agreement_score', 0.0)
+                            
+                            if 'temporal_analysis' not in market_conditions:
+                                market_conditions['temporal_analysis'] = {}
+                            market_conditions['temporal_analysis']['timeframe_agreement'] = alignment_score
+                            
+                            logger.info(f"Timeframe alignment: {alignment_score:.2f} for confirmed regime {alignment.get('aligned_regime')}")
+                    
+                    except Exception as e:
+                        logger.warning(f"Error in temporal pattern analysis: {str(e)}")
+        
+        # 4. REINFORCEMENT LEARNING SELECTION
+        final_method = predictive_method
+        
+        if self.enable_reinforcement_learning and hasattr(self, 'strategy_rl'):
+            # Prepare performance metrics for RL
+            metrics = {}
+            for method, history in self.performance_history.items():
+                if history:
+                    latest = history[-1]
+                    metrics[method] = {
+                        'accuracy': latest.get('accuracy', 0.5),
+                        'return': latest.get('return', 0.0),
+                        'sharpe_ratio': latest.get('sharpe', 0.0),
+                        'profit_factor': latest.get('profit_factor', 1.0),
+                        'max_drawdown': latest.get('drawdown', 0.0),
+                        'win_rate': latest.get('win_rate', 0.5)
+                    }
+            
+            # If we have metrics for the last method, update the RL
+            if self.last_method and self.last_method in metrics and self.last_regime:
+                import random
+                
+                # Select strategy using reinforcement learning
+                rl_method = self.strategy_rl.select_strategy(
+                    current_strategy=self.last_method,
+                    market_regime=self.last_regime,
+                    performance_metrics=metrics[self.last_method],
+                    training=True
+                )
+                
+                # Only use RL if we're confident in its exploration
+                if self.strategy_rl.get_exploration_rate() < 0.3:
+                    final_method = rl_method
+                    logger.info(f"RL override: {final_method} based on learned policy")
+                    
+                # Save the RL model periodically
+                if self.rl_model_path and random.random() < 0.1:  # 10% chance to save
+                    self.strategy_rl.save_model(self.rl_model_path)
+        
+        # 5. SYMBOL-SPECIFIC CONSIDERATIONS
+        # This part is preserved from the original implementation
         symbol_conditions = market_conditions.get('symbol_conditions', {})
         if symbol_conditions:
             # Count regimes across symbols
@@ -228,7 +400,8 @@ class DynamicAggregationMetaStrategy:
                     logger.info(f"Mixed market regimes detected (entropy: {entropy:.2f}), using rule-based method for robustness")
                     return 'rule_based'
         
-        # Consider volatility level
+        # 6. VOLATILITY CONSIDERATIONS
+        # This part is preserved from the original implementation
         avg_volatility = 0.0
         volatility_count = 0
         
@@ -245,8 +418,48 @@ class DynamicAggregationMetaStrategy:
                 logger.info(f"Extremely high volatility detected ({avg_volatility:.2f}), using majority_vote method for stability")
                 return 'majority_vote'
         
-        # Use the base method selected from the mapping
-        return base_method
+        # 7. ENSEMBLE MODEL WEIGHTING
+        # Update weights based on effectiveness in similar regimes
+        self._update_ensemble_weights(overall_regime)
+        
+        # Remember the selected method for next iteration's RL update
+        self.last_method = final_method
+        
+        return final_method
+        
+    def _update_ensemble_weights(self, current_regime: str) -> None:
+        """
+        Update ensemble weights based on effectiveness in the current regime.
+        
+        Args:
+            current_regime: Current market regime
+        """
+        if current_regime not in self.regime_effectiveness:
+            return
+            
+        # Calculate average performance for each method in this regime
+        regime_performances = {}
+        for method, performances in self.regime_effectiveness[current_regime].items():
+            if performances:
+                regime_performances[method] = sum(performances) / len(performances)
+            else:
+                regime_performances[method] = 0.0
+        
+        # Normalize performances to get weights
+        total_performance = sum(p for p in regime_performances.values() if p > 0)
+        
+        if total_performance > 0:
+            # Update weights based on relative performance
+            for method, perf in regime_performances.items():
+                if perf > 0:
+                    self.ensemble_weights[method] = perf / total_performance
+                else:
+                    self.ensemble_weights[method] = 0.01  # Small non-zero weight for poor performers
+                    
+            # Renormalize weights
+            total_weight = sum(self.ensemble_weights.values())
+            for method in self.ensemble_weights:
+                self.ensemble_weights[method] /= total_weight
     
     def update_performance_history(self, method: str, signals: Dict[str, Any], 
                                   actual_returns: Dict[str, float]) -> None:
