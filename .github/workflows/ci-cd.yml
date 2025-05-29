@@ -1,0 +1,367 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      deploy_environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+        - staging
+        - canary
+        - production
+      traffic_percentage:
+        description: 'Percentage of traffic for canary (10-50)'
+        required: false
+        default: '20'
+        type: number
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  PYTHON_VERSION: '3.9'
+  NODE_VERSION: '16'
+
+jobs:
+  validate:
+    name: Validate & Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: aitradingagent_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+          if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+          pip install pytest pytest-cov
+
+      - name: Lint with flake8
+        run: |
+          # stop the build if there are Python syntax errors or undefined names
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          # exit-zero treats all errors as warnings
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Type check with mypy
+        run: |
+          mypy ai_trading_agent
+
+      - name: Test with pytest
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/aitradingagent_test
+          REDIS_URL: redis://localhost:6379/0
+          JWT_SECRET_KEY: test_secret_key
+          USE_MOCK_DATA: "true"
+        run: |
+          pytest --cov=ai_trading_agent --cov-report=xml --cov-report=term-missing tests/
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage.xml
+          fail_ci_if_error: true
+          
+      - name: Test frontend
+        run: |
+          cd dashboard
+          npm ci
+          npm run test -- --coverage
+
+  build:
+    name: Build & Push Images
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: read
+      packages: write
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=sha,format=long
+
+      # Build and push Trading Agent image
+      - name: Build & Push Trading Agent
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/Dockerfile.agent
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/trading-agent:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/trading-agent:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          
+      # Build and push Oversight Service image
+      - name: Build & Push Oversight Service
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/Dockerfile.oversight
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/oversight:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/oversight:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Build and push API image
+      - name: Build & Push API
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/Dockerfile.api
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Build and push Dashboard image
+      - name: Build & Push Dashboard
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: docker/Dockerfile.dashboard
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/dashboard:${{ github.sha }},${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/dashboard:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'staging')
+    environment:
+      name: staging
+      url: https://staging.trading-agent.example.com
+      
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v1
+        with:
+          kustomize-version: "4.5.7"
+
+      - name: Update Kubernetes resources
+        env:
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd kubernetes/overlays/staging
+          kustomize edit set image trading-agent=${DOCKER_REGISTRY}/trading-agent:${IMAGE_TAG}
+          kustomize edit set image api=${DOCKER_REGISTRY}/api:${IMAGE_TAG}
+          kustomize edit set image dashboard=${DOCKER_REGISTRY}/dashboard:${IMAGE_TAG}
+          kustomize edit set image oversight=${DOCKER_REGISTRY}/oversight:${IMAGE_TAG}
+          
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.25.0'
+          
+      - name: Get kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG" > ~/.kube/config
+          chmod 600 ~/.kube/config
+          
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -k kubernetes/overlays/staging
+          kubectl rollout status deployment/trading-agent -n ai-trading
+          kubectl rollout status deployment/api -n ai-trading
+          kubectl rollout status deployment/dashboard -n ai-trading
+          
+      - name: Run post-deployment tests
+        run: |
+          # Wait for services to fully start
+          sleep 30
+          # Run integration tests against staging
+          pytest tests/integration/ --endpoint=https://staging.trading-agent.example.com/api
+
+  deploy-canary:
+    name: Deploy Canary
+    needs: [build, deploy-staging]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'canary'
+    environment:
+      name: canary
+      url: https://canary.trading-agent.example.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v1
+        with:
+          kustomize-version: "4.5.7"
+
+      - name: Update Kubernetes canary resources
+        env:
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          CANARY_VERSION: ${{ github.sha }}
+          TRAFFIC_PERCENTAGE: ${{ github.event.inputs.traffic_percentage || '20' }}
+        run: |
+          # Update canary deployment files
+          cd kubernetes/canary
+          
+          # Replace variable placeholders in YAML files
+          sed -i "s|\${DOCKER_REGISTRY}|${DOCKER_REGISTRY}|g" api-canary.yaml dashboard-canary.yaml
+          sed -i "s|\${CANARY_VERSION}|${CANARY_VERSION}|g" api-canary.yaml dashboard-canary.yaml
+          
+          # Update traffic percentage for canary ingress
+          sed -i "s|nginx.ingress.kubernetes.io/canary-weight: \"20\"|nginx.ingress.kubernetes.io/canary-weight: \"${TRAFFIC_PERCENTAGE}\"|g" api-canary.yaml
+          sed -i "s|nginx.ingress.kubernetes.io/canary-weight: \"10\"|nginx.ingress.kubernetes.io/canary-weight: \"${TRAFFIC_PERCENTAGE}\"|g" dashboard-canary.yaml
+          
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.25.0'
+          
+      - name: Get kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG" > ~/.kube/config
+          chmod 600 ~/.kube/config
+          
+      - name: Deploy canary to Kubernetes
+        run: |
+          # Apply canary manifests
+          kubectl apply -f kubernetes/canary/api-canary.yaml
+          kubectl apply -f kubernetes/canary/dashboard-canary.yaml
+          
+          # Wait for deployments to complete
+          kubectl rollout status deployment/api-canary -n ai-trading
+          kubectl rollout status deployment/dashboard-canary -n ai-trading
+          
+      - name: Run canary health checks
+        run: |
+          # Wait for services to start
+          sleep 30
+          # Run health checks against canary endpoints
+          curl -f https://api.trading-agent.example.com/health -H "Canary: true" || exit 1
+          curl -f https://dashboard.trading-agent.example.com/health -H "Canary: true" || exit 1
+          
+      - name: Configure monitoring for canary
+        run: |
+          # Add special monitoring for canary deployment
+          kubectl apply -f monitoring/canary-monitor.yaml
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [build, deploy-staging]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.deploy_environment == 'production')
+    environment:
+      name: production
+      url: https://trading-agent.example.com
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        
+      - name: Setup Kustomize
+        uses: imranismail/setup-kustomize@v1
+        with:
+          kustomize-version: "4.5.7"
+
+      - name: Update Kubernetes resources
+        env:
+          DOCKER_REGISTRY: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd kubernetes/overlays/production
+          kustomize edit set image trading-agent=${DOCKER_REGISTRY}/trading-agent:${IMAGE_TAG}
+          kustomize edit set image api=${DOCKER_REGISTRY}/api:${IMAGE_TAG}
+          kustomize edit set image dashboard=${DOCKER_REGISTRY}/dashboard:${IMAGE_TAG}
+          kustomize edit set image oversight=${DOCKER_REGISTRY}/oversight:${IMAGE_TAG}
+          
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.25.0'
+          
+      - name: Get kubeconfig
+        env:
+          KUBE_CONFIG: ${{ secrets.KUBE_CONFIG_PRODUCTION }}
+        run: |
+          mkdir -p ~/.kube
+          echo "$KUBE_CONFIG" > ~/.kube/config
+          chmod 600 ~/.kube/config
+          
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -k kubernetes/overlays/production
+          kubectl rollout status deployment/trading-agent -n ai-trading
+          kubectl rollout status deployment/api -n ai-trading
+          kubectl rollout status deployment/dashboard -n ai-trading
+          
+      - name: Run health checks
+        run: |
+          # Wait for services to fully start
+          sleep 60
+          # Run health check against production
+          curl -f https://trading-agent.example.com/health || exit 1
