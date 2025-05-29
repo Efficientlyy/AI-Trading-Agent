@@ -46,6 +46,11 @@ frontend_debug.html
 Cargo.lock
 rust_extensions/target/
 rust_extensions/Cargo.lock
+rust_lag_features/target/
+rust_lag_features/Cargo.lock
+*.llbackend.json
+*.pdb
+*.d
 
 # Environment variables
 .env
