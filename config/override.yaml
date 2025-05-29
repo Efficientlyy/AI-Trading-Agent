@@ -1,0 +1,8 @@
+# Configuration override to fix UI issues
+use_mock_data: false
+system:
+  status: running
+  show_agents_running: 0
+data_feed:
+  force_connected: true
+  mock_prices: true

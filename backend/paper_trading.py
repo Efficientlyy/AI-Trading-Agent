@@ -7,9 +7,13 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import uuid
+import logging
 
 # Import authentication
 from backend.security.auth import get_current_user, get_mock_user_override
+
+# Setup logging
+logger = logging.getLogger(__name__)
 
 # Create router
 paper_trading_router = APIRouter(prefix="/api/paper-trading", tags=["paper-trading"])
@@ -30,11 +34,13 @@ class PaperTradingStatus(BaseModel):
 
 class PaperTradingSession(BaseModel):
     session_id: str
-    status: str
+    status: str  # "running", "stopped", "paused", "completed", "error"
     start_time: Optional[str] = None
     uptime_seconds: Optional[int] = None
     symbols: Optional[List[str]] = None
     current_portfolio: Optional[Dict[str, Any]] = None
+    performance_metrics: Optional[Dict[str, Any]] = None
+    last_updated: Optional[str] = None
 
 class PaperTradingResults(BaseModel):
     portfolio_history: List[Dict[str, Any]]
@@ -83,9 +89,16 @@ async def stop_paper_trading(
 ):
     """Stop a paper trading session"""
     # Check if session exists
-    session_exists = any(s["session_id"] == session_id for s in MOCK_SESSIONS)
-    if not session_exists:
+    session = next((s for s in MOCK_SESSIONS if s["session_id"] == session_id), None)
+    if not session:
         raise HTTPException(status_code=404, detail=f"Paper trading session {session_id} not found")
+    
+    # Check if session is already stopped
+    if session["status"] == "stopped":
+        return {"status": "success", "message": f"Paper trading session {session_id} is already stopped"}
+    
+    # Update session status
+    session["status"] = "stopped"
     
     # In a real implementation, this would stop the background task
     return {"status": "success", "message": "Paper trading session stopped successfully"}
@@ -154,9 +167,13 @@ async def get_results(
 
 @paper_trading_router.get("/sessions", response_model=Dict[str, List[PaperTradingSession]])
 async def get_sessions(
+    status: Optional[str] = Query(None, description="Filter sessions by status"),
     current_user: Dict[str, Any] = Depends(get_mock_user_override)
 ):
-    """Get all paper trading sessions"""
+    """Get all paper trading sessions with optional status filtering"""
+    if status:
+        filtered_sessions = [s for s in MOCK_SESSIONS if s["status"] == status]
+        return {"sessions": filtered_sessions}
     return {"sessions": MOCK_SESSIONS}
 
 @paper_trading_router.get("/sessions/{session_id}", response_model=PaperTradingSession)
@@ -220,3 +237,59 @@ async def add_alert(
     
     # In a real implementation, this would add the alert
     return {"status": "success", "message": "Alert added successfully"}
+
+
+@paper_trading_router.post("/sessions/{session_id}/pause")
+async def pause_session(
+    session_id: str,
+    current_user: Dict[str, Any] = Depends(get_mock_user_override)
+):
+    """Pause a running paper trading session"""
+    # Find session
+    session = next((s for s in MOCK_SESSIONS if s["session_id"] == session_id), None)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Paper trading session {session_id} not found")
+    
+    # Check if session is running
+    if session["status"] != "running":
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot pause session {session_id} because it is not running (current status: {session['status']})"
+        )
+    
+    # Update session status
+    session["status"] = "paused"
+    
+    # In a real implementation, this would pause the background task
+    return {
+        "status": "success", 
+        "message": f"Paper trading session {session_id} paused successfully"
+    }
+
+
+@paper_trading_router.post("/sessions/{session_id}/resume")
+async def resume_session(
+    session_id: str,
+    current_user: Dict[str, Any] = Depends(get_mock_user_override)
+):
+    """Resume a paused paper trading session"""
+    # Find session
+    session = next((s for s in MOCK_SESSIONS if s["session_id"] == session_id), None)
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Paper trading session {session_id} not found")
+    
+    # Check if session is paused
+    if session["status"] != "paused":
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot resume session {session_id} because it is not paused (current status: {session['status']})"
+        )
+    
+    # Update session status
+    session["status"] = "running"
+    
+    # In a real implementation, this would resume the background task
+    return {
+        "status": "success", 
+        "message": f"Paper trading session {session_id} resumed successfully"
+    }

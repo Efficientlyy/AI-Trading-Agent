@@ -44,6 +44,11 @@ class MessageType(str, Enum):
     STRATEGY_SIGNAL = "strategy_signal"
     SENTIMENT_UPDATE = "sentiment_update"
     SYSTEM_STATUS = "system_status"
+    AGENT_STATUS = "agent_status"
+    AGENT_UPDATE = "agent_update"
+    SESSION_STATUS = "session_status"
+    SESSION_UPDATE = "session_update"
+    PERFORMANCE_METRICS = "performance_metrics"
     ERROR = "error"
     HEARTBEAT = "heartbeat"
 

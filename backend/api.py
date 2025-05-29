@@ -84,6 +84,18 @@ app.include_router(websocket_router)
 from backend.paper_trading import paper_trading_router
 app.include_router(paper_trading_router)
 
+# Include System Control router
+from backend.system_control import system_control_router
+app.include_router(system_control_router)
+
+# Include Alpha Vantage router
+from backend.alpha_vantage import alpha_vantage_router
+app.include_router(alpha_vantage_router)
+
+# Include System WebSocket routes
+from backend.websockets.system_routes import router as system_websocket_router
+app.include_router(system_websocket_router)
+
 # Add startup and shutdown events for WebSocket services
 @app.on_event("startup")
 async def startup_event():
