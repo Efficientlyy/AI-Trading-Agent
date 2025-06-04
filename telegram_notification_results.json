@@ -1,0 +1,1366 @@
+{
+  "system_notifications": [
+    {
+      "type": "startup",
+      "message": "System startup notification test at 2025-06-04T18:09:07.016768",
+      "timestamp": 1749074947016
+    },
+    {
+      "type": "shutdown",
+      "message": "System shutdown notification test at 2025-06-04T18:09:08.016923",
+      "timestamp": 1749074948017
+    },
+    {
+      "type": "market_data_update",
+      "message": "System market_data_update notification test at 2025-06-04T18:09:09.017218",
+      "timestamp": 1749074949017
+    },
+    {
+      "type": "signal_generation",
+      "message": "System signal_generation notification test at 2025-06-04T18:09:10.017557",
+      "timestamp": 1749074950017
+    },
+    {
+      "type": "order_execution",
+      "message": "System order_execution notification test at 2025-06-04T18:09:11.017903",
+      "timestamp": 1749074951018
+    },
+    {
+      "type": "test",
+      "message": "System test notification test at 2025-06-04T18:09:12.018215",
+      "timestamp": 1749074952018
+    }
+  ],
+  "signal_notifications": [
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "momentum",
+        "strength": 0.5,
+        "timestamp": 1749074953018,
+        "price": 50000.0,
+        "symbol": "BTC/USDC"
+      },
+      "timestamp": 1749074953018
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "order_imbalance",
+        "strength": 0.6,
+        "timestamp": 1749074954019,
+        "price": 50000.0,
+        "symbol": "BTC/USDC"
+      },
+      "timestamp": 1749074954019
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "pattern_recognition",
+        "strength": 0.7,
+        "timestamp": 1749074955019,
+        "price": 50000.0,
+        "symbol": "BTC/USDC"
+      },
+      "timestamp": 1749074955019
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "volatility_breakout",
+        "strength": 0.8,
+        "timestamp": 1749074956019,
+        "price": 50000.0,
+        "symbol": "BTC/USDC"
+      },
+      "timestamp": 1749074956020
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "momentum",
+        "strength": 0.6,
+        "timestamp": 1749074957020,
+        "price": 50000.0,
+        "symbol": "BTC/USDC"
+      },
+      "timestamp": 1749074957020
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "order_imbalance",
+        "strength": 0.7,
+        "timestamp": 1749074958020,
+        "price": 50000.0,
+        "symbol": "BTC/USDC"
+      },
+      "timestamp": 1749074958020
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "pattern_recognition",
+        "strength": 0.8,
+        "timestamp": 1749074959021,
+        "price": 50000.0,
+        "symbol": "BTC/USDC"
+      },
+      "timestamp": 1749074959021
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "volatility_breakout",
+        "strength": 0.9,
+        "timestamp": 1749074960021,
+        "price": 50000.0,
+        "symbol": "BTC/USDC"
+      },
+      "timestamp": 1749074960021
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "momentum",
+        "strength": 0.5,
+        "timestamp": 1749074961022,
+        "price": 3000.0,
+        "symbol": "ETH/USDC"
+      },
+      "timestamp": 1749074961022
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "order_imbalance",
+        "strength": 0.6,
+        "timestamp": 1749074962022,
+        "price": 3000.0,
+        "symbol": "ETH/USDC"
+      },
+      "timestamp": 1749074962022
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "pattern_recognition",
+        "strength": 0.7,
+        "timestamp": 1749074963022,
+        "price": 3000.0,
+        "symbol": "ETH/USDC"
+      },
+      "timestamp": 1749074963022
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "volatility_breakout",
+        "strength": 0.8,
+        "timestamp": 1749074964023,
+        "price": 3000.0,
+        "symbol": "ETH/USDC"
+      },
+      "timestamp": 1749074964023
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "momentum",
+        "strength": 0.6,
+        "timestamp": 1749074965023,
+        "price": 3000.0,
+        "symbol": "ETH/USDC"
+      },
+      "timestamp": 1749074965023
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "order_imbalance",
+        "strength": 0.7,
+        "timestamp": 1749074966024,
+        "price": 3000.0,
+        "symbol": "ETH/USDC"
+      },
+      "timestamp": 1749074966024
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "pattern_recognition",
+        "strength": 0.8,
+        "timestamp": 1749074967024,
+        "price": 3000.0,
+        "symbol": "ETH/USDC"
+      },
+      "timestamp": 1749074967024
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "volatility_breakout",
+        "strength": 0.9,
+        "timestamp": 1749074968024,
+        "price": 3000.0,
+        "symbol": "ETH/USDC"
+      },
+      "timestamp": 1749074968024
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "momentum",
+        "strength": 0.5,
+        "timestamp": 1749074969025,
+        "price": 150.0,
+        "symbol": "SOL/USDC"
+      },
+      "timestamp": 1749074969025
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "order_imbalance",
+        "strength": 0.6,
+        "timestamp": 1749074970025,
+        "price": 150.0,
+        "symbol": "SOL/USDC"
+      },
+      "timestamp": 1749074970025
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "pattern_recognition",
+        "strength": 0.7,
+        "timestamp": 1749074971025,
+        "price": 150.0,
+        "symbol": "SOL/USDC"
+      },
+      "timestamp": 1749074971026
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "volatility_breakout",
+        "strength": 0.8,
+        "timestamp": 1749074972026,
+        "price": 150.0,
+        "symbol": "SOL/USDC"
+      },
+      "timestamp": 1749074972026
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "momentum",
+        "strength": 0.6,
+        "timestamp": 1749074973026,
+        "price": 150.0,
+        "symbol": "SOL/USDC"
+      },
+      "timestamp": 1749074973026
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "order_imbalance",
+        "strength": 0.7,
+        "timestamp": 1749074974027,
+        "price": 150.0,
+        "symbol": "SOL/USDC"
+      },
+      "timestamp": 1749074974027
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "pattern_recognition",
+        "strength": 0.8,
+        "timestamp": 1749074975027,
+        "price": 150.0,
+        "symbol": "SOL/USDC"
+      },
+      "timestamp": 1749074975027
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "volatility_breakout",
+        "strength": 0.9,
+        "timestamp": 1749074976027,
+        "price": 150.0,
+        "symbol": "SOL/USDC"
+      },
+      "timestamp": 1749074976028
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "momentum",
+        "strength": 0.5,
+        "timestamp": 1749074977028,
+        "price": 50000.0,
+        "symbol": "BTC/USDT"
+      },
+      "timestamp": 1749074977028
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "order_imbalance",
+        "strength": 0.6,
+        "timestamp": 1749074978028,
+        "price": 50000.0,
+        "symbol": "BTC/USDT"
+      },
+      "timestamp": 1749074978029
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "pattern_recognition",
+        "strength": 0.7,
+        "timestamp": 1749074979029,
+        "price": 50000.0,
+        "symbol": "BTC/USDT"
+      },
+      "timestamp": 1749074979029
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "volatility_breakout",
+        "strength": 0.8,
+        "timestamp": 1749074980029,
+        "price": 50000.0,
+        "symbol": "BTC/USDT"
+      },
+      "timestamp": 1749074980029
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "momentum",
+        "strength": 0.6,
+        "timestamp": 1749074981029,
+        "price": 50000.0,
+        "symbol": "BTC/USDT"
+      },
+      "timestamp": 1749074981030
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "order_imbalance",
+        "strength": 0.7,
+        "timestamp": 1749074982030,
+        "price": 50000.0,
+        "symbol": "BTC/USDT"
+      },
+      "timestamp": 1749074982030
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "pattern_recognition",
+        "strength": 0.8,
+        "timestamp": 1749074983030,
+        "price": 50000.0,
+        "symbol": "BTC/USDT"
+      },
+      "timestamp": 1749074983030
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "volatility_breakout",
+        "strength": 0.9,
+        "timestamp": 1749074984031,
+        "price": 50000.0,
+        "symbol": "BTC/USDT"
+      },
+      "timestamp": 1749074984031
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "momentum",
+        "strength": 0.5,
+        "timestamp": 1749074985031,
+        "price": 3000.0,
+        "symbol": "ETH/USDT"
+      },
+      "timestamp": 1749074985031
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "order_imbalance",
+        "strength": 0.6,
+        "timestamp": 1749074986031,
+        "price": 3000.0,
+        "symbol": "ETH/USDT"
+      },
+      "timestamp": 1749074986032
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "pattern_recognition",
+        "strength": 0.7,
+        "timestamp": 1749074987032,
+        "price": 3000.0,
+        "symbol": "ETH/USDT"
+      },
+      "timestamp": 1749074987032
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "volatility_breakout",
+        "strength": 0.8,
+        "timestamp": 1749074988032,
+        "price": 3000.0,
+        "symbol": "ETH/USDT"
+      },
+      "timestamp": 1749074988032
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "momentum",
+        "strength": 0.6,
+        "timestamp": 1749074989032,
+        "price": 3000.0,
+        "symbol": "ETH/USDT"
+      },
+      "timestamp": 1749074989033
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "order_imbalance",
+        "strength": 0.7,
+        "timestamp": 1749074990033,
+        "price": 3000.0,
+        "symbol": "ETH/USDT"
+      },
+      "timestamp": 1749074990033
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "pattern_recognition",
+        "strength": 0.8,
+        "timestamp": 1749074991033,
+        "price": 3000.0,
+        "symbol": "ETH/USDT"
+      },
+      "timestamp": 1749074991034
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "volatility_breakout",
+        "strength": 0.9,
+        "timestamp": 1749074992034,
+        "price": 3000.0,
+        "symbol": "ETH/USDT"
+      },
+      "timestamp": 1749074992034
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "momentum",
+        "strength": 0.5,
+        "timestamp": 1749074993034,
+        "price": 150.0,
+        "symbol": "SOL/USDT"
+      },
+      "timestamp": 1749074993034
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "order_imbalance",
+        "strength": 0.6,
+        "timestamp": 1749074994034,
+        "price": 150.0,
+        "symbol": "SOL/USDT"
+      },
+      "timestamp": 1749074994035
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "pattern_recognition",
+        "strength": 0.7,
+        "timestamp": 1749074995035,
+        "price": 150.0,
+        "symbol": "SOL/USDT"
+      },
+      "timestamp": 1749074995035
+    },
+    {
+      "signal": {
+        "type": "BUY",
+        "source": "volatility_breakout",
+        "strength": 0.8,
+        "timestamp": 1749074996035,
+        "price": 150.0,
+        "symbol": "SOL/USDT"
+      },
+      "timestamp": 1749074996035
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "momentum",
+        "strength": 0.6,
+        "timestamp": 1749074997035,
+        "price": 150.0,
+        "symbol": "SOL/USDT"
+      },
+      "timestamp": 1749074997036
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "order_imbalance",
+        "strength": 0.7,
+        "timestamp": 1749074998036,
+        "price": 150.0,
+        "symbol": "SOL/USDT"
+      },
+      "timestamp": 1749074998036
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "pattern_recognition",
+        "strength": 0.8,
+        "timestamp": 1749074999036,
+        "price": 150.0,
+        "symbol": "SOL/USDT"
+      },
+      "timestamp": 1749074999036
+    },
+    {
+      "signal": {
+        "type": "SELL",
+        "source": "volatility_breakout",
+        "strength": 0.9,
+        "timestamp": 1749075000037,
+        "price": 150.0,
+        "symbol": "SOL/USDT"
+      },
+      "timestamp": 1749075000037
+    }
+  ],
+  "order_notifications": [
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075001-0",
+        "symbol": "BTC/USDC",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075001037,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075001037
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075001-0",
+        "symbol": "BTC/USDC",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075001037,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075002038
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075003-2",
+        "symbol": "BTC/USDC",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075003038,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075003038
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075003-2",
+        "symbol": "BTC/USDC",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075003038,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075004038
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075005-4",
+        "symbol": "BTC/USDC",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075005039,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075005039
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075005-4",
+        "symbol": "BTC/USDC",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075005039,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075006039
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075007-6",
+        "symbol": "BTC/USDC",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075007039,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075007039
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075007-6",
+        "symbol": "BTC/USDC",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075007039,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075008040
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075009-8",
+        "symbol": "ETH/USDC",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075009040,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075009040
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075009-8",
+        "symbol": "ETH/USDC",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075009040,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075010041
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075011-10",
+        "symbol": "ETH/USDC",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075011041,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075011041
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075011-10",
+        "symbol": "ETH/USDC",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075011041,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075012041
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075013-12",
+        "symbol": "ETH/USDC",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075013042,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075013042
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075013-12",
+        "symbol": "ETH/USDC",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075013042,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075014042
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075015-14",
+        "symbol": "ETH/USDC",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075015042,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075015043
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075015-14",
+        "symbol": "ETH/USDC",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075015042,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075016043
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075017-16",
+        "symbol": "SOL/USDC",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075017043,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075017044
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075017-16",
+        "symbol": "SOL/USDC",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075017043,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075018044
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075019-18",
+        "symbol": "SOL/USDC",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075019044,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075019044
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075019-18",
+        "symbol": "SOL/USDC",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075019044,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075020045
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075021-20",
+        "symbol": "SOL/USDC",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075021045,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075021045
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075021-20",
+        "symbol": "SOL/USDC",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075021045,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075022046
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075023-22",
+        "symbol": "SOL/USDC",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075023046,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075023046
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075023-22",
+        "symbol": "SOL/USDC",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075023046,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075024046
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075025-24",
+        "symbol": "BTC/USDT",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075025047,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075025047
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075025-24",
+        "symbol": "BTC/USDT",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075025047,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075026047
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075027-26",
+        "symbol": "BTC/USDT",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075027047,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075027048
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075027-26",
+        "symbol": "BTC/USDT",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075027047,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075028048
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075029-28",
+        "symbol": "BTC/USDT",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075029048,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075029048
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075029-28",
+        "symbol": "BTC/USDT",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075029048,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075030048
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075031-30",
+        "symbol": "BTC/USDT",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075031049,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075031049
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075031-30",
+        "symbol": "BTC/USDT",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 0.01,
+        "price": 50000.0,
+        "status": "FILLED",
+        "timestamp": 1749075031049,
+        "filledQuantity": 0.01,
+        "filledPrice": 50000.0
+      },
+      "timestamp": 1749075032049
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075033-32",
+        "symbol": "ETH/USDT",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075033049,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075033049
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075033-32",
+        "symbol": "ETH/USDT",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075033049,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075034050
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075035-34",
+        "symbol": "ETH/USDT",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075035050,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075035050
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075035-34",
+        "symbol": "ETH/USDT",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075035050,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075036050
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075037-36",
+        "symbol": "ETH/USDT",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075037051,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075037051
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075037-36",
+        "symbol": "ETH/USDT",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075037051,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075038051
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075039-38",
+        "symbol": "ETH/USDT",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075039051,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075039052
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075039-38",
+        "symbol": "ETH/USDT",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 0.1,
+        "price": 3000.0,
+        "status": "FILLED",
+        "timestamp": 1749075039051,
+        "filledQuantity": 0.1,
+        "filledPrice": 3000.0
+      },
+      "timestamp": 1749075040052
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075041-40",
+        "symbol": "SOL/USDT",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075041052,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075041052
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075041-40",
+        "symbol": "SOL/USDT",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075041052,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075042053
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075043-42",
+        "symbol": "SOL/USDT",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075043053,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075043053
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075043-42",
+        "symbol": "SOL/USDT",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075043053,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075044053
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075045-44",
+        "symbol": "SOL/USDT",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075045053,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075045054
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075045-44",
+        "symbol": "SOL/USDT",
+        "side": "SELL",
+        "type": "MARKET",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075045053,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075046054
+    },
+    {
+      "type": "created",
+      "order": {
+        "orderId": "TEST-1749075047-46",
+        "symbol": "SOL/USDT",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075047054,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075047054
+    },
+    {
+      "type": "filled",
+      "order": {
+        "orderId": "TEST-1749075047-46",
+        "symbol": "SOL/USDT",
+        "side": "SELL",
+        "type": "LIMIT",
+        "quantity": 1.0,
+        "price": 150.0,
+        "status": "FILLED",
+        "timestamp": 1749075047054,
+        "filledQuantity": 1.0,
+        "filledPrice": 150.0
+      },
+      "timestamp": 1749075048055
+    }
+  ],
+  "error_notifications": [
+    {
+      "type": "market_data",
+      "message": "Test error in market_data component at 2025-06-04T18:10:49.055433",
+      "timestamp": 1749075049055
+    },
+    {
+      "type": "signal_generation",
+      "message": "Test error in signal_generation component at 2025-06-04T18:10:50.055690",
+      "timestamp": 1749075050056
+    },
+    {
+      "type": "order_execution",
+      "message": "Test error in order_execution component at 2025-06-04T18:10:51.056216",
+      "timestamp": 1749075051056
+    },
+    {
+      "type": "notification",
+      "message": "Test error in notification component at 2025-06-04T18:10:52.056658",
+      "timestamp": 1749075052056
+    },
+    {
+      "type": "system",
+      "message": "Test error in system component at 2025-06-04T18:10:53.057138",
+      "timestamp": 1749075053057
+    },
+    {
+      "type": "test",
+      "message": "Test error in test component at 2025-06-04T18:10:54.057583",
+      "timestamp": 1749075054057
+    }
+  ]
+}

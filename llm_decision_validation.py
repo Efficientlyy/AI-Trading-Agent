@@ -22,7 +22,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 # Import required modules
 from enhanced_logging_fixed import EnhancedLogger
 from enhanced_llm_overseer import EnhancedLLMOverseer
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 from paper_trading_extension import EnhancedPaperTradingSystem
 
 # Initialize enhanced logger
@@ -53,7 +53,7 @@ class LLMDecisionTest:
         }
         
         # Initialize components
-        self.client = OptimizedMexcClient()
+        self.client = OptimizedMEXCClient()
         self.paper_trading = EnhancedPaperTradingSystem(self.client)
         
         # Test results

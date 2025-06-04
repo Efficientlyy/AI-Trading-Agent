@@ -1,0 +1,13 @@
+{
+  "timestamp": "2025-06-04T19:09:45.491054",
+  "status": "no_signals",
+  "market_data": {
+    "1m": 100,
+    "5m": 100,
+    "15m": 100,
+    "1h": 100
+  },
+  "signals": [],
+  "trades": [],
+  "errors": []
+}

@@ -114,6 +114,17 @@ class SymbolStandardizer:
         """
         return self.standardize(symbol, self.FORMAT_DIRECT)
     
+    def for_mexc(self, symbol: str) -> str:
+        """Convert symbol specifically for MEXC API
+        
+        Args:
+            symbol: Symbol to convert (any common format)
+            
+        Returns:
+            str: Symbol in MEXC format (BTCUSDC)
+        """
+        return self.standardize(symbol, self.FORMAT_DIRECT)
+    
     def _parse_symbol(self, symbol: str) -> tuple:
         """Parse symbol into base and quote assets
         

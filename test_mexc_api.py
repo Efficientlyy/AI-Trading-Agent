@@ -16,7 +16,7 @@ from datetime import datetime
 
 # Import Trading-Agent components
 from env_loader import load_environment_variables
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 
 # Configure logging
 logging.basicConfig(
@@ -35,7 +35,7 @@ def test_api_connection():
         return False
     
     logger.info("Initializing MEXC client...")
-    client = OptimizedMexcClient(
+    client = OptimizedMEXCClient(
         api_key=env['MEXC_API_KEY'],
         api_secret=env['MEXC_SECRET_KEY']
     )
@@ -56,7 +56,7 @@ def test_market_data_retrieval():
     env = load_environment_variables()
     
     logger.info("Initializing MEXC client...")
-    client = OptimizedMexcClient(
+    client = OptimizedMEXCClient(
         api_key=env['MEXC_API_KEY'],
         api_secret=env['MEXC_SECRET_KEY']
     )
@@ -104,7 +104,7 @@ def test_pattern_recognition_data():
     env = load_environment_variables()
     
     logger.info("Initializing MEXC client...")
-    client = OptimizedMexcClient(
+    client = OptimizedMEXCClient(
         api_key=env['MEXC_API_KEY'],
         api_secret=env['MEXC_SECRET_KEY']
     )

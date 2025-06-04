@@ -14,7 +14,7 @@ import numpy as np
 from datetime import datetime, timezone
 from threading import Thread, Event, RLock
 from collections import deque
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 from trading_session_manager import TradingSessionManager
 from error_handling_utils import safe_get, safe_get_nested, validate_api_response, handle_api_error, log_exception, parse_float_safely
 
@@ -140,18 +140,18 @@ class FlashTradingSignals:
         """Initialize flash trading signals
         
         Args:
-            client_instance: Existing OptimizedMexcClient instance to use (preferred)
+            client_instance: Existing OptimizedMEXCClient instance to use (preferred)
             api_key: API key for MEXC (used only if client_instance is None)
             api_secret: API secret for MEXC (used only if client_instance is None)
             env_path: Path to .env file (used only if client_instance is None)
         """
         # Use existing client instance if provided, otherwise create new one
-        if client_instance is not None and isinstance(client_instance, OptimizedMexcClient):
+        if client_instance is not None and isinstance(client_instance, OptimizedMEXCClient):
             self.api_client = client_instance
             logger.info("Using provided client instance for SignalGenerator")
         else:
             # Initialize API client with direct credentials
-            self.api_client = OptimizedMexcClient(api_key, api_secret, env_path)
+            self.api_client = OptimizedMEXCClient(api_key, api_secret, env_path)
             logger.info("Created new client instance for SignalGenerator")
         
         # Initialize session manager
@@ -415,21 +415,13 @@ class FlashTradingSignals:
                     "session": current_session
                 })
             
-            # Volatility breakout signal
-            if market_state.volatility > 0:
-                normalized_volatility = market_state.volatility / market_state.mid_price
-                if normalized_volatility > volatility_threshold:
-                    # Determine direction based on recent trend
-                    signal_type = "BUY" if market_state.trend > 0 else "SELL"
-                    signals.append({
-                        "type": signal_type,
-                        "source": "volatility_breakout",
-                        "strength": normalized_volatility,
-                        "timestamp": int(time.time() * 1000),
-                        "price": market_state.mid_price,
-                        "symbol": symbol,
-                        "session": current_session
-                    })
+            # Store signals
+            if signals:
+                self.signals.extend(signals)
+                
+                # Trim signals if needed
+                if len(self.signals) > self.max_signals:
+                    self.signals = self.signals[-self.max_signals:]
             
             return signals
             
@@ -438,139 +430,139 @@ class FlashTradingSignals:
             return []
     
     @handle_api_error
-    def get_recent_signals(self, count=10, symbol=None):
-        """Get recent signals, optionally filtered by symbol"""
-        try:
-            # Thread-safe signals access
-            signals_copy = self.signals.copy()
-            
-            # Filter by symbol if provided
-            if symbol:
-                signals_copy = [s for s in signals_copy if s.get("symbol") == symbol]
-            
-            # Return most recent signals
-            return signals_copy[-count:]
-        except Exception as e:
-            log_exception(e, "get_recent_signals")
-            return []
-    
-    @handle_api_error
-    def add_signal(self, signal):
-        """Add a new signal to history"""
-        try:
-            # Thread-safe signals update
-            self.signals.append(signal)
-            
-            # Trim signal history if needed
-            if len(self.signals) > self.max_signals:
-                self.signals = self.signals[-self.max_signals:]
-        except Exception as e:
-            log_exception(e, "add_signal")
-    
-    @handle_api_error
-    def make_trading_decision(self, symbol, signals):
-        """Make a trading decision based on signals
+    def generate_signal(self, symbol, candles_short=None, candles_long=None):
+        """Generate a single trading signal for a symbol
         
         Args:
-            symbol: Trading pair symbol (e.g., 'BTCUSDC')
-            signals: List of trading signals
+            symbol: Trading pair symbol (e.g., 'BTC/USDC')
+            candles_short: Short-term candles for technical analysis
+            candles_long: Long-term candles for technical analysis
             
         Returns:
-            dict: Trading decision or None if no decision
+            dict: Trading signal or None if no signal
         """
-        # DIAGNOSTIC: Log before making decision
-        logger.debug(f"Making trading decision for {symbol} with {len(signals)} signals")
+        # DIAGNOSTIC: Log before generating signal
+        logger.debug(f"Generating signal for {symbol}")
         
         try:
-            # Validate inputs with diagnostics
-            if not symbol or not isinstance(symbol, str):
-                logger.error(f"Invalid symbol: {symbol}")
-                return None
-                
-            if not signals or not isinstance(signals, list):
-                logger.debug(f"No valid signals for {symbol}")
+            # Update market state
+            api_symbol = symbol.replace('/', '')
+            if not self._update_market_state(api_symbol):
+                logger.warning(f"Failed to update market state for {symbol}")
                 return None
             
-            # Filter signals for this symbol and session
+            # Get current trading session
             current_session = self.session_manager.get_current_session_name()
-            valid_signals = [
-                s for s in signals 
-                if s.get("symbol") == symbol and s.get("session") == current_session
-            ]
             
-            if not valid_signals:
-                logger.debug(f"No valid signals for {symbol} in session {current_session}")
-                return None
+            # Thread-safe market state access
+            with self.market_state_lock:
+                if api_symbol not in self.market_states:
+                    logger.warning(f"No market state available for {symbol}")
+                    return None
+                
+                market_state = self.market_states[api_symbol]
             
             # Get session-specific parameters
             session_params = self.session_manager.get_session_parameters(current_session)
             
-            # Extract decision parameters with safe defaults
-            min_signal_strength = safe_get(session_params, "min_signal_strength", 0.1)
-            position_size = safe_get(session_params, "position_size", 0.1)
+            # Extract thresholds from session parameters with safe defaults
+            imbalance_threshold = safe_get(session_params, "imbalance_threshold", 0.2)
+            momentum_threshold = safe_get(session_params, "momentum_threshold", 0.005)
+            volatility_threshold = safe_get(session_params, "volatility_threshold", 0.002)
             
-            # Calculate aggregate signal
-            buy_strength = sum(s.get("strength", 0) for s in valid_signals if s.get("type") == "BUY")
-            sell_strength = sum(s.get("strength", 0) for s in valid_signals if s.get("type") == "SELL")
+            # Determine signal direction
+            signal_strength = 0.0
+            signal_direction = None
+            signal_reason = []
             
-            # Determine decision
-            if buy_strength > sell_strength and buy_strength >= min_signal_strength:
-                # Thread-safe market state access
-                with self.market_state_lock:
-                    if symbol not in self.market_states:
-                        logger.warning(f"No market state available for {symbol}")
-                        return None
-                    
-                    price = self.market_states[symbol].ask_price
+            # Order imbalance signal
+            if abs(market_state.order_imbalance) > imbalance_threshold:
+                direction = "BUY" if market_state.order_imbalance > 0 else "SELL"
+                strength = abs(market_state.order_imbalance)
                 
-                return {
+                if signal_direction is None:
+                    signal_direction = direction
+                    signal_strength = strength
+                    signal_reason.append("order_imbalance")
+                elif signal_direction == direction:
+                    signal_strength += strength
+                    signal_reason.append("order_imbalance")
+            
+            # Momentum signal
+            normalized_momentum = market_state.momentum / market_state.mid_price
+            if abs(normalized_momentum) > momentum_threshold:
+                direction = "BUY" if normalized_momentum > 0 else "SELL"
+                strength = abs(normalized_momentum) / momentum_threshold
+                
+                if signal_direction is None:
+                    signal_direction = direction
+                    signal_strength = strength
+                    signal_reason.append("momentum")
+                elif signal_direction == direction:
+                    signal_strength += strength
+                    signal_reason.append("momentum")
+            
+            # Technical analysis from candles
+            if candles_short and candles_long:
+                # Simple moving average crossover
+                if len(candles_short) >= 10 and len(candles_long) >= 20:
+                    try:
+                        # Calculate short-term SMA (10 periods)
+                        short_prices = [candle["close"] for candle in candles_short[-10:]]
+                        short_sma = sum(short_prices) / len(short_prices)
+                        
+                        # Calculate long-term SMA (20 periods)
+                        long_prices = [candle["close"] for candle in candles_long[-20:]]
+                        long_sma = sum(long_prices) / len(long_prices)
+                        
+                        # SMA crossover signal
+                        if short_sma > long_sma:
+                            direction = "BUY"
+                            strength = (short_sma / long_sma - 1.0) * 10.0
+                        else:
+                            direction = "SELL"
+                            strength = (long_sma / short_sma - 1.0) * 10.0
+                        
+                        if signal_direction is None:
+                            signal_direction = direction
+                            signal_strength = strength
+                            signal_reason.append("sma_crossover")
+                        elif signal_direction == direction:
+                            signal_strength += strength
+                            signal_reason.append("sma_crossover")
+                    except Exception as e:
+                        log_exception(e, "Technical analysis calculation")
+            
+            # Create signal if direction is determined and strength is sufficient
+            if signal_direction and signal_strength >= self.config["min_signal_strength"]:
+                signal_id = str(uuid.uuid4())
+                
+                signal = {
+                    "id": signal_id,
                     "symbol": symbol,
-                    "side": "BUY",
-                    "order_type": "MARKET",
-                    "size": position_size,
-                    "price": price,
-                    "time_in_force": "GTC",
+                    "direction": signal_direction,
+                    "strength": signal_strength,
+                    "price": market_state.mid_price,
                     "timestamp": int(time.time() * 1000),
                     "session": current_session,
-                    "signal_strength": buy_strength
+                    "reason": signal_reason
                 }
-            elif sell_strength > buy_strength and sell_strength >= min_signal_strength:
-                # Thread-safe market state access
-                with self.market_state_lock:
-                    if symbol not in self.market_states:
-                        logger.warning(f"No market state available for {symbol}")
-                        return None
-                    
-                    price = self.market_states[symbol].bid_price
                 
-                return {
-                    "symbol": symbol,
-                    "side": "SELL",
-                    "order_type": "MARKET",
-                    "size": position_size,
-                    "price": price,
-                    "time_in_force": "GTC",
-                    "timestamp": int(time.time() * 1000),
-                    "session": current_session,
-                    "signal_strength": sell_strength
-                }
+                # Store signal
+                self.signals.append(signal)
+                
+                # Trim signals if needed
+                if len(self.signals) > self.max_signals:
+                    self.signals = self.signals[-self.max_signals:]
+                
+                logger.info(f"Generated {signal_direction} signal for {symbol} with strength {signal_strength:.4f}")
+                return signal
             
             return None
             
         except Exception as e:
-            log_exception(e, f"make_trading_decision for {symbol}")
+            log_exception(e, f"generate_signal for {symbol}")
             return None
-    
-    def get_account(self):
-        """Compatibility method for extended_testing.py - calls get_account_info()"""
-        return self.get_account_info()
-    
-    def get_account_info(self):
-        """Get account information (placeholder for paper trading)"""
-        return {
-            "balances": {
-                "USDC": 10000.0,
-                "BTC": 0.5,
-                "ETH": 5.0
-            }
-        }
+
+# Alias FlashTradingSignals as SignalGenerator for compatibility with existing code
+SignalGenerator = FlashTradingSignals

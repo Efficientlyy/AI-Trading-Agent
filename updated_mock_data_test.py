@@ -23,7 +23,7 @@ logging.basicConfig(
 logger = logging.getLogger("mock_data_test")
 
 # Import required modules
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 from paper_trading import PaperTradingSystem
 from paper_trading_extension import EnhancedPaperTradingSystem
 from flash_trading_signals_extension import ExtendedFlashTradingSignals
@@ -34,7 +34,7 @@ class MockDataTester:
     
     def __init__(self):
         """Initialize mock data tester"""
-        self.client = OptimizedMexcClient()
+        self.client = OptimizedMEXCClient()
         self.paper_trading = EnhancedPaperTradingSystem(self.client)
         self.signals = ExtendedFlashTradingSignals()  # Using the extended signals class
         self.session_manager = TradingSessionManager()

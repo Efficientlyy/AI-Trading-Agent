@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Deep trace script for debugging API key propagation in OptimizedMexcClient
+Deep trace script for debugging API key propagation in OptimizedMEXCClient
 """
 
 import os
@@ -54,18 +54,18 @@ def trace_env_path_propagation(env_path):
     logger.info(f"After load_dotenv - MEXC_API_KEY: {api_key_after}")
     logger.info(f"After load_dotenv - MEXC_API_SECRET: {api_secret_after}")
     
-    # Import OptimizedMexcClient
+    # Import OptimizedMEXCClient
     try:
         sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-        from optimized_mexc_client import OptimizedMexcClient
-        logger.info("Successfully imported OptimizedMexcClient")
+        from optimized_mexc_client import OptimizedMEXCClient
+        logger.info("Successfully imported OptimizedMEXCClient")
     except Exception as e:
-        logger.error(f"Error importing OptimizedMexcClient: {str(e)}")
+        logger.error(f"Error importing OptimizedMEXCClient: {str(e)}")
         return False
     
     # Create client instance with direct credentials
     try:
-        direct_client = OptimizedMexcClient(
+        direct_client = OptimizedMEXCClient(
             api_key=api_key_after,
             secret_key=api_secret_after
         )
@@ -77,7 +77,7 @@ def trace_env_path_propagation(env_path):
     
     # Create client instance with env_path
     try:
-        env_client = OptimizedMexcClient(env_path=env_path)
+        env_client = OptimizedMEXCClient(env_path=env_path)
         logger.info("Created client with env_path")
         logger.info(f"Env client API key type: {type(env_client.api_key)}")
         logger.info(f"Env client API key: {env_client.api_key}")
@@ -87,7 +87,7 @@ def trace_env_path_propagation(env_path):
     # Patch the client class
     try:
         # Monkey patch the _init_session method to log API key
-        original_init_session = OptimizedMexcClient._init_session
+        original_init_session = OptimizedMEXCClient._init_session
         
         def patched_init_session(self):
             logger.info("Patched _init_session called")
@@ -97,14 +97,14 @@ def trace_env_path_propagation(env_path):
             logger.info("Original _init_session completed")
             return result
         
-        OptimizedMexcClient._init_session = patched_init_session
+        OptimizedMEXCClient._init_session = patched_init_session
         logger.info("Monkey patched _init_session method")
     except Exception as e:
         logger.error(f"Error patching client: {str(e)}")
     
     # Create client instance after patching
     try:
-        patched_client = OptimizedMexcClient(env_path=env_path)
+        patched_client = OptimizedMEXCClient(env_path=env_path)
         logger.info("Created client after patching")
         
         # Initialize session

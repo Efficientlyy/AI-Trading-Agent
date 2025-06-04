@@ -1,8 +1,8 @@
 {
-  "timestamp": 1749060946713,
+  "timestamp": 1749068907680,
   "balances": {
-    "USDC": 8504.026368499999,
-    "BTC": 0.007,
+    "USDC": 8294.430261779999,
+    "BTC": 0.009000000000000001,
     "ETH": 0.0
   },
   "open_orders": {
@@ -609,6 +609,90 @@
         }
       ],
       "signal_id": "SIG-1749060946-0"
+    },
+    {
+      "orderId": "0ab31ca9-4b51-4cbc-9a8f-503f46849b24",
+      "symbol": "BTCUSDC",
+      "side": "BUY",
+      "type": "LIMIT",
+      "timeInForce": "GTC",
+      "quantity": 0.001,
+      "price": 104798.05335999999,
+      "status": "NEW",
+      "timestamp": 1749068903669,
+      "executedQty": 0.0,
+      "cummulativeQuoteQty": 0.0,
+      "fills": []
+    },
+    {
+      "orderId": "0ab31ca9-4b51-4cbc-9a8f-503f46849b24",
+      "symbol": "BTCUSDC",
+      "side": "BUY",
+      "type": "LIMIT",
+      "timeInForce": "GTC",
+      "quantity": 0.001,
+      "price": 104798.05335999999,
+      "status": "FILLED",
+      "timestamp": 1749068903669,
+      "executedQty": 0.001,
+      "cummulativeQuoteQty": 104.79805336,
+      "fills": [
+        {
+          "tradeId": "445b1510-6aac-4f96-b872-725d4f15d10f",
+          "orderId": "0ab31ca9-4b51-4cbc-9a8f-503f46849b24",
+          "symbol": "BTCUSDC",
+          "side": "BUY",
+          "price": 104798.05335999999,
+          "quantity": 0.001,
+          "quoteQty": 104.79805336,
+          "commission": 0.0,
+          "commissionAsset": "USDC",
+          "timestamp": 1749068903872
+        }
+      ],
+      "signal_id": "SIG-1749068903-0"
+    },
+    {
+      "orderId": "abf5d602-b0ea-4a30-a4c9-af548344c96f",
+      "symbol": "BTCUSDC",
+      "side": "BUY",
+      "type": "LIMIT",
+      "timeInForce": "GTC",
+      "quantity": 0.001,
+      "price": 104798.05335999999,
+      "status": "NEW",
+      "timestamp": 1749068907483,
+      "executedQty": 0.0,
+      "cummulativeQuoteQty": 0.0,
+      "fills": []
+    },
+    {
+      "orderId": "abf5d602-b0ea-4a30-a4c9-af548344c96f",
+      "symbol": "BTCUSDC",
+      "side": "BUY",
+      "type": "LIMIT",
+      "timeInForce": "GTC",
+      "quantity": 0.001,
+      "price": 104798.05335999999,
+      "status": "FILLED",
+      "timestamp": 1749068907483,
+      "executedQty": 0.001,
+      "cummulativeQuoteQty": 104.79805336,
+      "fills": [
+        {
+          "tradeId": "c0bb9403-7c42-4710-99af-df8a11533495",
+          "orderId": "abf5d602-b0ea-4a30-a4c9-af548344c96f",
+          "symbol": "BTCUSDC",
+          "side": "BUY",
+          "price": 104798.05335999999,
+          "quantity": 0.001,
+          "quoteQty": 104.79805336,
+          "commission": 0.0,
+          "commissionAsset": "USDC",
+          "timestamp": 1749068907680
+        }
+      ],
+      "signal_id": "SIG-1749068907-0"
     }
   ],
   "trade_history": [
@@ -695,6 +779,30 @@
       "commission": 0.0,
       "commissionAsset": "USDC",
       "timestamp": 1749060946713
+    },
+    {
+      "tradeId": "445b1510-6aac-4f96-b872-725d4f15d10f",
+      "orderId": "0ab31ca9-4b51-4cbc-9a8f-503f46849b24",
+      "symbol": "BTCUSDC",
+      "side": "BUY",
+      "price": 104798.05335999999,
+      "quantity": 0.001,
+      "quoteQty": 104.79805336,
+      "commission": 0.0,
+      "commissionAsset": "USDC",
+      "timestamp": 1749068903872
+    },
+    {
+      "tradeId": "c0bb9403-7c42-4710-99af-df8a11533495",
+      "orderId": "abf5d602-b0ea-4a30-a4c9-af548344c96f",
+      "symbol": "BTCUSDC",
+      "side": "BUY",
+      "price": 104798.05335999999,
+      "quantity": 0.001,
+      "quoteQty": 104.79805336,
+      "commission": 0.0,
+      "commissionAsset": "USDC",
+      "timestamp": 1749068907680
     }
   ]
 }

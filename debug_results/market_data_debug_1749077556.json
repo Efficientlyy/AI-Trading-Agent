@@ -1,0 +1,84 @@
+{
+  "timestamp": "2025-06-04T18:52:32.468407",
+  "symbol_mapping": {
+    "internal_to_api": {
+      "BTC/USDC": "BTCUSDC"
+    },
+    "api_to_internal": {
+      "BTCUSDC": "BTC/USDC"
+    },
+    "direct_api": {
+      "BTCUSDC": "BTC/USDC"
+    },
+    "symbol_map": {
+      "BTC/USDC": "BTCUSDC",
+      "BTCUSDC": "BTC/USDC"
+    }
+  },
+  "interval_mapping": {
+    "normalized_intervals": {
+      "1m": "1m",
+      "5m": "5m",
+      "15m": "15m",
+      "1h": "60m",
+      "4h": "4h",
+      "1d": "1d",
+      "1w": "1w"
+    },
+    "supported_intervals": [
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "60m",
+      "4h",
+      "1d",
+      "1w"
+    ]
+  },
+  "ticker_request": {
+    "ticker_internal": {
+      "price": 104857.56,
+      "symbol": "BTC/USDC",
+      "timestamp": 1749077552540
+    },
+    "ticker_api": {
+      "price": 104857.56,
+      "symbol": "BTCUSDC",
+      "timestamp": 1749077552590
+    }
+  },
+  "orderbook_request": {
+    "orderbook_internal": {
+      "asks_count": 20,
+      "bids_count": 20
+    },
+    "orderbook_api": {
+      "asks_count": 20,
+      "bids_count": 20
+    }
+  },
+  "trades_request": {
+    "trades_internal": 50,
+    "trades_api": 50
+  },
+  "klines_request": {
+    "internal_1m": 100,
+    "api_1m": 100,
+    "internal_5m": 100,
+    "api_5m": 100,
+    "internal_15m": 100,
+    "api_15m": 100,
+    "internal_1h": 100,
+    "api_1h": 100,
+    "internal_4h": 100,
+    "api_4h": 100,
+    "internal_1d": 100,
+    "api_1d": 100
+  },
+  "api_request_url": {
+    "url": "https://api.mexc.com/api/v3/klines?symbol=BTCUSDC&interval=60m&limit=100",
+    "status_code": 200,
+    "response_preview": "[[1748718000000,\"104544.28\",\"104795.18\",\"104544.28\",\"104750.28\",\"4.724341\",1748721600000,\"494654.67\"],[1748721600000,\"104750.28\",\"104850\",\"104630.58\",\"104840.9\",\"3.025139\",1748725200000,\"316855.37\"],["
+  }
+}

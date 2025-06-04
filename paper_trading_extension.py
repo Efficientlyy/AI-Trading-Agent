@@ -14,7 +14,7 @@ import uuid
 from datetime import datetime
 from threading import RLock
 from paper_trading import PaperTradingSystem
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 
 # Configure logging
 logging.basicConfig(
@@ -219,7 +219,7 @@ class EnhancedPaperTradingSystem(PaperTradingSystem):
 
 # Example usage
 if __name__ == "__main__":
-    client = OptimizedMexcClient()
+    client = OptimizedMEXCClient()
     paper = EnhancedPaperTradingSystem(client)
     
     # Place a test order

@@ -1,0 +1,251 @@
+{
+  "symbol": "BTC/USDC",
+  "api_symbol": "BTCUSDC",
+  "validation_time": "2025-06-04T18:32:30.556329",
+  "endpoints": {
+    "ticker": {
+      "success": true,
+      "duration_seconds": 0.20520329475402832,
+      "data": {
+        "price": 104871.63,
+        "symbol": "BTC/USDC",
+        "timestamp": 1749076350761
+      },
+      "error": null
+    },
+    "orderbook": {
+      "success": true,
+      "duration_seconds": 0.19117188453674316,
+      "data_summary": {
+        "asks_count": 20,
+        "bids_count": 20,
+        "top_ask": 104884.05,
+        "top_bid": 104869.62
+      },
+      "error": null
+    },
+    "trades": {
+      "success": true,
+      "duration_seconds": 0.192047119140625,
+      "data_summary": {
+        "trades_count": 50,
+        "latest_trade_price": 104871.73,
+        "latest_trade_time": "2025-06-04T18:32:31.810000"
+      },
+      "error": null
+    },
+    "exchange_info": {
+      "success": true,
+      "duration_seconds": 0.13068151473999023,
+      "data_summary": {
+        "symbols_count": 2535,
+        "btcusdc_found": true,
+        "btcusdc_status": "1",
+        "btcusdc_base_asset": "BTC",
+        "btcusdc_quote_asset": "USDC"
+      },
+      "error": null
+    }
+  },
+  "timeframes": {
+    "1m": {
+      "timeframe": "1m",
+      "success": true,
+      "duration_seconds": 0.19826936721801758,
+      "requested_candles": 60,
+      "received_candles": 60,
+      "data_summary": {
+        "first_candle": {
+          "time": "2025-06-04T17:33:00",
+          "open": 104797.73,
+          "high": 104872.76,
+          "low": 104797.73,
+          "close": 104872.76,
+          "volume": 0.095259
+        },
+        "last_candle": {
+          "time": "2025-06-04T18:32:00",
+          "open": 104857.74,
+          "high": 104871.73,
+          "low": 104840.42,
+          "close": 104871.67,
+          "volume": 0.02066
+        },
+        "time_range": {
+          "first_time": "2025-06-04T17:33:00",
+          "last_time": "2025-06-04T18:32:00",
+          "days": 0,
+          "hours": 0,
+          "minutes": 59
+        }
+      },
+      "error": null
+    },
+    "5m": {
+      "timeframe": "5m",
+      "success": true,
+      "duration_seconds": 0.19835305213928223,
+      "requested_candles": 60,
+      "received_candles": 60,
+      "data_summary": {
+        "first_candle": {
+          "time": "2025-06-04T13:35:00",
+          "open": 105302.56,
+          "high": 105353.2,
+          "low": 105167.62,
+          "close": 105172.62,
+          "volume": 0.654041
+        },
+        "last_candle": {
+          "time": "2025-06-04T18:30:00",
+          "open": 104873.27,
+          "high": 104904.56,
+          "low": 104814.38,
+          "close": 104871.67,
+          "volume": 0.169566
+        },
+        "time_range": {
+          "first_time": "2025-06-04T13:35:00",
+          "last_time": "2025-06-04T18:30:00",
+          "days": 0,
+          "hours": 4,
+          "minutes": 55
+        }
+      },
+      "error": null
+    },
+    "15m": {
+      "timeframe": "15m",
+      "success": true,
+      "duration_seconds": 0.1938924789428711,
+      "requested_candles": 40,
+      "received_candles": 40,
+      "data_summary": {
+        "first_candle": {
+          "time": "2025-06-04T08:45:00",
+          "open": 105041.44,
+          "high": 105156.27,
+          "low": 105009.19,
+          "close": 105106.27,
+          "volume": 3.412793
+        },
+        "last_candle": {
+          "time": "2025-06-04T18:30:00",
+          "open": 104873.27,
+          "high": 104904.56,
+          "low": 104814.38,
+          "close": 104865.23,
+          "volume": 0.174598
+        },
+        "time_range": {
+          "first_time": "2025-06-04T08:45:00",
+          "last_time": "2025-06-04T18:30:00",
+          "days": 0,
+          "hours": 9,
+          "minutes": 45
+        }
+      },
+      "error": null
+    },
+    "60m": {
+      "timeframe": "60m",
+      "success": true,
+      "duration_seconds": 0.25934696197509766,
+      "requested_candles": 24,
+      "received_candles": 24,
+      "data_summary": {
+        "first_candle": {
+          "time": "2025-06-03T19:00:00",
+          "open": 105920.15,
+          "high": 105920.16,
+          "low": 105351.88,
+          "close": 105470.2,
+          "volume": 6.800778
+        },
+        "last_candle": {
+          "time": "2025-06-04T18:00:00",
+          "open": 104988.67,
+          "high": 105110.63,
+          "low": 104814.38,
+          "close": 104865.23,
+          "volume": 2.502184
+        },
+        "time_range": {
+          "first_time": "2025-06-03T19:00:00",
+          "last_time": "2025-06-04T18:00:00",
+          "days": 0,
+          "hours": 23,
+          "minutes": 0
+        }
+      },
+      "error": null
+    },
+    "4h": {
+      "timeframe": "4h",
+      "success": true,
+      "duration_seconds": 0.23696446418762207,
+      "requested_candles": 30,
+      "received_candles": 30,
+      "data_summary": {
+        "first_candle": {
+          "time": "2025-05-30T20:00:00",
+          "open": 104035.35,
+          "high": 104346.31,
+          "low": 103104.77,
+          "close": 103722.88,
+          "volume": 53.024668
+        },
+        "last_candle": {
+          "time": "2025-06-04T16:00:00",
+          "open": 104985.41,
+          "high": 105110.63,
+          "low": 104481.85,
+          "close": 104865.23,
+          "volume": 15.790383
+        },
+        "time_range": {
+          "first_time": "2025-05-30T20:00:00",
+          "last_time": "2025-06-04T16:00:00",
+          "days": 4,
+          "hours": 20,
+          "minutes": 0
+        }
+      },
+      "error": null
+    },
+    "1d": {
+      "timeframe": "1d",
+      "success": true,
+      "duration_seconds": 0.21597528457641602,
+      "requested_candles": 10,
+      "received_candles": 10,
+      "data_summary": {
+        "first_candle": {
+          "time": "2025-05-25T20:00:00",
+          "open": 109056.73,
+          "high": 110473.15,
+          "low": 108763.27,
+          "close": 109466.0,
+          "volume": 233.950551
+        },
+        "last_candle": {
+          "time": "2025-06-03T20:00:00",
+          "open": 105470.2,
+          "high": 106069.28,
+          "low": 104269.25,
+          "close": 104865.23,
+          "volume": 254.978975
+        },
+        "time_range": {
+          "first_time": "2025-05-25T20:00:00",
+          "last_time": "2025-06-03T20:00:00",
+          "days": 9,
+          "hours": 0,
+          "minutes": 0
+        }
+      },
+      "error": null
+    }
+  },
+  "overall_success": true
+}

@@ -22,11 +22,11 @@ from mock_exchange_client import MockExchangeClient
 
 # Try to import real client, but don't fail if not available
 try:
-    from optimized_mexc_client import OptimizedMexcClient
+    from optimized_mexc_client import OptimizedMEXCClient
     REAL_CLIENT_AVAILABLE = True
 except ImportError:
     REAL_CLIENT_AVAILABLE = False
-    logging.warning("OptimizedMexcClient not available, using MockExchangeClient for all operations")
+    logging.warning("OptimizedMEXCClient not available, using MockExchangeClient for all operations")
 
 try:
     from trading_session_manager import TradingSessionManager
@@ -407,10 +407,10 @@ class EnhancedFlashTradingSignals:
             if REAL_CLIENT_AVAILABLE:
                 try:
                     # Initialize API client with direct credentials
-                    self.api_client = OptimizedMexcClient(api_key, api_secret, env_path)
-                    logger.info("Created new OptimizedMexcClient instance for EnhancedSignalGenerator")
+                    self.api_client = OptimizedMEXCClient(api_key, api_secret, env_path)
+                    logger.info("Created new OptimizedMEXCClient instance for EnhancedSignalGenerator")
                 except Exception as e:
-                    logger.warning(f"Failed to create OptimizedMexcClient: {str(e)}")
+                    logger.warning(f"Failed to create OptimizedMEXCClient: {str(e)}")
                     logger.info("Falling back to MockExchangeClient")
                     self.api_client = MockExchangeClient()
             else:

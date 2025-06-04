@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-06-04T19:29:24.740220",
+  "status": "success",
+  "market_data": {
+    "1m": 100,
+    "5m": 100,
+    "15m": 100,
+    "1h": 100
+  },
+  "signals": [
+    {
+      "id": "SIG-1749079759",
+      "symbol": "BTCUSDC",
+      "direction": "BUY",
+      "strength": 0.22719541518356484,
+      "price": 104730.23999999999,
+      "source": "order_book_imbalance",
+      "timestamp": 1749079758732
+    }
+  ],
+  "trades": [
+    {
+      "id": "SIG-2ffb2f77-0d48-4c0d-a6d4-ab0122431328",
+      "signal_id": "SIG-1749079759",
+      "order_id": "ORD-a39ee745-52b2-4449-ac60-b38171fa8e39",
+      "symbol": "BTCUSDC",
+      "action": "BUY",
+      "quantity": 0.009548340574794827,
+      "price": 104730.23999999999,
+      "timestamp": 1749079764739,
+      "status": "TIMEOUT"
+    }
+  ],
+  "errors": []
+}

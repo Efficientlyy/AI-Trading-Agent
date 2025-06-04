@@ -21,7 +21,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import required modules
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 from paper_trading import PaperTradingSystem
 from paper_trading_extension import EnhancedPaperTradingSystem
 from flash_trading_signals import FlashTradingSignals
@@ -68,7 +68,7 @@ class EnhancedSignalProcessor:
         self.order_queue = Queue()
         self.logger = logging.getLogger("signal_processor")
         self.signal_counter = 0
-        self.client = OptimizedMexcClient()
+        self.client = OptimizedMEXCClient()
         self.paper_trading = EnhancedPaperTradingSystem(self.client)
         self.setup_logging()
         

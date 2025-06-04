@@ -165,11 +165,11 @@ if __name__ == "__main__":
         
         # Create API client with direct credentials if available
         if api_key and api_secret:
-            debug_logger.info("Creating OptimizedMexcClient with direct credentials")
-            self.client = OptimizedMexcClient(api_key=api_key, secret_key=api_secret)
+            debug_logger.info("Creating OptimizedMEXCClient with direct credentials")
+            self.client = OptimizedMEXCClient(api_key=api_key, secret_key=api_secret)
         else:
-            debug_logger.info(f"Creating OptimizedMexcClient with env_path={env_path}")
-            self.client = OptimizedMexcClient(env_path=env_path)
+            debug_logger.info(f"Creating OptimizedMEXCClient with env_path={env_path}")
+            self.client = OptimizedMEXCClient(env_path=env_path)
         
         # Debug client API key
         debug_logger.info(f"Created client API key type: {type(self.client.api_key)}")

@@ -12,7 +12,7 @@ import argparse
 import json
 import os
 from datetime import datetime
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 from paper_trading import PaperTradingSystem
 from flash_trading_config import FlashTradingConfig
 from flash_trading_signals import FlashTradingSignals as SignalGenerator, MarketState
@@ -41,7 +41,7 @@ class FlashTradingSystem:
         self.config = FlashTradingConfig(config_path)
         
         # Create API client
-        self.client = OptimizedMexcClient(env_path=env_path)
+        self.client = OptimizedMEXCClient(env_path=env_path)
         
         # Create paper trading system
         self.paper_trading = PaperTradingSystem(self.client, self.config)

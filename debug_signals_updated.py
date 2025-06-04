@@ -4,7 +4,7 @@ import os
 import sys
 import time
 import logging
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 from flash_trading_signals import FlashTradingSignals, MarketState
 
 # Configure logging
@@ -22,7 +22,7 @@ def debug_signal_generation():
     logger.info("Starting signal generation debug")
     
     # Initialize client with API credentials
-    client = OptimizedMexcClient()
+    client = OptimizedMEXCClient()
     logger.info("MEXC client initialized")
     
     # Test basic market data retrieval

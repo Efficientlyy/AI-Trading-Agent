@@ -23,7 +23,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flash_trading import FlashTradingSystem
 from trading_session_manager import TradingSessionManager as SessionManager
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 from paper_trading import PaperTradingSystem
 from flash_trading_config import FlashTradingConfig
 
@@ -51,7 +51,7 @@ class ExtendedTestingFramework:
         self.config = FlashTradingConfig(config_path)
         
         # Create API client
-        self.client = OptimizedMexcClient(env_path=env_path)
+        self.client = OptimizedMEXCClient(env_path=env_path)
         
         # Create session manager
         self.session_manager = SessionManager()

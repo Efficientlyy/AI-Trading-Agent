@@ -399,76 +399,69 @@ class EnhancedTelegramNotifier:
         }
         
         self.notification_queue.put(notification)
+    
+    # Add send_signal_notification method for integrated pipeline compatibility
+    def send_signal_notification(self, signal):
+        """Send signal notification for integrated pipeline compatibility
+        
+        Args:
+            signal: Signal dictionary
+        """
+        self.logger.system.info(f"Sending signal notification for {signal.get('symbol', 'unknown')}")
+        self.notify_signal(signal)
+    
+    # Add send_trade_notification method for integrated pipeline compatibility
+    def send_trade_notification(self, trade):
+        """Send trade notification for integrated pipeline compatibility
+        
+        Args:
+            trade: Trade dictionary
+        """
+        self.logger.system.info(f"Sending trade notification for {trade.get('symbol', 'unknown')}")
+        
+        # Create order-like structure for notification
+        order = {
+            'symbol': trade.get('symbol', 'unknown'),
+            'side': trade.get('action', 'unknown'),
+            'type': 'MARKET',
+            'quantity': trade.get('quantity', 0.0),
+            'price': trade.get('price', 0.0),
+            'orderId': trade.get('order_id', trade.get('id', 'unknown'))
+        }
+        
+        self.notify_order_filled(order)
+    
+    # Add send_error_notification method for integrated pipeline compatibility
+    def send_error_notification(self, message, component="system"):
+        """Send error notification for integrated pipeline compatibility
+        
+        Args:
+            message: Error message
+            component: Component name
+        """
+        self.logger.system.info(f"Sending error notification: {message}")
+        self.notify_error(component, message)
+    
+    # Add send_system_notification method for integrated pipeline compatibility
+    def send_system_notification(self, message, details=None, component="system"):
+        """Send system notification for integrated pipeline compatibility
+        
+        Args:
+            message: System message
+            details: Additional details (optional)
+            component: Component name
+        """
+        self.logger.system.info(f"Sending system notification: {message}")
+        
+        # Add details to message if provided
+        if details:
+            if isinstance(details, dict):
+                details_str = ", ".join(f"{k}: {v}" for k, v in details.items())
+                message = f"{message}\n{details_str}"
+            else:
+                message = f"{message}\n{details}"
+        
+        self.notify_system(component, message)
 
-
-# Example usage
-if __name__ == "__main__":
-    # Create configuration
-    config = {
-        'telegram_bot_token': os.environ.get('TELEGRAM_BOT_TOKEN'),
-        'telegram_user_id': os.environ.get('TELEGRAM_USER_ID')
-    }
-    
-    # Create enhanced Telegram notifier
-    notifier = EnhancedTelegramNotifier(config)
-    
-    # Start notifier
-    notifier.start()
-    
-    # Create test signal
-    signal = {
-        'type': 'BUY',
-        'source': 'test',
-        'strength': 0.8,
-        'timestamp': int(time.time() * 1000),
-        'price': 105000.0,
-        'symbol': 'BTCUSDC',
-        'session': 'TEST'
-    }
-    
-    # Create test order
-    order = {
-        'symbol': 'BTCUSDC',
-        'side': 'BUY',
-        'type': 'LIMIT',
-        'quantity': 0.001,
-        'price': 105000.0,
-        'orderId': f"ORD-{int(time.time())}"
-    }
-    
-    # Create test decision
-    decision = {
-        'symbol': 'BTCUSDC',
-        'action': 'BUY',
-        'confidence': 0.75,
-        'reason': 'Strong bullish pattern detected with increasing volume'
-    }
-    
-    # Send test notifications
-    notifier.notify_signal(signal)
-    time.sleep(1)
-    
-    notifier.notify_order_created(order)
-    time.sleep(1)
-    
-    notifier.notify_order_filled(order)
-    time.sleep(1)
-    
-    notifier.notify_decision(decision)
-    time.sleep(1)
-    
-    notifier.notify_performance('profit_loss', '+2.5%')
-    time.sleep(1)
-    
-    notifier.notify_system('test', 'System test completed')
-    
-    # Run for a while
-    try:
-        print("Running Enhanced Telegram Notifier for 10 seconds...")
-        time.sleep(10)
-    except KeyboardInterrupt:
-        print("Interrupted by user")
-    finally:
-        # Stop notifier
-        notifier.stop()
-        print("Enhanced Telegram Notifier stopped")
+# Alias EnhancedTelegramNotifier as TelegramNotifier for compatibility with existing code
+TelegramNotifier = EnhancedTelegramNotifier

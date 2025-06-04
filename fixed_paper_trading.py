@@ -22,12 +22,12 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import required modules
 from enhanced_logging_fixed import EnhancedLogger
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 
 # Initialize enhanced logger
 logger = EnhancedLogger("paper_trading_fixed")
 
-class FixedPaperTradingSystem:
+class PaperTradingSystem:
     """Enhanced paper trading system with proper order creation and management"""
     
     def __init__(self, client=None, config=None):
@@ -39,7 +39,7 @@ class FixedPaperTradingSystem:
         """
         self.config = config or {}
         self.logger = logger
-        self.client = client or OptimizedMexcClient()
+        self.client = client or OptimizedMEXCClient()
         
         # Initialize state
         self.balance = self.config.get('initial_balance', {
@@ -469,28 +469,31 @@ class FixedPaperTradingSystem:
             self.trades.append(trade)
             
             # Update balance and position
-            self.update_balance_and_position(order, fill_price)
+            self.update_balance_and_position(trade)
             
             # Log order fill
-            self.logger.system.info(f"Order {order_id} filled: {order['quantity']} {order['symbol']} at {fill_price}")
+            self.logger.system.info(f"Order {order_id} filled at {fill_price}")
             
             # Send notification
-            self.notify('order_filled', order)
+            self.notify('order_filled', {
+                'order': order,
+                'trade': trade
+            })
         except Exception as e:
             self.logger.log_error(f"Error filling order internally: {str(e)}", component="paper_trading")
     
-    def update_balance_and_position(self, order, price):
-        """Update balance and position after order fill
+    def update_balance_and_position(self, trade):
+        """Update balance and position after a trade
         
         Args:
-            order: Order dictionary
-            price: Fill price
+            trade: Trade dictionary
         """
         try:
-            # Extract order data
-            symbol = order['symbol']
-            side = order['side']
-            quantity = order['quantity']
+            # Extract trade data
+            symbol = trade['symbol']
+            side = trade['side']
+            quantity = trade['quantity']
+            price = trade['price']
             
             # Get base and quote assets
             base_asset = symbol.replace('USDC', '')
@@ -498,63 +501,79 @@ class FixedPaperTradingSystem:
             
             # Update balance
             if side == 'BUY':
-                # Deduct quote asset
-                cost = quantity * price
-                self.balance[quote_asset] -= cost
-                # Add base asset
+                # Increase base asset, decrease quote asset
                 self.balance[base_asset] = self.balance.get(base_asset, 0.0) + quantity
+                self.balance[quote_asset] = self.balance.get(quote_asset, 0.0) - (quantity * price)
             else:  # SELL
-                # Deduct base asset
-                self.balance[base_asset] -= quantity
-                # Add quote asset
-                proceeds = quantity * price
-                self.balance[quote_asset] = self.balance.get(quote_asset, 0.0) + proceeds
+                # Decrease base asset, increase quote asset
+                self.balance[base_asset] = self.balance.get(base_asset, 0.0) - quantity
+                self.balance[quote_asset] = self.balance.get(quote_asset, 0.0) + (quantity * price)
             
             # Update position
-            position = self.positions.get(symbol, {
-                'symbol': symbol,
-                'base_asset': base_asset,
-                'quote_asset': quote_asset,
-                'base_quantity': 0.0,
-                'quote_quantity': 0.0,
-                'entry_price': 0.0,
-                'current_price': price,
-                'unrealized_pnl': 0.0,
-                'realized_pnl': 0.0,
-                'timestamp': int(time.time() * 1000)
-            })
+            if symbol in self.positions:
+                position = self.positions[symbol]
+                
+                # Update position
+                if side == 'BUY':
+                    # Calculate new entry price
+                    old_quantity = position['base_quantity']
+                    new_quantity = old_quantity + quantity
+                    old_value = old_quantity * position['entry_price'] if position['entry_price'] > 0 else 0
+                    new_value = quantity * price
+                    
+                    # Update position
+                    position['base_quantity'] = new_quantity
+                    position['entry_price'] = (old_value + new_value) / new_quantity if new_quantity > 0 else 0
+                else:  # SELL
+                    # Calculate realized PnL
+                    realized_pnl = quantity * (price - position['entry_price'])
+                    
+                    # Update position
+                    position['base_quantity'] = position['base_quantity'] - quantity
+                    position['realized_pnl'] = position['realized_pnl'] + realized_pnl
+                
+                # Update current price
+                position['current_price'] = price
+                
+                # Update unrealized PnL
+                position['unrealized_pnl'] = position['base_quantity'] * (price - position['entry_price'])
+                
+                # Update timestamp
+                position['timestamp'] = int(time.time() * 1000)
             
-            # Update position quantities
-            position['base_quantity'] = self.balance.get(base_asset, 0.0)
-            position['current_price'] = price
-            position['timestamp'] = int(time.time() * 1000)
-            
-            # Calculate PnL
-            if side == 'BUY':
-                # Update entry price (weighted average)
-                if position['base_quantity'] > 0:
-                    position['entry_price'] = (
-                        (position['entry_price'] * (position['base_quantity'] - quantity) + price * quantity)
-                        / position['base_quantity']
-                    )
-            else:  # SELL
-                # Calculate realized PnL
-                if position['entry_price'] > 0:
-                    realized_pnl = (price - position['entry_price']) * quantity
-                    position['realized_pnl'] += realized_pnl
-            
-            # Calculate unrealized PnL
-            if position['entry_price'] > 0 and position['base_quantity'] > 0:
-                position['unrealized_pnl'] = (price - position['entry_price']) * position['base_quantity']
-            else:
-                position['unrealized_pnl'] = 0.0
-            
-            # Update position
-            self.positions[symbol] = position
-            
-            self.logger.system.info(f"Balance and position updated for {symbol}")
+            self.logger.system.info(f"Updated balance and position for {symbol}")
         except Exception as e:
             self.logger.log_error(f"Error updating balance and position: {str(e)}", component="paper_trading")
+    
+    def update_market_data(self):
+        """Update market data"""
+        try:
+            # Update last prices
+            for symbol in ['BTCUSDC', 'ETHUSDC', 'SOLUSDC']:
+                try:
+                    # Get ticker
+                    ticker = self.client.get_ticker(symbol)
+                    
+                    # Update last price
+                    if ticker and 'lastPrice' in ticker:
+                        self.last_prices[symbol] = float(ticker['lastPrice'])
+                        
+                        # Update position current price
+                        if symbol in self.positions:
+                            self.positions[symbol]['current_price'] = float(ticker['lastPrice'])
+                            
+                            # Update unrealized PnL
+                            entry_price = self.positions[symbol]['entry_price']
+                            base_quantity = self.positions[symbol]['base_quantity']
+                            current_price = float(ticker['lastPrice'])
+                            
+                            self.positions[symbol]['unrealized_pnl'] = base_quantity * (current_price - entry_price)
+                except Exception as e:
+                    self.logger.log_error(f"Error updating market data for {symbol}: {str(e)}", component="paper_trading")
+            
+            self.logger.system.debug("Market data updated")
+        except Exception as e:
+            self.logger.log_error(f"Error updating market data: {str(e)}", component="paper_trading")
     
     def get_current_price(self, symbol):
         """Get current price for a symbol
@@ -566,195 +585,180 @@ class FixedPaperTradingSystem:
             float: Current price
         """
         try:
-            # Check if price is cached
+            # Check if we have a cached price
             if symbol in self.last_prices:
                 return self.last_prices[symbol]
             
-            # Get price from exchange
-            ticker = self.client.get_ticker(symbol)
-            price = float(ticker.get('last', 0.0))
+            # Try to get ticker
+            try:
+                ticker = self.client.get_ticker(symbol)
+                
+                # Update last price
+                if ticker and 'lastPrice' in ticker:
+                    self.last_prices[symbol] = float(ticker['lastPrice'])
+                    return float(ticker['lastPrice'])
+            except Exception as e:
+                self.logger.log_error(f"Error getting ticker for {symbol}: {str(e)}", component="paper_trading")
             
-            # Cache price
-            self.last_prices[symbol] = price
+            # Fallback to default prices
+            default_prices = {
+                'BTCUSDC': 50000.0,
+                'ETHUSDC': 3000.0,
+                'SOLUSDC': 100.0
+            }
             
-            return price
+            return default_prices.get(symbol, 0.0)
         except Exception as e:
-            self.logger.log_error(f"Error getting current price: {str(e)}", component="paper_trading")
+            self.logger.log_error(f"Error getting current price for {symbol}: {str(e)}", component="paper_trading")
             return 0.0
     
-    def update_market_data(self):
-        """Update market data"""
-        try:
-            # Update prices
-            for symbol in ['BTCUSDC', 'ETHUSDC', 'SOLUSDC']:
-                self.get_current_price(symbol)
-            
-            # Update order books
-            for symbol in ['BTCUSDC', 'ETHUSDC', 'SOLUSDC']:
-                self.update_order_book(symbol)
-            
-            self.logger.system.debug("Market data updated")
-        except Exception as e:
-            self.logger.log_error(f"Error updating market data: {str(e)}", component="paper_trading")
-    
-    def update_order_book(self, symbol):
-        """Update order book for a symbol
+    def get_balance(self):
+        """Get current balance
         
-        Args:
-            symbol: Trading pair symbol
-        """
-        try:
-            # Get order book from exchange
-            order_book = self.client.get_order_book(symbol)
-            
-            # Cache order book
-            self.order_books[symbol] = order_book
-            
-            self.logger.system.debug(f"Order book updated for {symbol}")
-        except Exception as e:
-            self.logger.log_error(f"Error updating order book: {str(e)}", component="paper_trading")
-    
-    def get_balance(self, asset=None):
-        """Get balance
-        
-        Args:
-            asset: Asset symbol (optional)
-            
         Returns:
-            dict or float: Balance dictionary or asset balance
+            dict: Current balance
         """
-        if asset:
-            return self.balance.get(asset, 0.0)
-        else:
-            return self.balance
+        return self.balance
     
-    def get_position(self, symbol=None):
-        """Get position
+    def get_positions(self):
+        """Get current positions
         
-        Args:
-            symbol: Trading pair symbol (optional)
-            
         Returns:
-            dict or list: Position dictionary or list of positions
+            dict: Current positions
         """
-        if symbol:
-            return self.positions.get(symbol, {})
-        else:
-            return list(self.positions.values())
+        return self.positions
     
-    def get_orders(self, symbol=None, status=None):
-        """Get orders
+    def get_orders(self):
+        """Get current orders
         
-        Args:
-            symbol: Trading pair symbol (optional)
-            status: Order status (optional)
-            
         Returns:
-            list: List of orders
+            dict: Current orders
         """
-        orders = list(self.orders.values())
-        
-        # Filter by symbol
-        if symbol:
-            orders = [order for order in orders if order['symbol'] == symbol]
-        
-        # Filter by status
-        if status:
-            orders = [order for order in orders if order['status'] == status]
-        
-        return orders
+        return self.orders
     
-    def get_trades(self, symbol=None):
+    def get_trades(self):
         """Get trades
         
-        Args:
-            symbol: Trading pair symbol (optional)
-            
         Returns:
-            list: List of trades
+            list: Trades
         """
-        trades = self.trades
-        
-        # Filter by symbol
-        if symbol:
-            trades = [trade for trade in trades if trade['symbol'] == symbol]
-        
-        return trades
+        return self.trades
     
-    def get_order_book(self, symbol):
-        """Get order book
+    def get_status(self):
+        """Get paper trading system status
         
-        Args:
-            symbol: Trading pair symbol
-            
         Returns:
-            dict: Order book
+            dict: System status
         """
-        # Check if order book is cached
-        if symbol in self.order_books:
-            return self.order_books[symbol]
-        
-        # Update order book
-        self.update_order_book(symbol)
-        
-        return self.order_books.get(symbol, {})
-    
-    def get_ticker(self, symbol):
-        """Get ticker
-        
-        Args:
-            symbol: Trading pair symbol
-            
-        Returns:
-            dict: Ticker
-        """
-        price = self.get_current_price(symbol)
-        
         return {
-            'symbol': symbol,
-            'last': price,
-            'bid': price * 0.999,
-            'ask': price * 1.001,
-            'volume': 0.0,
-            'timestamp': int(time.time() * 1000)
+            'running': self.running,
+            'balance': self.balance,
+            'positions': self.positions,
+            'orders': len(self.orders),
+            'trades': len(self.trades)
         }
+    
+    def execute_trade(self, signal):
+        """Execute a trade based on a signal
+        
+        Args:
+            signal: Trading signal
+            
+        Returns:
+            dict: Trade details
+        """
+        try:
+            # Extract signal data
+            symbol = signal['symbol']
+            direction = signal['direction']
+            strength = signal['strength']
+            price = signal.get('price')
+            
+            # Convert symbol format if needed (BTC/USDC -> BTCUSDC)
+            api_symbol = symbol.replace('/', '')
+            
+            # Determine side
+            side = 'BUY' if direction == 'BUY' else 'SELL'
+            
+            # Determine quantity based on position size and balance
+            position_size = self.config.get('position_size', 0.1)
+            
+            if side == 'BUY':
+                # Calculate quantity based on USDC balance
+                usdc_balance = self.balance.get('USDC', 0.0)
+                trade_amount = usdc_balance * position_size
+                
+                # Get current price if not provided
+                current_price = price or self.get_current_price(api_symbol)
+                
+                # Calculate quantity
+                quantity = trade_amount / current_price if current_price > 0 else 0
+            else:  # SELL
+                # Calculate quantity based on base asset balance
+                base_asset = api_symbol.replace('USDC', '')
+                base_balance = self.balance.get(base_asset, 0.0)
+                
+                # Calculate quantity
+                quantity = base_balance * position_size
+            
+            # Create order
+            order_id = self.create_order(
+                symbol=api_symbol,
+                side=side,
+                order_type='MARKET',
+                quantity=quantity
+            )
+            
+            if not order_id:
+                self.logger.system.warning(f"Failed to create order for signal: {signal}")
+                return None
+            
+            # Wait for order to be filled
+            max_wait = 5.0  # seconds
+            start_time = time.time()
+            
+            while time.time() - start_time < max_wait:
+                if order_id in self.orders and self.orders[order_id]['status'] == 'FILLED':
+                    # Get order
+                    order = self.orders[order_id]
+                    
+                    # Create trade result
+                    trade_result = {
+                        'id': f"SIG-{uuid.uuid4()}",
+                        'signal_id': signal.get('id', 'unknown'),
+                        'order_id': order_id,
+                        'symbol': symbol,
+                        'action': side,
+                        'quantity': order['quantity'],
+                        'price': order['price'],
+                        'timestamp': int(time.time() * 1000),
+                        'status': 'EXECUTED'
+                    }
+                    
+                    self.logger.system.info(f"Trade executed: {side} {order['quantity']} {symbol} at {order['price']}")
+                    return trade_result
+                
+                time.sleep(0.1)
+            
+            self.logger.system.warning(f"Order {order_id} not filled within timeout")
+            
+            # Create timeout trade result
+            trade_result = {
+                'id': f"SIG-{uuid.uuid4()}",
+                'signal_id': signal.get('id', 'unknown'),
+                'order_id': order_id,
+                'symbol': symbol,
+                'action': side,
+                'quantity': quantity,
+                'price': price or self.get_current_price(api_symbol),
+                'timestamp': int(time.time() * 1000),
+                'status': 'TIMEOUT'
+            }
+            
+            return trade_result
+        except Exception as e:
+            self.logger.log_error(f"Error executing trade: {str(e)}", component="paper_trading")
+            return None
 
-
-# Example usage
-if __name__ == "__main__":
-    # Create paper trading system
-    paper_trading = FixedPaperTradingSystem()
-    
-    # Start paper trading system
-    paper_trading.start()
-    
-    # Create test order
-    order_id = paper_trading.create_order('BTCUSDC', 'BUY', 'LIMIT', 0.001, 105000.0)
-    
-    # Wait for order processing
-    time.sleep(1)
-    
-    # Fill order
-    paper_trading.fill_order(order_id)
-    
-    # Wait for order processing
-    time.sleep(1)
-    
-    # Get balance
-    balance = paper_trading.get_balance()
-    print(f"Balance: {balance}")
-    
-    # Get position
-    position = paper_trading.get_position('BTCUSDC')
-    print(f"Position: {position}")
-    
-    # Run for a while
-    try:
-        print("Running Fixed Paper Trading System for 10 seconds...")
-        time.sleep(10)
-    except KeyboardInterrupt:
-        print("Interrupted by user")
-    finally:
-        # Stop paper trading system
-        paper_trading.stop()
-        print("Fixed Paper Trading System stopped")
+# Alias for backward compatibility
+FixedPaperTradingSystem = PaperTradingSystem

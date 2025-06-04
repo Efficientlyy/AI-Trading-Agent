@@ -38,7 +38,7 @@ from execution_optimization import (
 )
 from rl_agent_fixed_v4 import TradingRLAgent
 from rl_integration_fixed_v2 import RLIntegration
-from optimized_mexc_client import OptimizedMexcClient  # Fixed casing to match actual class name
+from optimized_mexc_client import OptimizedMEXCClient  # Fixed casing to match actual class name
 from mock_exchange_client import MockExchangeClient
 
 # Configure logging
@@ -85,7 +85,7 @@ class EndToEndTest(unittest.TestCase):
         """Initialize MEXC client
         
         Returns:
-            OptimizedMexcClient or MockExchangeClient: MEXC client instance
+            OptimizedMEXCClient or MockExchangeClient: MEXC client instance
         """
         try:
             # Try to initialize with real API credentials
@@ -93,8 +93,8 @@ class EndToEndTest(unittest.TestCase):
             api_secret = os.getenv("MEXC_SECRET_KEY")
             
             if api_key and api_secret:
-                logger.info("Initializing OptimizedMexcClient with real API credentials")
-                return OptimizedMexcClient(api_key=api_key, api_secret=api_secret)
+                logger.info("Initializing OptimizedMEXCClient with real API credentials")
+                return OptimizedMEXCClient(api_key=api_key, api_secret=api_secret)
             else:
                 logger.warning("MEXC API credentials not found, using MockExchangeClient")
                 return MockExchangeClient(simulate_errors=False)

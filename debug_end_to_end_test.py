@@ -31,7 +31,7 @@ from execution_optimization import (
     LatencyProfiler, Order, OrderType, OrderSide, OrderStatus
 )
 from rl_agent_fixed_v4 import TradingRLAgent
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 
 # Configure logging
 logging.basicConfig(
@@ -54,7 +54,7 @@ def test_component_initialization():
     try:
         logger.info("Initializing MEXC client...")
         start_time = time.time()
-        mexc_client = OptimizedMexcClient(
+        mexc_client = OptimizedMEXCClient(
             api_key=env_vars['MEXC_API_KEY'],
             api_secret=env_vars['MEXC_SECRET_KEY']
         )

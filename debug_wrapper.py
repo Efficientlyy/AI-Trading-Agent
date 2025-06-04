@@ -63,25 +63,25 @@ api_secret_after = os.environ.get('MEXC_API_SECRET')
 logger.info(f"After env loading - MEXC_API_KEY: {api_key_after}")
 logger.info(f"After env loading - MEXC_API_SECRET: {api_secret_after}")
 
-# Monkey patch OptimizedMexcClient.__init__ to log API key
+# Monkey patch OptimizedMEXCClient.__init__ to log API key
 try:
-    from optimized_mexc_client import OptimizedMexcClient
-    original_init = OptimizedMexcClient.__init__
+    from optimized_mexc_client import OptimizedMEXCClient
+    original_init = OptimizedMEXCClient.__init__
     
     def patched_init(self, api_key=None, secret_key=None, env_path=None):
-        logger.info(f"OptimizedMexcClient.__init__ called with api_key={api_key}, secret_key={secret_key}, env_path={env_path}")
+        logger.info(f"OptimizedMEXCClient.__init__ called with api_key={api_key}, secret_key={secret_key}, env_path={env_path}")
         
         # Call original init
         original_init(self, api_key, secret_key, env_path)
         
         # Log API key after initialization
-        logger.info(f"OptimizedMexcClient API key type: {type(self.api_key)}")
-        logger.info(f"OptimizedMexcClient API key: {self.api_key}")
+        logger.info(f"OptimizedMEXCClient API key type: {type(self.api_key)}")
+        logger.info(f"OptimizedMEXCClient API key: {self.api_key}")
     
-    OptimizedMexcClient.__init__ = patched_init
-    logger.info("Successfully monkey patched OptimizedMexcClient.__init__")
+    OptimizedMEXCClient.__init__ = patched_init
+    logger.info("Successfully monkey patched OptimizedMEXCClient.__init__")
 except Exception as e:
-    logger.error(f"Error monkey patching OptimizedMexcClient.__init__: {str(e)}")
+    logger.error(f"Error monkey patching OptimizedMEXCClient.__init__: {str(e)}")
 
 # Import flash_trading module
 try:

@@ -1,103 +1,182 @@
 #!/usr/bin/env python
 """
-Optimized MEXC Client for Trading-Agent System
+Optimized MEXC API Client with Rate Limit Compliance
 
 This module provides an optimized client for interacting with the MEXC API,
-with improved error handling, rate limiting, and performance optimizations.
+featuring robust rate limit compliance, exponential backoff, and comprehensive
+error handling.
 """
 
 import os
+import json
 import time
 import hmac
-import json
 import hashlib
 import logging
-import requests
+import threading
+import queue
 import urllib.parse
+import requests
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Union
-
-# Import environment loader
-try:
-    from env_loader import load_environment_variables
-except ImportError:
-    # Define a simple fallback if env_loader is not available
-    def load_environment_variables(env_path=None):
-        """Simple fallback for loading environment variables"""
-        env_vars = {}
-        try:
-            if env_path is None:
-                env_path = '.env'
-            
-            if os.path.exists(env_path):
-                with open(env_path, 'r') as f:
-                    for line in f:
-                        line = line.strip()
-                        if line and not line.startswith('#'):
-                            key, value = line.split('=', 1)
-                            env_vars[key] = value
-        except Exception as e:
-            print(f"Error loading environment variables: {str(e)}")
-        
-        return env_vars
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(),
+        logging.FileHandler("mexc_api_client.log")
+    ]
 )
-logger = logging.getLogger("optimized_mexc_client")
 
-class OptimizedMexcClient:
-    """Optimized client for MEXC API with performance enhancements"""
+logger = logging.getLogger("mexc_api_client")
+
+class RateLimiter:
+    """Rate limiter for API requests"""
+    
+    def __init__(self, requests_per_second=5, burst_limit=10):
+        """Initialize rate limiter
+        
+        Args:
+            requests_per_second: Maximum requests per second
+            burst_limit: Maximum burst of requests allowed
+        """
+        self.requests_per_second = requests_per_second
+        self.burst_limit = burst_limit
+        self.tokens = burst_limit
+        self.last_refill_time = time.time()
+        self.lock = threading.RLock()
+    
+    def refill_tokens(self):
+        """Refill tokens based on elapsed time"""
+        now = time.time()
+        elapsed = now - self.last_refill_time
+        
+        # Calculate new tokens to add
+        new_tokens = elapsed * self.requests_per_second
+        
+        # Update tokens and last refill time
+        with self.lock:
+            self.tokens = min(self.tokens + new_tokens, self.burst_limit)
+            self.last_refill_time = now
+    
+    def consume(self, tokens=1):
+        """Consume tokens for a request
+        
+        Args:
+            tokens: Number of tokens to consume
+            
+        Returns:
+            float: Time to wait in seconds before making request, or 0 if can proceed immediately
+        """
+        self.refill_tokens()
+        
+        with self.lock:
+            if self.tokens >= tokens:
+                # Enough tokens, consume and proceed
+                self.tokens -= tokens
+                return 0
+            else:
+                # Not enough tokens, calculate wait time
+                wait_time = (tokens - self.tokens) / self.requests_per_second
+                return wait_time
+
+class OptimizedMEXCClient:
+    """Optimized client for MEXC API with rate limit compliance"""
+    
+    # API endpoints
+    BASE_URL = "https://api.mexc.com"
+    
+    # Rate limits (as of March 25, 2025)
+    SPOT_ORDER_RATE_LIMIT = 5  # orders per second
+    MARKET_DATA_RATE_LIMIT = 10  # estimated safe limit for market data requests
+    
+    # Request categories for rate limiting
+    CATEGORY_MARKET_DATA = "market_data"
+    CATEGORY_ORDER = "order"
+    CATEGORY_ACCOUNT = "account"
     
     def __init__(self, api_key=None, api_secret=None, env_path=None):
         """Initialize MEXC client
         
         Args:
-            api_key: API key (optional, will load from env if not provided)
-            api_secret: API secret (optional, will load from env if not provided)
+            api_key: MEXC API key (optional, will load from env if not provided)
+            api_secret: MEXC API secret (optional, will load from env if not provided)
             env_path: Path to .env file (optional)
         """
-        # Load credentials from environment if not provided
-        if api_key is None or api_secret is None:
-            env_vars = load_environment_variables(env_path)
-            api_key = api_key or env_vars.get('MEXC_API_KEY')
-            api_secret = api_secret or env_vars.get('MEXC_SECRET_KEY')
-        
+        # Load API credentials
         self.api_key = api_key
         self.api_secret = api_secret
-        self.base_url = "https://api.mexc.com"
         
-        # Rate limiting
-        self.request_count = 0
-        self.last_request_time = 0
-        self.rate_limit_reset = 0
-        self.rate_limit_remaining = 0
-        
-        # Request timeout (in seconds)
-        self.timeout = 10
-        
-        # Cache for frequently accessed data
-        self.cache = {}
-        self.cache_ttl = {}
-        
-        # Performance metrics
-        self.request_times = []
-        self.error_count = 0
-        self.retry_count = 0
-        
-        # Supported intervals for klines
-        self.supported_intervals = ['1m', '5m', '15m', '30m', '60m', '4h', '1d', '1M']
-        
-        # Verify credentials
         if not self.api_key or not self.api_secret:
-            logger.warning("API key or secret not provided, some functions will be unavailable")
-        else:
-            logger.info("MEXC client initialized with API credentials")
+            self._load_credentials(env_path)
+        
+        # Initialize rate limiters for different request categories
+        self.rate_limiters = {
+            self.CATEGORY_MARKET_DATA: RateLimiter(requests_per_second=10, burst_limit=20),
+            self.CATEGORY_ORDER: RateLimiter(requests_per_second=5, burst_limit=10),
+            self.CATEGORY_ACCOUNT: RateLimiter(requests_per_second=2, burst_limit=5)
+        }
+        
+        # Request queue and processing thread
+        self.request_queue = queue.Queue()
+        self.request_thread = threading.Thread(target=self._process_request_queue, daemon=True)
+        self.request_thread.start()
+        
+        # Request tracking
+        self.request_count = 0
+        self.error_count = 0
+        self.last_request_time = 0
+        self.last_error_time = 0
+        self.last_429_time = 0
+        
+        # Thread safety
+        self.lock = threading.RLock()
+        
+        logger.info("Optimized MEXC client initialized")
     
-    def _generate_signature(self, params: Dict) -> str:
-        """Generate signature for authenticated requests
+    def _load_credentials(self, env_path=None):
+        """Load API credentials from environment variables or .env file
+        
+        Args:
+            env_path: Path to .env file (optional)
+        """
+        # Try to load from environment variables first
+        self.api_key = os.environ.get('MEXC_API_KEY')
+        self.api_secret = os.environ.get('MEXC_SECRET_KEY')
+        
+        # If not found, try to load from .env file
+        if not self.api_key or not self.api_secret:
+            try:
+                if env_path is None:
+                    # Check for .env-secure/.env first, then fallback to .env
+                    if os.path.exists('.env-secure/.env'):
+                        env_path = '.env-secure/.env'
+                    else:
+                        env_path = '.env'
+                
+                if os.path.exists(env_path):
+                    with open(env_path, 'r') as f:
+                        for line in f:
+                            line = line.strip()
+                            if line and not line.startswith('#'):
+                                key, value = line.split('=', 1)
+                                if key == 'MEXC_API_KEY':
+                                    self.api_key = value
+                                elif key == 'MEXC_SECRET_KEY':
+                                    self.api_secret = value
+            except Exception as e:
+                logger.error(f"Error loading credentials from .env file: {str(e)}")
+        
+        # Log credential status
+        if self.api_key and self.api_secret:
+            logger.info(f"API credentials loaded successfully: {self.api_key[:5]}...")
+        else:
+            logger.warning("API credentials not found or incomplete")
+    
+    def _generate_signature(self, params):
+        """Generate signature for authenticated requests using MEXC's exact method
         
         Args:
             params: Request parameters
@@ -105,10 +184,14 @@ class OptimizedMexcClient:
         Returns:
             str: HMAC SHA256 signature
         """
-        # Convert params to query string
+        if not self.api_secret:
+            return ""
+        
+        # MEXC requires parameters to be in the exact order they were added
+        # Do not sort the parameters
         query_string = urllib.parse.urlencode(params)
         
-        # Create signature
+        # Generate HMAC SHA256 signature
         signature = hmac.new(
             self.api_secret.encode('utf-8'),
             query_string.encode('utf-8'),
@@ -117,554 +200,478 @@ class OptimizedMexcClient:
         
         return signature
     
-    def _handle_response(self, response: requests.Response) -> Dict:
-        """Handle API response
+    def _get_timestamp(self):
+        """Get current timestamp in milliseconds
         
-        Args:
-            response: Response object
-            
         Returns:
-            dict: Response data
-            
-        Raises:
-            Exception: If response is invalid
+            int: Current timestamp
         """
-        # Update rate limit info
-        self.rate_limit_remaining = int(response.headers.get('X-RateLimit-Remaining', 0))
-        self.rate_limit_reset = int(response.headers.get('X-RateLimit-Reset', 0))
-        
-        # Check if response is valid
-        if response.status_code != 200:
-            self.error_count += 1
-            error_msg = f"API error: {response.status_code} - {response.text}"
-            logger.error(error_msg)
-            raise Exception(error_msg)
-        
-        # Parse response
-        try:
-            data = response.json()
-            return data
-        except Exception as e:
-            self.error_count += 1
-            error_msg = f"Failed to parse response: {str(e)}"
-            logger.error(error_msg)
-            raise Exception(error_msg)
+        return int(time.time() * 1000)
     
-    def _request(self, method: str, endpoint: str, params: Dict = None, auth: bool = False) -> Dict:
-        """Make request to MEXC API
+    def _process_request_queue(self):
+        """Process the request queue with rate limiting"""
+        while True:
+            try:
+                # Get request from queue
+                category, method, url, params, headers, result_queue = self.request_queue.get()
+                
+                # Apply rate limiting
+                rate_limiter = self.rate_limiters.get(category, self.rate_limiters[self.CATEGORY_MARKET_DATA])
+                wait_time = rate_limiter.consume()
+                
+                if wait_time > 0:
+                    logger.debug(f"Rate limiting: Waiting {wait_time:.3f}s before {category} request")
+                    time.sleep(wait_time)
+                
+                # Execute request with exponential backoff
+                max_retries = 3
+                base_delay = 1  # second
+                
+                for retry in range(max_retries + 1):
+                    try:
+                        # Update last request time
+                        with self.lock:
+                            self.last_request_time = time.time()
+                            self.request_count += 1
+                        
+                        # Execute request
+                        if method.upper() == 'GET':
+                            response = requests.get(url, params=params, headers=headers, timeout=10)
+                        elif method.upper() == 'POST':
+                            response = requests.post(url, json=params, headers=headers, timeout=10)
+                        elif method.upper() == 'DELETE':
+                            response = requests.delete(url, params=params, headers=headers, timeout=10)
+                        else:
+                            raise ValueError(f"Unsupported HTTP method: {method}")
+                        
+                        # Check for rate limit error
+                        if response.status_code == 429:
+                            with self.lock:
+                                self.last_429_time = time.time()
+                                self.error_count += 1
+                            
+                            # Calculate retry delay with exponential backoff
+                            delay = base_delay * (2 ** retry)
+                            logger.warning(f"Rate limit exceeded (429), retrying in {delay}s (attempt {retry + 1}/{max_retries})")
+                            time.sleep(delay)
+                            continue
+                        
+                        # Check for other errors
+                        if response.status_code >= 400:
+                            with self.lock:
+                                self.last_error_time = time.time()
+                                self.error_count += 1
+                            
+                            # Only retry on 5xx errors or specific 4xx errors
+                            if response.status_code >= 500 or response.status_code in [408, 429]:
+                                if retry < max_retries:
+                                    delay = base_delay * (2 ** retry)
+                                    logger.warning(f"Request failed with status {response.status_code}, retrying in {delay}s (attempt {retry + 1}/{max_retries})")
+                                    time.sleep(delay)
+                                    continue
+                            
+                            # Return error response
+                            result_queue.put((False, response))
+                            break
+                        
+                        # Return successful response
+                        result_queue.put((True, response))
+                        break
+                    
+                    except requests.exceptions.RequestException as e:
+                        with self.lock:
+                            self.last_error_time = time.time()
+                            self.error_count += 1
+                        
+                        if retry < max_retries:
+                            delay = base_delay * (2 ** retry)
+                            logger.warning(f"Request exception: {str(e)}, retrying in {delay}s (attempt {retry + 1}/{max_retries})")
+                            time.sleep(delay)
+                        else:
+                            logger.error(f"Request failed after {max_retries} retries: {str(e)}")
+                            result_queue.put((False, str(e)))
+                
+                # Mark task as done
+                self.request_queue.task_done()
+                
+            except Exception as e:
+                logger.error(f"Error in request queue processor: {str(e)}")
+                time.sleep(1)  # Prevent tight loop in case of persistent errors
+    
+    def _queue_request(self, category, method, endpoint, params=None, headers=None, authenticated=False):
+        """Queue a request with rate limiting
         
         Args:
-            method: HTTP method
+            category: Request category for rate limiting
+            method: HTTP method (GET, POST, DELETE)
             endpoint: API endpoint
             params: Request parameters
-            auth: Whether to use authentication
+            headers: Request headers
+            authenticated: Whether request requires authentication
             
         Returns:
-            dict: Response data
+            requests.Response: Response object
         """
-        # Initialize params if None
-        if params is None:
-            params = {}
+        # Prepare URL
+        url = f"{self.BASE_URL}{endpoint}"
         
-        # Add timestamp for authenticated requests
-        if auth:
-            params['timestamp'] = int(time.time() * 1000)
-            params['recvWindow'] = 5000
+        # Prepare headers
+        if headers is None:
+            headers = {}
+        
+        # Add authentication if required
+        if authenticated:
+            if not self.api_key or not self.api_secret:
+                raise ValueError("API key and secret required for authenticated requests")
             
-            # Add API key
-            params['api_key'] = self.api_key
+            # Add API key to headers
+            headers["X-MEXC-APIKEY"] = self.api_key
+            
+            # Add timestamp and signature to params
+            if params is None:
+                params = {}
+            
+            params["timestamp"] = self._get_timestamp()
             
             # Generate signature
-            params['signature'] = self._generate_signature(params)
+            signature = self._generate_signature(params)
+            params["signature"] = signature
         
-        # Build URL
-        url = f"{self.base_url}{endpoint}"
+        # Create result queue
+        result_queue = queue.Queue()
         
-        # Check rate limit
-        if self.rate_limit_remaining == 0 and time.time() < self.rate_limit_reset:
-            wait_time = self.rate_limit_reset - time.time()
-            logger.warning(f"Rate limit reached, waiting {wait_time:.2f} seconds")
-            time.sleep(wait_time)
+        # Add request to queue
+        self.request_queue.put((category, method, url, params, headers, result_queue))
         
-        # Make request
-        start_time = time.time()
-        self.request_count += 1
-        self.last_request_time = start_time
+        # Wait for result
+        success, result = result_queue.get()
         
-        try:
-            if method == 'GET':
-                response = requests.get(url, params=params, timeout=self.timeout)
-            elif method == 'POST':
-                response = requests.post(url, json=params, timeout=self.timeout)
-            elif method == 'DELETE':
-                response = requests.delete(url, params=params, timeout=self.timeout)
-            else:
-                raise Exception(f"Unsupported method: {method}")
+        if success:
+            return result
+        elif isinstance(result, requests.Response):
+            # Log error details
+            try:
+                error_data = result.json()
+                logger.error(f"API error: {result.status_code} - {error_data}")
+            except:
+                logger.error(f"API error: {result.status_code} - {result.text}")
             
-            # Record request time
-            request_time = time.time() - start_time
-            self.request_times.append(request_time)
-            
-            # Handle response
-            return self._handle_response(response)
-            
-        except Exception as e:
-            self.error_count += 1
-            logger.error(f"Request failed: {str(e)}")
-            raise
+            # Raise exception with status code
+            result.raise_for_status()
+            return result  # This line won't be reached due to the raise_for_status() call
+        else:
+            raise Exception(f"Request failed: {result}")
     
-    def _get_cached(self, cache_key: str, ttl: int = 60) -> Optional[Any]:
-        """Get cached data
+    def get_ticker(self, symbol):
+        """Get ticker for specified symbol
         
         Args:
-            cache_key: Cache key
-            ttl: Time to live in seconds
+            symbol: Symbol in API format (e.g., BTCUSDC)
             
         Returns:
-            Any: Cached data or None if not found or expired
+            dict: Ticker data
         """
-        if cache_key in self.cache:
-            # Check if cache is expired
-            if time.time() - self.cache_ttl.get(cache_key, 0) < ttl:
-                return self.cache[cache_key]
-            
-            # Remove expired cache
-            del self.cache[cache_key]
-            del self.cache_ttl[cache_key]
+        endpoint = "/api/v3/ticker/price"
+        params = {"symbol": symbol}
         
-        return None
+        response = self._queue_request(
+            category=self.CATEGORY_MARKET_DATA,
+            method="GET",
+            endpoint=endpoint,
+            params=params
+        )
+        
+        return response.json()
     
-    def _set_cached(self, cache_key: str, data: Any) -> None:
-        """Set cached data
+    def get_orderbook(self, symbol, limit=20):
+        """Get orderbook for specified symbol
         
         Args:
-            cache_key: Cache key
-            data: Data to cache
-        """
-        self.cache[cache_key] = data
-        self.cache_ttl[cache_key] = time.time()
-    
-    def get_server_time(self) -> int:
-        """Get server time
-        
-        Returns:
-            int: Server time in milliseconds
-        """
-        # Check cache
-        cached = self._get_cached('server_time', ttl=5)
-        if cached:
-            return cached
-        
-        # Make request
-        response = self._request('GET', '/api/v3/time')
-        
-        # Cache and return
-        server_time = response.get('serverTime', int(time.time() * 1000))
-        self._set_cached('server_time', server_time)
-        return server_time
-    
-    def get_exchange_info(self) -> Dict:
-        """Get exchange information
-        
-        Returns:
-            dict: Exchange information
-        """
-        # Check cache
-        cached = self._get_cached('exchange_info', ttl=3600)
-        if cached:
-            return cached
-        
-        # Make request
-        response = self._request('GET', '/api/v3/exchangeInfo')
-        
-        # Cache and return
-        self._set_cached('exchange_info', response)
-        return response
-    
-    def get_order_book(self, symbol: str, limit: int = 20) -> Dict:
-        """Get order book
-        
-        Args:
-            symbol: Trading symbol
-            limit: Number of entries
+            symbol: Symbol in API format (e.g., BTCUSDC)
+            limit: Number of entries to return
             
         Returns:
-            dict: Order book
+            dict: Orderbook data
         """
-        # Make request
-        params = {
-            'symbol': symbol,
-            'limit': limit
-        }
-        response = self._request('GET', '/api/v3/depth', params)
+        endpoint = "/api/v3/depth"
+        params = {"symbol": symbol, "limit": limit}
         
-        return response
+        response = self._queue_request(
+            category=self.CATEGORY_MARKET_DATA,
+            method="GET",
+            endpoint=endpoint,
+            params=params
+        )
+        
+        return response.json()
     
-    def get_recent_trades(self, symbol: str, limit: int = 20) -> List:
-        """Get recent trades
+    def get_trades(self, symbol, limit=50):
+        """Get recent trades for specified symbol
         
         Args:
-            symbol: Trading symbol
-            limit: Number of trades
+            symbol: Symbol in API format (e.g., BTCUSDC)
+            limit: Number of trades to return
             
         Returns:
             list: Recent trades
         """
-        # Make request
-        params = {
-            'symbol': symbol,
-            'limit': limit
-        }
-        response = self._request('GET', '/api/v3/trades', params)
+        endpoint = "/api/v3/trades"
+        params = {"symbol": symbol, "limit": limit}
         
-        return response
+        response = self._queue_request(
+            category=self.CATEGORY_MARKET_DATA,
+            method="GET",
+            endpoint=endpoint,
+            params=params
+        )
+        
+        return response.json()
     
-    def _normalize_interval(self, interval: str) -> str:
-        """Normalize interval to MEXC supported format
+    def get_klines(self, symbol, interval="5m", limit=100):
+        """Get klines (candlestick data) for specified symbol
         
         Args:
-            interval: Kline interval (1m, 5m, 15m, 1h, etc.)
+            symbol: Symbol in API format (e.g., BTCUSDC)
+            interval: Kline interval (1m, 5m, 15m, 60m, 4h, 1d, etc.)
+            limit: Number of klines to return
             
         Returns:
-            str: Normalized interval
+            list: Klines data
         """
-        # Map common interval formats to MEXC supported formats
-        interval_map = {
-            '1h': '60m',
-            '2h': '120m',
-            '4h': '4h',
-            '6h': '6h',
-            '12h': '12h',
-            '1d': '1d',
-            '1w': '1w',
-            '1M': '1M'
-        }
+        endpoint = "/api/v3/klines"
+        params = {"symbol": symbol, "interval": interval, "limit": limit}
         
-        # Return mapped interval or original if not in map
-        return interval_map.get(interval, interval)
+        response = self._queue_request(
+            category=self.CATEGORY_MARKET_DATA,
+            method="GET",
+            endpoint=endpoint,
+            params=params
+        )
+        
+        return response.json()
     
-    def get_klines(self, symbol: str, interval: str, limit: int = 100, start_time: int = None, end_time: int = None) -> List:
-        """Get klines (candlestick data)
+    def get_exchange_info(self):
+        """Get exchange information including symbol details
         
-        Args:
-            symbol: Trading symbol
-            interval: Kline interval (1m, 5m, 15m, 1h, etc.)
-            limit: Number of klines
-            start_time: Start time in milliseconds
-            end_time: End time in milliseconds
-            
         Returns:
-            list: Klines
+            dict: Exchange information
         """
-        # Normalize interval
-        normalized_interval = self._normalize_interval(interval)
+        endpoint = "/api/v3/exchangeInfo"
         
-        # Check if interval is supported
-        if normalized_interval not in self.supported_intervals:
-            logger.warning(f"Unsupported interval: {interval}, using fallback interval '5m'")
-            normalized_interval = '5m'
+        response = self._queue_request(
+            category=self.CATEGORY_MARKET_DATA,
+            method="GET",
+            endpoint=endpoint
+        )
         
-        # Make request
-        params = {
-            'symbol': symbol,
-            'interval': normalized_interval,
-            'limit': limit
-        }
-        
-        if start_time:
-            params['startTime'] = start_time
-        
-        if end_time:
-            params['endTime'] = end_time
-        
-        try:
-            response = self._request('GET', '/api/v3/klines', params)
-            
-            # Process response to ensure consistent format
-            processed_klines = []
-            for kline in response:
-                # MEXC API returns klines in the format:
-                # [open_time, open, high, low, close, volume, close_time, quote_volume, trades, taker_buy_base, taker_buy_quote, ignore]
-                # But sometimes it might return fewer columns, so we need to ensure consistent format
-                
-                # Ensure we have at least 6 elements (essential OHLCV data)
-                if len(kline) >= 6:
-                    # Create a standardized kline with all required fields
-                    standardized_kline = [
-                        kline[0],                      # open_time
-                        float(kline[1]),               # open
-                        float(kline[2]),               # high
-                        float(kline[3]),               # low
-                        float(kline[4]),               # close
-                        float(kline[5]),               # volume
-                        kline[6] if len(kline) > 6 else kline[0] + 60000,  # close_time (default to open_time + 1min if not provided)
-                        float(kline[7]) if len(kline) > 7 else 0.0,        # quote_volume
-                        int(kline[8]) if len(kline) > 8 else 0,            # trades
-                        float(kline[9]) if len(kline) > 9 else 0.0,        # taker_buy_base
-                        float(kline[10]) if len(kline) > 10 else 0.0,      # taker_buy_quote
-                        0.0                                                # ignore
-                    ]
-                    processed_klines.append(standardized_kline)
-            
-            return processed_klines
-            
-        except Exception as e:
-            logger.error(f"Error getting klines: {str(e)}")
-            # Return empty list on error
-            return []
+        return response.json()
     
-    def get_ticker(self, symbol: str) -> Dict:
-        """Get ticker
-        
-        Args:
-            symbol: Trading symbol
-            
-        Returns:
-            dict: Ticker
-        """
-        # Make request
-        params = {
-            'symbol': symbol
-        }
-        response = self._request('GET', '/api/v3/ticker/24hr', params)
-        
-        return response
-    
-    def get_account(self) -> Dict:
-        """Get account information
+    def get_account_info(self):
+        """Get account information (requires API key)
         
         Returns:
             dict: Account information
         """
-        # Make request
-        response = self._request('GET', '/api/v3/account', auth=True)
+        endpoint = "/api/v3/account"
         
-        return response
+        response = self._queue_request(
+            category=self.CATEGORY_ACCOUNT,
+            method="GET",
+            endpoint=endpoint,
+            params={},
+            authenticated=True
+        )
+        
+        return response.json()
     
-    def get_open_orders(self, symbol: str = None) -> List:
-        """Get open orders
+    def create_order(self, symbol, side, order_type, quantity, price=None, time_in_force="GTC"):
+        """Create a new order
         
         Args:
-            symbol: Trading symbol (optional)
+            symbol: Symbol in API format (e.g., BTCUSDC)
+            side: Order side (BUY or SELL)
+            order_type: Order type (LIMIT, MARKET, STOP_LOSS, STOP_LOSS_LIMIT, etc.)
+            quantity: Order quantity
+            price: Order price (required for LIMIT orders)
+            time_in_force: Time in force (GTC, IOC, FOK)
+            
+        Returns:
+            dict: Order response
+        """
+        endpoint = "/api/v3/order"
+        
+        # Prepare parameters
+        params = {
+            "symbol": symbol,
+            "side": side,
+            "type": order_type,
+            "quantity": quantity
+        }
+        
+        # Add price for LIMIT orders
+        if order_type == "LIMIT":
+            if price is None:
+                raise ValueError("Price is required for LIMIT orders")
+            params["price"] = price
+            params["timeInForce"] = time_in_force
+        
+        response = self._queue_request(
+            category=self.CATEGORY_ORDER,
+            method="POST",
+            endpoint=endpoint,
+            params=params,
+            authenticated=True
+        )
+        
+        return response.json()
+    
+    def cancel_order(self, symbol, order_id=None, client_order_id=None):
+        """Cancel an existing order
+        
+        Args:
+            symbol: Symbol in API format (e.g., BTCUSDC)
+            order_id: Order ID (optional if client_order_id is provided)
+            client_order_id: Client order ID (optional if order_id is provided)
+            
+        Returns:
+            dict: Cancel response
+        """
+        endpoint = "/api/v3/order"
+        
+        # Prepare parameters
+        params = {"symbol": symbol}
+        
+        if order_id:
+            params["orderId"] = order_id
+        elif client_order_id:
+            params["origClientOrderId"] = client_order_id
+        else:
+            raise ValueError("Either order_id or client_order_id must be provided")
+        
+        response = self._queue_request(
+            category=self.CATEGORY_ORDER,
+            method="DELETE",
+            endpoint=endpoint,
+            params=params,
+            authenticated=True
+        )
+        
+        return response.json()
+    
+    def get_order(self, symbol, order_id=None, client_order_id=None):
+        """Get order status
+        
+        Args:
+            symbol: Symbol in API format (e.g., BTCUSDC)
+            order_id: Order ID (optional if client_order_id is provided)
+            client_order_id: Client order ID (optional if order_id is provided)
+            
+        Returns:
+            dict: Order status
+        """
+        endpoint = "/api/v3/order"
+        
+        # Prepare parameters
+        params = {"symbol": symbol}
+        
+        if order_id:
+            params["orderId"] = order_id
+        elif client_order_id:
+            params["origClientOrderId"] = client_order_id
+        else:
+            raise ValueError("Either order_id or client_order_id must be provided")
+        
+        response = self._queue_request(
+            category=self.CATEGORY_ORDER,
+            method="GET",
+            endpoint=endpoint,
+            params=params,
+            authenticated=True
+        )
+        
+        return response.json()
+    
+    def get_open_orders(self, symbol=None):
+        """Get all open orders
+        
+        Args:
+            symbol: Symbol in API format (optional)
             
         Returns:
             list: Open orders
         """
-        # Make request
+        endpoint = "/api/v3/openOrders"
+        
+        # Prepare parameters
         params = {}
         if symbol:
-            params['symbol'] = symbol
+            params["symbol"] = symbol
         
-        response = self._request('GET', '/api/v3/openOrders', params, auth=True)
+        response = self._queue_request(
+            category=self.CATEGORY_ORDER,
+            method="GET",
+            endpoint=endpoint,
+            params=params,
+            authenticated=True
+        )
         
-        return response
+        return response.json()
     
-    def create_market_order(self, symbol: str, side: str, quantity: float, client_order_id: str = None) -> Dict:
-        """Create market order
+    def get_status(self):
+        """Get client status
         
-        Args:
-            symbol: Trading symbol
-            side: Order side (BUY or SELL)
-            quantity: Order quantity
-            client_order_id: Client order ID (optional)
-            
         Returns:
-            dict: Order information
+            dict: Client status
         """
-        # Make request
-        params = {
-            'symbol': symbol,
-            'side': side,
-            'type': 'MARKET',
-            'quantity': quantity
+        return {
+            "request_count": self.request_count,
+            "error_count": self.error_count,
+            "last_request_time": datetime.fromtimestamp(self.last_request_time).isoformat() if self.last_request_time else None,
+            "last_error_time": datetime.fromtimestamp(self.last_error_time).isoformat() if self.last_error_time else None,
+            "last_429_time": datetime.fromtimestamp(self.last_429_time).isoformat() if self.last_429_time else None,
+            "queue_size": self.request_queue.qsize()
         }
-        
-        if client_order_id:
-            params['newClientOrderId'] = client_order_id
-        
-        try:
-            response = self._request('POST', '/api/v3/order', params, auth=True)
-            return response
-        except Exception as e:
-            logger.error(f"Error creating market order: {str(e)}")
-            # Return mock response for testing
-            return {
-                'symbol': symbol,
-                'orderId': f"mock_{int(time.time()*1000)}",
-                'clientOrderId': client_order_id or f"mock_{int(time.time()*1000)}",
-                'transactTime': int(time.time()*1000),
-                'price': '0.0',
-                'origQty': str(quantity),
-                'executedQty': str(quantity),
-                'status': 'filled',
-                'timeInForce': 'GTC',
-                'type': 'MARKET',
-                'side': side
-            }
     
-    def create_limit_order(self, symbol: str, side: str, quantity: float, price: float, time_in_force: str = 'GTC', client_order_id: str = None) -> Dict:
-        """Create limit order
+    def wait_for_queue_empty(self, timeout=None):
+        """Wait for request queue to be empty
         
         Args:
-            symbol: Trading symbol
-            side: Order side (BUY or SELL)
-            quantity: Order quantity
-            price: Order price
-            time_in_force: Time in force (GTC, IOC, FOK)
-            client_order_id: Client order ID (optional)
+            timeout: Maximum time to wait in seconds
             
         Returns:
-            dict: Order information
-        """
-        # Make request
-        params = {
-            'symbol': symbol,
-            'side': side,
-            'type': 'LIMIT',
-            'quantity': quantity,
-            'price': price,
-            'timeInForce': time_in_force
-        }
-        
-        if client_order_id:
-            params['newClientOrderId'] = client_order_id
-        
-        try:
-            response = self._request('POST', '/api/v3/order', params, auth=True)
-            return response
-        except Exception as e:
-            logger.error(f"Error creating limit order: {str(e)}")
-            # Return mock response for testing
-            return {
-                'symbol': symbol,
-                'orderId': f"mock_{int(time.time()*1000)}",
-                'clientOrderId': client_order_id or f"mock_{int(time.time()*1000)}",
-                'transactTime': int(time.time()*1000),
-                'price': str(price),
-                'origQty': str(quantity),
-                'executedQty': '0.0',
-                'status': 'NEW',
-                'timeInForce': time_in_force,
-                'type': 'LIMIT',
-                'side': side
-            }
-    
-    def cancel_order(self, symbol: str, order_id: str = None, client_order_id: str = None) -> Dict:
-        """Cancel order
-        
-        Args:
-            symbol: Trading symbol
-            order_id: Order ID (optional)
-            client_order_id: Client order ID (optional)
-            
-        Returns:
-            dict: Order information
-        """
-        # Make request
-        params = {
-            'symbol': symbol
-        }
-        
-        if order_id:
-            params['orderId'] = order_id
-        elif client_order_id:
-            params['origClientOrderId'] = client_order_id
-        else:
-            raise Exception("Either order_id or client_order_id is required")
-        
-        response = self._request('DELETE', '/api/v3/order', params, auth=True)
-        
-        return response
-    
-    def get_order_status(self, symbol: str, order_id: str = None, client_order_id: str = None) -> Dict:
-        """Get order status
-        
-        Args:
-            symbol: Trading symbol
-            order_id: Order ID (optional)
-            client_order_id: Client order ID (optional)
-            
-        Returns:
-            dict: Order information
-        """
-        # Make request
-        params = {
-            'symbol': symbol
-        }
-        
-        if order_id:
-            params['orderId'] = order_id
-        elif client_order_id:
-            params['origClientOrderId'] = client_order_id
-        else:
-            raise Exception("Either order_id or client_order_id is required")
-        
-        response = self._request('GET', '/api/v3/order', params, auth=True)
-        
-        return response
-    
-    def submit_order(self, order):
-        """Submit order (compatible with OrderRouter interface)
-        
-        Args:
-            order: Order object
-            
-        Returns:
-            dict: Order information
+            bool: True if queue is empty, False if timeout occurred
         """
         try:
-            # Convert order to MEXC format
-            symbol = order.symbol.replace('/', '')
-            side = 'BUY' if order.side.value == 'buy' else 'SELL'
-            type = order.type.value.upper()
-            quantity = order.quantity
-            price = order.price
-            
-            # Create order
-            result = self.create_order(
-                symbol=symbol,
-                side=side,
-                type=type,
-                quantity=quantity,
-                price=price
-            )
-            
-            # Return result
-            return {
-                'id': result.get('orderId'),
-                'status': 'filled',  # Assume filled for now
-                'filled_quantity': quantity,
-                'average_price': price or result.get('price', 0.0)
-            }
-            
-        except Exception as e:
-            logger.error(f"Error submitting order: {str(e)}")
-            self.error_count += 1
-            raise
+            self.request_queue.join(timeout=timeout)
+            return True
+        except:
+            return False
+
+# Example usage
+if __name__ == "__main__":
+    # Initialize client
+    client = OptimizedMEXCClient()
     
-    def record_retry(self):
-        """Record retry (compatible with OrderRouter interface)"""
-        self.retry_count += 1
+    # Test with BTCUSDC
+    symbol = "BTCUSDC"
     
-    def get_performance_metrics(self) -> Dict:
-        """Get performance metrics
-        
-        Returns:
-            dict: Performance metrics
-        """
-        metrics = {
-            'request_count': self.request_count,
-            'error_count': self.error_count,
-            'retry_count': self.retry_count,
-            'cache_size': len(self.cache),
-            'rate_limit_remaining': self.rate_limit_remaining,
-            'rate_limit_reset': self.rate_limit_reset
-        }
-        
-        # Calculate request time statistics
-        if self.request_times:
-            metrics['avg_request_time'] = sum(self.request_times) / len(self.request_times)
-            metrics['min_request_time'] = min(self.request_times)
-            metrics['max_request_time'] = max(self.request_times)
-        
-        return metrics
+    # Get ticker
+    try:
+        ticker = client.get_ticker(symbol)
+        print(f"Ticker: {ticker}")
+    except Exception as e:
+        print(f"Error getting ticker: {str(e)}")
+    
+    # Get klines
+    try:
+        klines = client.get_klines(symbol, interval="5m", limit=10)
+        print(f"Klines: {len(klines)} candles")
+        if klines:
+            print(f"First candle: {klines[0]}")
+            print(f"Last candle: {klines[-1]}")
+    except Exception as e:
+        print(f"Error getting klines: {str(e)}")
+    
+    # Get client status
+    status = client.get_status()
+    print(f"Client status: {status}")

@@ -51,7 +51,7 @@ try:
     from enhanced_dl_integration_fixed import EnhancedPatternRecognitionIntegration
     from enhanced_flash_trading_signals import EnhancedFlashTradingSignals
     from rl_agent_fixed_v4 import TradingRLAgent
-    from optimized_mexc_client import OptimizedMexcClient
+    from optimized_mexc_client import OptimizedMEXCClient
     from execution_optimization import OrderRouter
     
     COMPONENTS_IMPORTED = True
@@ -73,7 +73,7 @@ class IntegrationTest(unittest.TestCase):
             return
         
         # Create mock exchange client
-        cls.exchange_client = MagicMock(spec=OptimizedMexcClient)
+        cls.exchange_client = MagicMock(spec=OptimizedMEXCClient)
         cls.exchange_client.get_ticker.return_value = {"price": 35000.0}
         cls.exchange_client.get_klines.return_value = [
             {

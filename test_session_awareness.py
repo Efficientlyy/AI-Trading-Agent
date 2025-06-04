@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from threading import Thread, Event
 from flash_trading_signals import SignalGenerator
 from trading_session_manager import TradingSessionManager, TradingSession
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 
 # Configure logging
 logging.basicConfig(
@@ -29,7 +29,7 @@ class SessionAwarenessTest:
     def __init__(self, env_path=None):
         """Initialize test with API client"""
         self.env_path = env_path or ".env-secure/.env"
-        self.client = OptimizedMexcClient(env_path=self.env_path)
+        self.client = OptimizedMEXCClient(env_path=self.env_path)
         self.session_manager = TradingSessionManager()
         self.signal_generator = None
     

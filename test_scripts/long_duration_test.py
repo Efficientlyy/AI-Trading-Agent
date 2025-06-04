@@ -30,7 +30,7 @@ from error_handling_utils import (
 
 from flash_trading_signals import SignalGenerator
 from trading_session_manager import TradingSessionManager
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 from paper_trading import PaperTradingSystem
 from flash_trading_config import FlashTradingConfig
 
@@ -56,7 +56,7 @@ class LongDurationTest:
         self.duration_seconds = duration_hours * 3600
         
         # Initialize components
-        self.client = OptimizedMexcClient(env_path=self.env_path)
+        self.client = OptimizedMEXCClient(env_path=self.env_path)
         self.config = FlashTradingConfig(config_path=self.config_path)
         self.session_manager = TradingSessionManager()
         self.signal_generator = None

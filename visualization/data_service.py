@@ -22,7 +22,7 @@ from typing import Dict, List, Tuple, Any, Optional, Union, Callable
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import exchange client
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 
 # Configure logging
 logging.basicConfig(
@@ -113,7 +113,7 @@ class MultiAssetDataService:
         self.timeframes = timeframes or ["1m", "5m", "15m", "1h", "4h", "1d"]
         
         # Initialize exchange client
-        self.client = OptimizedMexcClient()
+        self.client = OptimizedMEXCClient()
         
         # Initialize caches
         self.klines_cache = DataCache(max_size=100, ttl=60)  # 1 minute TTL for klines

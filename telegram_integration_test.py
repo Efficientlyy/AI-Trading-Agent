@@ -24,7 +24,7 @@ from enhanced_logging_fixed import EnhancedLogger
 from enhanced_telegram_notifications import EnhancedTelegramNotifier
 from fixed_llm_overseer import FixedLLMOverseer
 from paper_trading_extension import EnhancedPaperTradingSystem
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 
 # Initialize enhanced logger
 logger = EnhancedLogger("telegram_integration_test")
@@ -56,7 +56,7 @@ class TelegramIntegrationTest:
         }
         
         # Initialize components
-        self.client = OptimizedMexcClient()
+        self.client = OptimizedMEXCClient()
         self.paper_trading = EnhancedPaperTradingSystem(self.client)
         self.notifier = EnhancedTelegramNotifier(self.config)
         self.llm_overseer = FixedLLMOverseer(self.config)

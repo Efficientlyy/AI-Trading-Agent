@@ -20,7 +20,7 @@ from threading import Thread, Event
 # Import modules to test
 from indicators import TechnicalIndicators
 from enhanced_flash_trading_signals import EnhancedFlashTradingSignals, EnhancedMarketState
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 from error_handling_utils import safe_get, log_exception
 
 # Configure logging
@@ -62,7 +62,7 @@ class ValidationTest:
             logger.info("Setting up test environment")
             
             # Initialize API client
-            self.api_client = OptimizedMexcClient(env_path=self.env_path)
+            self.api_client = OptimizedMEXCClient(env_path=self.env_path)
             
             # Initialize signal generator
             self.signal_generator = EnhancedFlashTradingSignals(client_instance=self.api_client)

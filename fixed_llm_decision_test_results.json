@@ -7,7 +7,7 @@
       "test_name": "LLM overseer initialization",
       "passed": true,
       "details": {
-        "overseer": "<fixed_llm_overseer.FixedLLMOverseer object at 0x7f976014d390>",
+        "overseer": "<fixed_llm_overseer.FixedLLMOverseer object at 0x7f03f859e6d0>",
         "initialized": true
       }
     },
@@ -17,7 +17,7 @@
       "details": {
         "market_state": {
           "symbol": "BTCUSDC",
-          "timestamp": 1749060942462,
+          "timestamp": 1749068903218,
           "price_history": [
             105000.0,
             104900.0,
@@ -41,7 +41,7 @@
       "details": {
         "market_state": {
           "symbol": "BTCUSDC",
-          "timestamp": 1749060942468,
+          "timestamp": 1749068903224,
           "bid_price": 105000.0,
           "ask_price": 105100.0,
           "mid_price": 105050.0,
@@ -56,11 +56,11 @@
             105100.0
           ],
           "timestamp_history": [
-            1749060942468,
-            1749060882468,
-            1749060822468,
-            1749060762468,
-            1749060702468
+            1749068903224,
+            1749068843224,
+            1749068783224,
+            1749068723224,
+            1749068663224
           ],
           "volume_history": [
             10.0,
@@ -72,13 +72,13 @@
           "last_trade_price": 105050.0,
           "last_trade_size": 0.1,
           "last_trade_side": "BUY",
-          "last_trade_time": 1749060942468,
+          "last_trade_time": 1749068903224,
           "momentum": 0.15,
           "volatility": 0.02,
           "trend": 0.05
         },
         "context": {
-          "timestamp": 1749060942468,
+          "timestamp": 1749068903224,
           "symbol": "BTCUSDC",
           "current_price": 105050.0,
           "bid_price": 105000.0,
@@ -106,17 +106,17 @@
       "passed": true,
       "details": {
         "decision": {
-          "id": "DECISION-TEST-1749060942",
+          "id": "DECISION-TEST-1749068903",
           "action": "BUY",
           "reason": "Test decision",
           "confidence": 0.8,
           "signals": [
             {
-              "id": "SIG-1749060942-0",
+              "id": "SIG-1749068903-0",
               "type": "BUY",
               "source": "llm_test",
               "strength": 0.8,
-              "timestamp": 1749060942474,
+              "timestamp": 1749068903232,
               "price": 105000.0,
               "symbol": "BTCUSDC",
               "session": "TEST"
@@ -132,7 +132,7 @@
         "market_update": {
           "market_state": {
             "symbol": "BTCUSDC",
-            "timestamp": 1749060944487,
+            "timestamp": 1749068905259,
             "bid_price": 105000.0,
             "ask_price": 105100.0,
             "mid_price": 105050.0,
@@ -147,11 +147,11 @@
               105100.0
             ],
             "timestamp_history": [
-              1749060944487,
-              1749060884487,
-              1749060824487,
-              1749060764487,
-              1749060704487
+              1749068905259,
+              1749068845259,
+              1749068785259,
+              1749068725259,
+              1749068665259
             ],
             "volume_history": [
               10.0,
@@ -163,25 +163,25 @@
             "last_trade_price": 105050.0,
             "last_trade_size": 0.1,
             "last_trade_side": "BUY",
-            "last_trade_time": 1749060944487,
+            "last_trade_time": 1749068905259,
             "momentum": 0.15,
             "volatility": 0.02,
             "trend": 0.05
           }
         },
         "decision": {
-          "id": "DECISION-1749060944",
-          "timestamp": 1749060944988,
+          "id": "DECISION-1749068905",
+          "timestamp": 1749068905760,
           "action": "BUY",
           "reason": "Unable to parse clear decision from LLM response",
           "confidence": 0.6,
           "signals": [
             {
-              "id": "SIG-1749060944",
+              "id": "SIG-1749068905",
               "type": "BUY",
               "source": "llm_overseer",
               "strength": 0.6,
-              "timestamp": 1749060944988,
+              "timestamp": 1749068905760,
               "price": 105050.0,
               "symbol": "BTCUSDC",
               "session": "LLM"
@@ -197,7 +197,7 @@
         "market_update": {
           "market_state": {
             "symbol": "BTCUSDC",
-            "timestamp": 1749060945749,
+            "timestamp": 1749068906730,
             "bid_price": 105000.0,
             "ask_price": 105100.0,
             "mid_price": 105050.0,
@@ -212,11 +212,11 @@
               105100.0
             ],
             "timestamp_history": [
-              1749060945749,
-              1749060885749,
-              1749060825749,
-              1749060765749,
-              1749060705749
+              1749068906730,
+              1749068846730,
+              1749068786730,
+              1749068726730,
+              1749068666730
             ],
             "volume_history": [
               10.0,
@@ -228,25 +228,25 @@
             "last_trade_price": 105050.0,
             "last_trade_size": 0.1,
             "last_trade_side": "BUY",
-            "last_trade_time": 1749060945749,
+            "last_trade_time": 1749068906730,
             "momentum": 0.15,
             "volatility": 0.02,
             "trend": 0.05
           }
         },
         "decision": {
-          "id": "DECISION-1749060945",
-          "timestamp": 1749060946250,
+          "id": "DECISION-1749068906",
+          "timestamp": 1749068907231,
           "action": "BUY",
           "reason": "Unable to parse clear decision from LLM response",
           "confidence": 0.6,
           "signals": [
             {
-              "id": "SIG-1749060946-0",
+              "id": "SIG-1749068907-0",
               "type": "BUY",
               "source": "llm_overseer",
               "strength": 0.6,
-              "timestamp": 1749060946250,
+              "timestamp": 1749068907231,
               "price": 105050.0,
               "symbol": "BTCUSDC",
               "session": "LLM"
@@ -262,22 +262,22 @@
         "market_update": {
           "market_state": {
             "symbol": "BTCUSDC",
-            "timestamp": 1749060951268
+            "timestamp": 1749068912240
           }
         },
         "decision": {
-          "id": "DECISION-1749060951",
-          "timestamp": 1749060951769,
+          "id": "DECISION-1749068912",
+          "timestamp": 1749068912740,
           "action": "BUY",
           "reason": "Unable to parse clear decision from LLM response",
           "confidence": 0.6,
           "signals": [
             {
-              "id": "SIG-1749060951",
+              "id": "SIG-1749068912",
               "type": "BUY",
               "source": "llm_overseer",
               "strength": 0.6,
-              "timestamp": 1749060951769,
+              "timestamp": 1749068912740,
               "price": 0.0,
               "symbol": "BTCUSDC",
               "session": "LLM"

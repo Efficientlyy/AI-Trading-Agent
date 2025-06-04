@@ -1,0 +1,130 @@
+{
+  "market_data": {
+    "BTC/USDC": {
+      "api_symbol": "BTCUSDC",
+      "data_length": 0,
+      "has_data": false,
+      "first_candle": null,
+      "last_candle": null
+    },
+    "ETH/USDC": {
+      "api_symbol": "ETHUSDC",
+      "data_length": 0,
+      "has_data": false,
+      "first_candle": null,
+      "last_candle": null
+    },
+    "SOL/USDC": {
+      "api_symbol": "SOLUSDC",
+      "data_length": 0,
+      "has_data": false,
+      "first_candle": null,
+      "last_candle": null
+    },
+    "BTC/USDT": {
+      "api_symbol": "BTCUSDT",
+      "data_length": 0,
+      "has_data": false,
+      "first_candle": null,
+      "last_candle": null
+    },
+    "ETH/USDT": {
+      "api_symbol": "ETHUSDT",
+      "data_length": 0,
+      "has_data": false,
+      "first_candle": null,
+      "last_candle": null
+    },
+    "SOL/USDT": {
+      "api_symbol": "SOLUSDT",
+      "data_length": 0,
+      "has_data": false,
+      "first_candle": null,
+      "last_candle": null
+    }
+  },
+  "signals": {
+    "BTC/USDC": {
+      "api_symbol": "BTCUSDC",
+      "signals_count": 0,
+      "signals": []
+    },
+    "ETH/USDC": {
+      "api_symbol": "ETHUSDC",
+      "signals_count": 0,
+      "signals": []
+    },
+    "SOL/USDC": {
+      "api_symbol": "SOLUSDC",
+      "signals_count": 1,
+      "signals": [
+        {
+          "type": "SELL",
+          "source": "order_imbalance",
+          "strength": 0.4587981288233177,
+          "timestamp": 1749074842042,
+          "price": 154.65995,
+          "symbol": "SOLUSDC",
+          "session": "US"
+        }
+      ]
+    },
+    "BTC/USDT": {
+      "api_symbol": "BTCUSDT",
+      "signals_count": 0,
+      "signals": []
+    },
+    "ETH/USDT": {
+      "api_symbol": "ETHUSDT",
+      "signals_count": 0,
+      "signals": []
+    },
+    "SOL/USDT": {
+      "api_symbol": "SOLUSDT",
+      "signals_count": 0,
+      "signals": []
+    }
+  },
+  "paper_trading": {
+    "BTC/USDC": {
+      "api_symbol": "BTCUSDC",
+      "signals_count": 0,
+      "trades_executed": 0,
+      "notifications": 0
+    },
+    "ETH/USDC": {
+      "api_symbol": "ETHUSDC",
+      "signals_count": 0,
+      "trades_executed": 0,
+      "notifications": 0
+    },
+    "SOLUSDC": {
+      "api_symbol": "SOLUSDC",
+      "signals_count": 1,
+      "trades_executed": 1,
+      "notifications": 0
+    },
+    "BTC/USDT": {
+      "api_symbol": "BTCUSDT",
+      "signals_count": 0,
+      "trades_executed": 0,
+      "notifications": 0
+    },
+    "ETH/USDT": {
+      "api_symbol": "ETHUSDT",
+      "signals_count": 0,
+      "trades_executed": 0,
+      "notifications": 0
+    },
+    "SOL/USDT": {
+      "api_symbol": "SOLUSDT",
+      "signals_count": 0,
+      "trades_executed": 0,
+      "notifications": 0
+    }
+  },
+  "telegram": {
+    "notifications": [],
+    "status": "SUCCESS"
+  }
+}

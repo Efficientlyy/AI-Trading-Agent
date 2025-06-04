@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Debug script to fix API key validation in OptimizedMexcClient
+Debug script to fix API key validation in OptimizedMEXCClient
 """
 
 import os
@@ -16,7 +16,7 @@ logging.basicConfig(
 logger = logging.getLogger("fix_api_key")
 
 def fix_optimized_mexc_client():
-    """Fix API key validation in OptimizedMexcClient"""
+    """Fix API key validation in OptimizedMEXCClient"""
     
     # Path to the optimized_mexc_client.py file
     client_path = "optimized_mexc_client.py"
@@ -163,8 +163,8 @@ if __name__ == "__main__":
     success = fix_optimized_mexc_client()
     
     if success:
-        logger.info("Successfully fixed API key validation in OptimizedMexcClient")
+        logger.info("Successfully fixed API key validation in OptimizedMEXCClient")
         sys.exit(0)
     else:
-        logger.error("Failed to fix API key validation in OptimizedMexcClient")
+        logger.error("Failed to fix API key validation in OptimizedMEXCClient")
         sys.exit(1)

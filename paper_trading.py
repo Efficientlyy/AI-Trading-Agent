@@ -14,7 +14,7 @@ import os
 import uuid
 from datetime import datetime
 from threading import RLock
-from optimized_mexc_client import OptimizedMexcClient
+from optimized_mexc_client import OptimizedMEXCClient
 from flash_trading_config import FlashTradingConfig
 
 # Import error handling utilities
@@ -37,7 +37,7 @@ class PaperTradingSystem:
     
     def __init__(self, client=None, config=None):
         """Initialize paper trading system with API client and configuration"""
-        self.client = client or OptimizedMexcClient()
+        self.client = client or OptimizedMEXCClient()
         self.config = config or FlashTradingConfig()
         
         # Load paper trading configuration

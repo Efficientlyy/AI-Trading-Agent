@@ -1,0 +1,124 @@
+{
+  "symbol": "BTCUSDC",
+  "test_time": "2025-06-04T18:49:33.281619",
+  "market_data": {
+    "1m": {
+      "candles": 0,
+      "first_candle": null,
+      "last_candle": null,
+      "success": false
+    },
+    "5m": {
+      "candles": 0,
+      "first_candle": null,
+      "last_candle": null,
+      "success": false
+    },
+    "15m": {
+      "candles": 0,
+      "first_candle": null,
+      "last_candle": null,
+      "success": false
+    },
+    "1h": {
+      "candles": 0,
+      "first_candle": null,
+      "last_candle": null,
+      "success": false
+    }
+  },
+  "signals": [],
+  "trades": [],
+  "notifications": [
+    {
+      "type": "error",
+      "message": "Market data collection failed for all timeframes",
+      "component": "market_data",
+      "timestamp": "2025-06-04T18:50:04.622893"
+    }
+  ],
+  "errors": [],
+  "status": "failed",
+  "end_time": "2025-06-04T18:50:04.622919",
+  "component_status": {
+    "mexc_client": {
+      "request_count": 0,
+      "error_count": 0,
+      "last_request_time": null,
+      "last_error_time": null,
+      "last_429_time": null,
+      "queue_size": 0
+    },
+    "market_data": {
+      "status": "error",
+      "symbol": "BTC/USDC",
+      "api_symbol": "BTCUSDC",
+      "mexc_symbol": "BTCUSDC",
+      "timeframes": [
+        "1m",
+        "5m",
+        "15m",
+        "1h",
+        "4h",
+        "1d"
+      ],
+      "last_update": {},
+      "error_counts": {
+        "BTC/USDC_1m_100": 1,
+        "BTC/USDC_5m_100": 1,
+        "BTC/USDC_15m_100": 1,
+        "BTC/USDC_1h_100": 1
+      },
+      "queue_size": 0
+    },
+    "paper_trading": {
+      "running": false,
+      "balance": {
+        "USDC": 10000.0,
+        "BTC": 0.1,
+        "ETH": 1.0,
+        "SOL": 10.0
+      },
+      "positions": {
+        "BTCUSDC": {
+          "symbol": "BTCUSDC",
+          "base_asset": "BTC",
+          "quote_asset": "USDC",
+          "base_quantity": 0.1,
+          "quote_quantity": 0.0,
+          "entry_price": 0.0,
+          "current_price": 0.0,
+          "unrealized_pnl": 0.0,
+          "realized_pnl": 0.0,
+          "timestamp": 1749077372701
+        },
+        "ETHUSDC": {
+          "symbol": "ETHUSDC",
+          "base_asset": "ETH",
+          "quote_asset": "USDC",
+          "base_quantity": 1.0,
+          "quote_quantity": 0.0,
+          "entry_price": 0.0,
+          "current_price": 0.0,
+          "unrealized_pnl": 0.0,
+          "realized_pnl": 0.0,
+          "timestamp": 1749077372701
+        },
+        "SOLUSDC": {
+          "symbol": "SOLUSDC",
+          "base_asset": "SOL",
+          "quote_asset": "USDC",
+          "base_quantity": 10.0,
+          "quote_quantity": 0.0,
+          "entry_price": 0.0,
+          "current_price": 0.0,
+          "unrealized_pnl": 0.0,
+          "realized_pnl": 0.0,
+          "timestamp": 1749077372701
+        }
+      },
+      "orders": 0,
+      "trades": 0
+    }
+  }
+}

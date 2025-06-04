@@ -37,14 +37,16 @@ logger = logging.getLogger("market_data_pipeline")
 class EnhancedMarketDataPipeline:
     """Enhanced market data pipeline with robust error handling and fallbacks"""
     
-    def __init__(self, symbols=None, timeframes=None, cache_dir=None, mock_data_dir=None):
+    def __init__(self, data_service=None, symbols=None, timeframes=None, cache_dir=None, mock_data_dir=None, fallback_to_mock=False):
         """Initialize enhanced market data pipeline
         
         Args:
+            data_service: MultiAssetDataService instance (optional)
             symbols: List of symbols to track (default: ["BTC/USDC", "ETH/USDC", "SOL/USDC"])
             timeframes: List of timeframes to support (default: ["1m", "5m", "15m", "1h", "4h", "1d"])
             cache_dir: Directory for caching data (default: "./cache")
             mock_data_dir: Directory for mock data (default: "./test_data")
+            fallback_to_mock: Whether to fall back to mock data if live data fails (default: False)
         """
         # Initialize symbol standardizer
         self.standardizer = SymbolStandardizer()
@@ -57,8 +59,7 @@ class EnhancedMarketDataPipeline:
         self.timeframes = timeframes or ["1m", "5m", "15m", "1h", "4h", "1d"]
         
         # Initialize data service with standardized symbols
-        # Fix: Pass timeframes as a separate parameter, not as part of symbols
-        self.data_service = MultiAssetDataService(supported_assets=self.symbols)
+        self.data_service = data_service or MultiAssetDataService(supported_assets=self.symbols)
         
         # Set up caching
         self.cache_dir = cache_dir or "./cache"
@@ -82,7 +83,37 @@ class EnhancedMarketDataPipeline:
         # Thread safety
         self.lock = threading.RLock()
         
+        # Fallback to mock data flag
+        self.fallback_to_mock = fallback_to_mock
+        
+        # Running flag
+        self.running = False
+        
         logger.info(f"Enhanced market data pipeline initialized with {len(self.symbols)} symbols")
+    
+    def start(self):
+        """Start the market data pipeline"""
+        self.running = True
+        logger.info("Market data pipeline started")
+    
+    def stop(self):
+        """Stop the market data pipeline"""
+        self.running = False
+        logger.info("Market data pipeline stopped")
+    
+    def get_candles(self, symbol, timeframe="5m", limit=100, use_cache=True):
+        """Get candles for a symbol and timeframe
+        
+        Args:
+            symbol: Symbol to get data for (any format)
+            timeframe: Timeframe (1m, 5m, 15m, 1h, 4h, 1d)
+            limit: Number of candles to return
+            use_cache: Whether to use cached data if available
+            
+        Returns:
+            list: Candles data or empty list if data unavailable
+        """
+        return self.get_market_data(symbol, timeframe, limit, use_cache, self.fallback_to_mock)
     
     def get_market_data(self, symbol, timeframe="5m", limit=100, use_cache=True, fallback_to_mock=False, is_test_mode=False):
         """Get market data with enhanced error handling and appropriate warnings
@@ -317,6 +348,9 @@ class EnhancedMarketDataPipeline:
             self.cache_ttl = {}
         
         logger.info("Cache cleared")
+
+# Alias EnhancedMarketDataPipeline as MarketDataPipeline for compatibility with existing code
+MarketDataPipeline = EnhancedMarketDataPipeline
 
 # Example usage
 if __name__ == "__main__":
