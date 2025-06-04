@@ -84,18 +84,19 @@ class EnhancedMarketDataPipeline:
         
         logger.info(f"Enhanced market data pipeline initialized with {len(self.symbols)} symbols")
     
-    def get_market_data(self, symbol, timeframe="5m", limit=100, use_cache=True, fallback_to_mock=True):
-        """Get market data with enhanced error handling and fallbacks
+    def get_market_data(self, symbol, timeframe="5m", limit=100, use_cache=True, fallback_to_mock=False, is_test_mode=False):
+        """Get market data with enhanced error handling and appropriate warnings
         
         Args:
             symbol: Symbol to get data for (any format)
             timeframe: Timeframe (1m, 5m, 15m, 1h, 4h, 1d)
             limit: Number of candles to return
             use_cache: Whether to use cached data if available
-            fallback_to_mock: Whether to fall back to mock data if live data fails
+            fallback_to_mock: Whether to fall back to mock data if live data fails (ONLY for testing)
+            is_test_mode: Whether the system is in test mode (determines warning severity)
             
         Returns:
-            list: Market data as list of candles
+            list: Market data as list of candles or empty list if data unavailable
         """
         # Standardize symbol to internal format
         internal_symbol = self.standardizer.for_internal(symbol)
@@ -148,21 +149,28 @@ class EnhancedMarketDataPipeline:
         # If we reach here, live data failed
         self.status = "error"
         
-        # Check if we should fall back to mock data
-        if fallback_to_mock:
-            logger.info(f"Falling back to mock data for {symbol} {timeframe}")
+        # In test mode, we can fall back to mock data if explicitly requested
+        if is_test_mode and fallback_to_mock:
+            logger.info(f"TEST MODE: Falling back to mock data for {symbol} {timeframe}")
             mock_data = self._get_mock_data(internal_symbol, timeframe, limit)
             if mock_data:
-                logger.info(f"Using mock data for {symbol} {timeframe}")
+                logger.info(f"TEST MODE: Using mock data for {symbol} {timeframe}")
                 return mock_data
-        
-        # If we still have cached data, return it even if expired
+        elif fallback_to_mock:
+            # This should never happen in production
+            logger.critical(f"CRITICAL: Attempted to use mock data in production for {symbol} {timeframe}")
+            
+        # If we still have cached data, return it even if expired, but with warning
         if cache_key in self.market_data_cache:
-            logger.warning(f"Using expired cached data for {symbol} {timeframe}")
+            logger.warning(f"WARNING: Using expired cached data for {symbol} {timeframe}")
             return self.market_data_cache[cache_key]
         
-        # If all else fails, return empty list
-        logger.error(f"No data available for {symbol} {timeframe}")
+        # If all else fails, return empty list with clear error message
+        if is_test_mode:
+            logger.error(f"TEST MODE: No data available for {symbol} {timeframe}")
+        else:
+            logger.error(f"ERROR: No market data available for {symbol} {timeframe}. Please try again later or contact support.")
+        
         return []
     
     def _get_mock_data(self, symbol, timeframe, limit):

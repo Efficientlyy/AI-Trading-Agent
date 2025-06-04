@@ -363,25 +363,42 @@ class EnhancedDashboardIntegration:
         
         return positions
     
-    def get_dashboard_data(self, symbol, timeframe="5m", limit=100):
+    def get_dashboard_data(self, symbol, timeframe="5m", limit=100, is_test_mode=False):
         """Get all dashboard data for a symbol
         
         Args:
             symbol: Symbol to get data for (any format)
             timeframe: Timeframe for market data
             limit: Number of candles to return
+            is_test_mode: Whether the system is in test mode (determines warning severity and mock data usage)
             
         Returns:
-            dict: Dashboard data
+            dict: Dashboard data with appropriate warnings if data is unavailable
         """
         # Standardize symbol
         internal_symbol = self.standardizer.for_internal(symbol)
         
-        # Get all data
-        market_data = self.get_market_data(internal_symbol, timeframe, limit)
-        signals = self.get_signals(internal_symbol, 10)
-        orders = self.get_orders(internal_symbol, 10)
-        positions = self.get_positions(internal_symbol)
+        # Get all data with appropriate production/test mode handling
+        market_data = self.market_data_pipeline.get_market_data(
+            symbol=internal_symbol, 
+            timeframe=timeframe, 
+            limit=limit, 
+            fallback_to_mock=is_test_mode,
+            is_test_mode=is_test_mode
+        )
+        
+        # Only get mock signals/orders/positions in test mode
+        if is_test_mode:
+            signals = self.get_signals(internal_symbol, 10)
+            orders = self.get_orders(internal_symbol, 10)
+            positions = self.get_positions(internal_symbol)
+        else:
+            # In production, only return real data or empty lists with warnings
+            signals = []
+            orders = []
+            positions = []
+            if not market_data:
+                logger.warning(f"No market data available for {symbol}. Dashboard will display warnings.")
         
         # Combine into dashboard data
         dashboard_data = {
