@@ -1,9 +1,10 @@
-#!/usr/bin/env python
-"""
-Enhanced Dashboard Visualization Integration
+# Enhanced Dashboard Integration for Trading-Agent System
 
-This module connects the dashboard visualization components to live trading data,
-ensuring real-time updates and accurate representation of market state and trading activity.
+"""
+Enhanced Dashboard Integration for Trading-Agent System
+
+This module provides an improved dashboard integration that connects
+the visualization components with the enhanced market data pipeline.
 """
 
 import os
@@ -12,467 +13,403 @@ import json
 import time
 import logging
 import threading
-from queue import Queue
-from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional, Union
 
 # Add parent directory to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import required modules
-from enhanced_logging_fixed import EnhancedLogger
-from fixed_paper_trading import FixedPaperTradingSystem
-from optimized_mexc_client import OptimizedMexcClient
-from visualization.data_service_adapter import DataService
+from enhanced_market_data_pipeline import EnhancedMarketDataPipeline
+from symbol_standardization import SymbolStandardizer
 
-# Initialize enhanced logger
-logger = EnhancedLogger("dashboard_visualization")
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("visualization.log"),
+        logging.StreamHandler()
+    ]
+)
+
+logger = logging.getLogger("dashboard_integration")
 
 class EnhancedDashboardIntegration:
-    """Enhanced dashboard integration with live trading data"""
+    """Enhanced dashboard integration for Trading-Agent System"""
     
-    def __init__(self, config=None):
-        """Initialize dashboard integration
+    def __init__(self, symbols=None, timeframes=None, mock_data_dir=None):
+        """Initialize enhanced dashboard integration
         
         Args:
-            config: Configuration dictionary (optional)
+            symbols: List of symbols to track (default: ["BTC/USDC", "ETH/USDC", "SOL/USDC"])
+            timeframes: List of timeframes to support (default: ["1m", "5m", "15m", "1h", "4h", "1d"])
+            mock_data_dir: Directory for mock data (default: "./test_data")
         """
-        self.config = config or {}
-        self.logger = logger
+        # Initialize symbol standardizer
+        self.standardizer = SymbolStandardizer()
         
-        # Initialize components
-        self.client = OptimizedMexcClient()
-        self.paper_trading = FixedPaperTradingSystem(self.client, self.config)
-        self.data_service = DataService()
+        # Initialize symbols and timeframes
+        self.symbols = symbols or ["BTC/USDC", "ETH/USDC", "SOL/USDC"]
+        self.timeframes = timeframes or ["1m", "5m", "15m", "1h", "4h", "1d"]
         
-        # Data update interval (ms)
-        self.update_interval = self.config.get('dashboard_update_interval_ms', 1000)
-        
-        # Running flag
-        self.running = False
-        
-        # Data update queue
-        self.update_queue = Queue()
+        # Initialize market data pipeline
+        self.market_data_pipeline = EnhancedMarketDataPipeline(
+            symbols=self.symbols,
+            timeframes=self.timeframes,
+            mock_data_dir=mock_data_dir
+        )
         
         # Initialize data stores
-        self.market_data = {}
-        self.trading_data = {}
+        self.chart_data = {}
         self.signal_data = {}
-        self.decision_data = {}
+        self.order_data = {}
+        self.position_data = {}
         
-        # Initialize
-        self.initialize()
+        # Initialize update timestamps
+        self.last_updates = {}
         
-        self.logger.system.info("Enhanced dashboard integration initialized")
+        logger.info(f"Enhanced dashboard integration initialized with {len(self.symbols)} symbols")
     
-    def initialize(self):
-        """Initialize dashboard integration"""
-        # Initialize market data
-        for symbol in ['BTCUSDC', 'ETHUSDC', 'SOLUSDC']:
-            self.market_data[symbol] = {
-                'symbol': symbol,
-                'last_price': 0.0,
-                'bid_price': 0.0,
-                'ask_price': 0.0,
-                'volume_24h': 0.0,
-                'price_change_24h': 0.0,
-                'price_change_pct_24h': 0.0,
-                'high_24h': 0.0,
-                'low_24h': 0.0,
-                'timestamp': int(time.time() * 1000),
-                'price_history': [],
-                'volume_history': []
-            }
+    def get_market_data(self, symbol, timeframe="5m", limit=100, use_cache=True):
+        """Get market data for dashboard visualization
         
-        # Initialize trading data
-        self.trading_data = {
-            'balance': {},
-            'positions': {},
-            'orders': {},
-            'trades': [],
-            'pnl_history': []
-        }
+        Args:
+            symbol: Symbol to get data for (any format)
+            timeframe: Timeframe (1m, 5m, 15m, 1h, 4h, 1d)
+            limit: Number of candles to return
+            use_cache: Whether to use cached data if available
+            
+        Returns:
+            list: Market data as list of candles
+        """
+        # Use enhanced market data pipeline with fallback to mock data
+        data = self.market_data_pipeline.get_market_data(
+            symbol=symbol,
+            timeframe=timeframe,
+            limit=limit,
+            use_cache=use_cache,
+            fallback_to_mock=True
+        )
         
-        # Initialize signal data
-        self.signal_data = {
-            'recent_signals': [],
-            'signal_history': {}
-        }
+        # Update last update timestamp
+        self.last_updates[f"{symbol}_{timeframe}"] = time.time()
         
-        # Initialize decision data
-        self.decision_data = {
-            'recent_decisions': [],
-            'decision_history': {}
-        }
+        # Format data for chart visualization if needed
+        chart_data = self._format_for_chart(data)
+        
+        # Cache chart data
+        cache_key = f"{symbol}_{timeframe}"
+        self.chart_data[cache_key] = chart_data
+        
+        return chart_data
     
-    def start(self):
-        """Start dashboard integration"""
-        self.logger.system.info("Starting dashboard integration")
+    def _format_for_chart(self, data):
+        """Format data for chart visualization
         
-        try:
-            # Start paper trading system
-            self.paper_trading.start()
+        Args:
+            data: Raw market data
             
-            # Set up notification callback
-            self.paper_trading.set_notification_callback(self.handle_trading_notification)
-            
-            # Start data update thread
-            self.running = True
-            self.update_thread = threading.Thread(target=self.update_data)
-            self.update_thread.daemon = True
-            self.update_thread.start()
-            
-            self.logger.system.info("Dashboard integration started")
-        except Exception as e:
-            self.logger.log_error("Error starting dashboard integration", component="dashboard")
-            raise
-    
-    def stop(self):
-        """Stop dashboard integration"""
-        self.logger.system.info("Stopping dashboard integration")
+        Returns:
+            list: Formatted data for chart visualization
+        """
+        # If data is already in the right format, return as is
+        if not data:
+            return []
         
-        try:
-            # Stop data update thread
-            self.running = False
-            
-            # Wait for thread to terminate
-            if hasattr(self, 'update_thread') and self.update_thread.is_alive():
-                self.update_thread.join(timeout=5.0)
-            
-            # Stop paper trading system
-            self.paper_trading.stop()
-            
-            self.logger.system.info("Dashboard integration stopped")
-        except Exception as e:
-            self.logger.log_error("Error stopping dashboard integration", component="dashboard")
-            raise
-    
-    def update_data(self):
-        """Update data for dashboard visualization"""
-        self.logger.system.info("Data update thread started")
-        last_update = time.time() * 1000
+        # Check if data needs formatting
+        if "time" in data[0] and "open" in data[0] and "high" in data[0]:
+            # Already in the right format, just ensure all required fields
+            return [{
+                "time": candle["time"],
+                "open": candle["open"],
+                "high": candle["high"],
+                "low": candle["low"],
+                "close": candle["close"],
+                "volume": candle.get("volume", 0)
+            } for candle in data]
         
-        while self.running:
-            try:
-                # Check if it's time to update
-                current_time = time.time() * 1000
-                if current_time - last_update >= self.update_interval:
-                    # Update market data
-                    self.update_market_data()
-                    
-                    # Update trading data
-                    self.update_trading_data()
-                    
-                    # Process any pending updates
-                    self.process_update_queue()
-                    
-                    # Update data service
-                    self.update_data_service()
-                    
-                    # Update last update time
-                    last_update = current_time
-                
-                # Sleep for a short time
-                time.sleep(0.01)
-            except Exception as e:
-                self.logger.log_error(f"Error in data update thread: {str(e)}", component="dashboard")
-                time.sleep(1)  # Prevent tight loop on persistent errors
-        
-        self.logger.system.info("Data update thread stopped")
-    
-    def update_market_data(self):
-        """Update market data"""
-        try:
-            # Update market data for each symbol
-            for symbol in self.market_data:
-                # Get ticker
-                ticker = self.client.get_ticker(symbol)
-                
-                # Update market data
-                self.market_data[symbol]['last_price'] = float(ticker.get('last', 0.0))
-                self.market_data[symbol]['bid_price'] = float(ticker.get('bid', 0.0))
-                self.market_data[symbol]['ask_price'] = float(ticker.get('ask', 0.0))
-                self.market_data[symbol]['volume_24h'] = float(ticker.get('volume', 0.0))
-                self.market_data[symbol]['timestamp'] = int(time.time() * 1000)
-                
-                # Update price history
-                price = self.market_data[symbol]['last_price']
-                timestamp = self.market_data[symbol]['timestamp']
-                
-                # Add to price history (limit to 1000 points)
-                self.market_data[symbol]['price_history'].append({
-                    'price': price,
-                    'timestamp': timestamp
-                })
-                if len(self.market_data[symbol]['price_history']) > 1000:
-                    self.market_data[symbol]['price_history'].pop(0)
-                
-                # Calculate price change
-                if len(self.market_data[symbol]['price_history']) > 1:
-                    first_price = self.market_data[symbol]['price_history'][0]['price']
-                    self.market_data[symbol]['price_change_24h'] = price - first_price
-                    if first_price > 0:
-                        self.market_data[symbol]['price_change_pct_24h'] = (price - first_price) / first_price * 100
-                
-                # Calculate high and low
-                prices = [p['price'] for p in self.market_data[symbol]['price_history']]
-                if prices:
-                    self.market_data[symbol]['high_24h'] = max(prices)
-                    self.market_data[symbol]['low_24h'] = min(prices)
+        # If data is in a different format, convert it
+        formatted_data = []
+        for candle in data:
+            # Try to extract required fields
+            time_val = candle.get("time", candle.get("timestamp", 0))
+            open_val = candle.get("open", candle.get("Open", 0))
+            high_val = candle.get("high", candle.get("High", 0))
+            low_val = candle.get("low", candle.get("Low", 0))
+            close_val = candle.get("close", candle.get("Close", 0))
+            volume_val = candle.get("volume", candle.get("Volume", 0))
             
-            self.logger.system.debug("Market data updated")
-        except Exception as e:
-            self.logger.log_error(f"Error updating market data: {str(e)}", component="dashboard")
-    
-    def update_trading_data(self):
-        """Update trading data"""
-        try:
-            # Update balance
-            self.trading_data['balance'] = self.paper_trading.get_balance()
-            
-            # Update positions
-            positions = self.paper_trading.get_position()
-            self.trading_data['positions'] = {p['symbol']: p for p in positions}
-            
-            # Update orders
-            orders = self.paper_trading.get_orders()
-            self.trading_data['orders'] = {o['orderId']: o for o in orders}
-            
-            # Update trades
-            self.trading_data['trades'] = self.paper_trading.get_trades()
-            
-            # Calculate PnL history
-            total_pnl = 0
-            for symbol, position in self.trading_data['positions'].items():
-                total_pnl += position.get('unrealized_pnl', 0) + position.get('realized_pnl', 0)
-            
-            # Add to PnL history (limit to 1000 points)
-            self.trading_data['pnl_history'].append({
-                'pnl': total_pnl,
-                'timestamp': int(time.time() * 1000)
+            formatted_data.append({
+                "time": time_val,
+                "open": open_val,
+                "high": high_val,
+                "low": low_val,
+                "close": close_val,
+                "volume": volume_val
             })
-            if len(self.trading_data['pnl_history']) > 1000:
-                self.trading_data['pnl_history'].pop(0)
-            
-            self.logger.system.debug("Trading data updated")
-        except Exception as e:
-            self.logger.log_error(f"Error updating trading data: {str(e)}", component="dashboard")
+        
+        return formatted_data
     
-    def process_update_queue(self):
-        """Process updates from the queue"""
-        try:
-            # Process all pending updates
-            while not self.update_queue.empty():
-                update = self.update_queue.get_nowait()
-                
-                # Process update based on type
-                update_type = update.get('type')
-                data = update.get('data')
-                
-                if update_type == 'signal':
-                    self.process_signal_update(data)
-                elif update_type == 'decision':
-                    self.process_decision_update(data)
-                elif update_type == 'order':
-                    self.process_order_update(data)
-                elif update_type == 'trade':
-                    self.process_trade_update(data)
-                else:
-                    self.logger.system.warning(f"Unknown update type: {update_type}")
-        except Exception as e:
-            self.logger.log_error(f"Error processing update queue: {str(e)}", component="dashboard")
-    
-    def process_signal_update(self, signal):
-        """Process signal update
+    def get_signals(self, symbol, limit=20):
+        """Get trading signals for dashboard visualization
         
         Args:
-            signal: Signal data
+            symbol: Symbol to get signals for (any format)
+            limit: Maximum number of signals to return
+            
+        Returns:
+            list: Trading signals
         """
-        try:
-            # Add to recent signals (limit to 10)
-            self.signal_data['recent_signals'].append(signal)
-            if len(self.signal_data['recent_signals']) > 10:
-                self.signal_data['recent_signals'].pop(0)
-            
-            # Add to signal history
-            symbol = signal.get('symbol')
-            if symbol not in self.signal_data['signal_history']:
-                self.signal_data['signal_history'][symbol] = []
-            
-            # Add to symbol history (limit to 100 per symbol)
-            self.signal_data['signal_history'][symbol].append(signal)
-            if len(self.signal_data['signal_history'][symbol]) > 100:
-                self.signal_data['signal_history'][symbol].pop(0)
-            
-            self.logger.system.debug(f"Signal update processed: {signal.get('id')}")
-        except Exception as e:
-            self.logger.log_error(f"Error processing signal update: {str(e)}", component="dashboard")
+        # Standardize symbol
+        internal_symbol = self.standardizer.for_internal(symbol)
+        
+        # For now, return mock signals
+        # In a real implementation, this would fetch from the signal generator
+        mock_signals = self._generate_mock_signals(internal_symbol, limit)
+        
+        # Cache signal data
+        self.signal_data[internal_symbol] = mock_signals
+        
+        return mock_signals
     
-    def process_decision_update(self, decision):
-        """Process decision update
+    def _generate_mock_signals(self, symbol, limit):
+        """Generate mock trading signals
         
         Args:
-            decision: Decision data
+            symbol: Symbol to generate signals for
+            limit: Maximum number of signals to generate
+            
+        Returns:
+            list: Mock trading signals
         """
-        try:
-            # Add to recent decisions (limit to 10)
-            self.decision_data['recent_decisions'].append(decision)
-            if len(self.decision_data['recent_decisions']) > 10:
-                self.decision_data['recent_decisions'].pop(0)
+        # Generate mock signals
+        signals = []
+        
+        # Current time
+        current_time = int(time.time() * 1000)
+        
+        # Signal types
+        signal_types = ["BUY", "SELL", "STRONG_BUY", "STRONG_SELL", "NEUTRAL"]
+        
+        # Generate signals
+        for i in range(limit):
+            # Signal time (random in the past)
+            signal_time = current_time - (i * 60 * 60 * 1000) - (hash(f"{symbol}_{i}") % 3600000)
             
-            # Add to decision history
-            symbol = decision.get('symbol')
-            if symbol not in self.decision_data['decision_history']:
-                self.decision_data['decision_history'][symbol] = []
+            # Signal type (weighted towards BUY/SELL)
+            signal_type = signal_types[hash(f"{symbol}_type_{i}") % 5]
             
-            # Add to symbol history (limit to 100 per symbol)
-            self.decision_data['decision_history'][symbol].append(decision)
-            if len(self.decision_data['decision_history'][symbol]) > 100:
-                self.decision_data['decision_history'][symbol].pop(0)
+            # Signal strength
+            strength = (hash(f"{symbol}_strength_{i}") % 100) / 100
             
-            self.logger.system.debug(f"Decision update processed: {decision.get('id')}")
-        except Exception as e:
-            self.logger.log_error(f"Error processing decision update: {str(e)}", component="dashboard")
+            # Signal source
+            sources = ["price_action", "pattern_recognition", "momentum", "volume_analysis", "llm_decision"]
+            source = sources[hash(f"{symbol}_source_{i}") % len(sources)]
+            
+            # Create signal
+            signal = {
+                "id": f"SIG-{hash(f'{symbol}_{i}') % 10000}",
+                "symbol": symbol,
+                "type": signal_type,
+                "strength": strength,
+                "time": signal_time,
+                "source": source,
+                "description": f"{signal_type} signal detected with {strength:.2f} confidence"
+            }
+            
+            signals.append(signal)
+        
+        return signals
     
-    def process_order_update(self, order):
-        """Process order update
+    def get_orders(self, symbol, limit=20):
+        """Get orders for dashboard visualization
         
         Args:
-            order: Order data
-        """
-        try:
-            # Update order in trading data
-            order_id = order.get('orderId')
-            if order_id:
-                self.trading_data['orders'][order_id] = order
+            symbol: Symbol to get orders for (any format)
+            limit: Maximum number of orders to return
             
-            self.logger.system.debug(f"Order update processed: {order_id}")
-        except Exception as e:
-            self.logger.log_error(f"Error processing order update: {str(e)}", component="dashboard")
+        Returns:
+            list: Orders
+        """
+        # Standardize symbol
+        internal_symbol = self.standardizer.for_internal(symbol)
+        
+        # For now, return mock orders
+        # In a real implementation, this would fetch from the paper trading system
+        mock_orders = self._generate_mock_orders(internal_symbol, limit)
+        
+        # Cache order data
+        self.order_data[internal_symbol] = mock_orders
+        
+        return mock_orders
     
-    def process_trade_update(self, trade):
-        """Process trade update
+    def _generate_mock_orders(self, symbol, limit):
+        """Generate mock orders
         
         Args:
-            trade: Trade data
+            symbol: Symbol to generate orders for
+            limit: Maximum number of orders to generate
+            
+        Returns:
+            list: Mock orders
         """
-        try:
-            # Add trade to trading data
-            self.trading_data['trades'].append(trade)
+        # Generate mock orders
+        orders = []
+        
+        # Current time
+        current_time = int(time.time() * 1000)
+        
+        # Order statuses
+        statuses = ["NEW", "FILLED", "PARTIALLY_FILLED", "CANCELED", "REJECTED"]
+        
+        # Generate orders
+        for i in range(limit):
+            # Order time (random in the past)
+            order_time = current_time - (i * 60 * 60 * 1000) - (hash(f"{symbol}_{i}") % 3600000)
             
-            # Limit to 1000 trades
-            if len(self.trading_data['trades']) > 1000:
-                self.trading_data['trades'].pop(0)
+            # Order side
+            side = "BUY" if hash(f"{symbol}_side_{i}") % 2 == 0 else "SELL"
             
-            self.logger.system.debug(f"Trade update processed: {trade.get('tradeId')}")
-        except Exception as e:
-            self.logger.log_error(f"Error processing trade update: {str(e)}", component="dashboard")
+            # Order type
+            order_type = "MARKET" if hash(f"{symbol}_type_{i}") % 3 == 0 else "LIMIT"
+            
+            # Order price
+            base_price = 50000 if "BTC" in symbol else (3000 if "ETH" in symbol else 100)
+            price = base_price * (0.9 + (hash(f"{symbol}_price_{i}") % 2000) / 10000)
+            
+            # Order quantity
+            quantity = (hash(f"{symbol}_qty_{i}") % 100) / 100
+            
+            # Order status
+            status_idx = min(i % 5, 4)  # Weight towards FILLED for older orders
+            status = statuses[status_idx]
+            
+            # Create order
+            order = {
+                "orderId": f"ORD-{hash(f'{symbol}_{i}') % 10000}",
+                "symbol": symbol,
+                "side": side,
+                "type": order_type,
+                "price": price if order_type == "LIMIT" else None,
+                "quantity": quantity,
+                "status": status,
+                "timestamp": order_time
+            }
+            
+            orders.append(order)
+        
+        return orders
     
-    def update_data_service(self):
-        """Update data service with latest data"""
-        try:
-            # Update market data
-            self.data_service.update_market_data(self.market_data)
-            
-            # Update trading data
-            self.data_service.update_trading_data(self.trading_data)
-            
-            # Update signal data
-            self.data_service.update_signal_data(self.signal_data)
-            
-            # Update decision data
-            self.data_service.update_decision_data(self.decision_data)
-            
-            self.logger.system.debug("Data service updated")
-        except Exception as e:
-            self.logger.log_error(f"Error updating data service: {str(e)}", component="dashboard")
-    
-    def handle_trading_notification(self, notification_type, data):
-        """Handle trading notification
+    def get_positions(self, symbol=None):
+        """Get positions for dashboard visualization
         
         Args:
-            notification_type: Type of notification
-            data: Notification data
-        """
-        try:
-            # Add to update queue based on notification type
-            if notification_type == 'signal':
-                self.update_queue.put({
-                    'type': 'signal',
-                    'data': data
-                })
-            elif notification_type == 'decision':
-                self.update_queue.put({
-                    'type': 'decision',
-                    'data': data
-                })
-            elif notification_type in ['order_created', 'order_filled', 'order_cancelled']:
-                self.update_queue.put({
-                    'type': 'order',
-                    'data': data
-                })
-            elif notification_type == 'trade':
-                self.update_queue.put({
-                    'type': 'trade',
-                    'data': data
-                })
+            symbol: Symbol to get position for (any format, None for all)
             
-            self.logger.system.debug(f"Trading notification handled: {notification_type}")
-        except Exception as e:
-            self.logger.log_error(f"Error handling trading notification: {str(e)}", component="dashboard")
-    
-    def get_dashboard_data(self):
-        """Get dashboard data
+        Returns:
+            list: Positions
+        """
+        # For now, return mock positions
+        # In a real implementation, this would fetch from the paper trading system
+        mock_positions = self._generate_mock_positions()
         
+        # Filter by symbol if specified
+        if symbol:
+            internal_symbol = self.standardizer.for_internal(symbol)
+            mock_positions = [p for p in mock_positions if p["symbol"] == internal_symbol]
+        
+        # Cache position data
+        self.position_data = {p["symbol"]: p for p in mock_positions}
+        
+        return mock_positions
+    
+    def _generate_mock_positions(self):
+        """Generate mock positions
+        
+        Returns:
+            list: Mock positions
+        """
+        # Generate mock positions
+        positions = []
+        
+        # For each symbol
+        for symbol in self.symbols:
+            # Position size (random)
+            size = (hash(symbol) % 100) / 100
+            
+            # Entry price
+            base_price = 50000 if "BTC" in symbol else (3000 if "ETH" in symbol else 100)
+            entry_price = base_price * (0.9 + (hash(f"{symbol}_entry") % 2000) / 10000)
+            
+            # Current price
+            current_price = base_price * (0.9 + (hash(f"{symbol}_current") % 2000) / 10000)
+            
+            # PnL
+            pnl = size * (current_price - entry_price)
+            pnl_percent = (current_price - entry_price) / entry_price * 100
+            
+            # Create position
+            position = {
+                "symbol": symbol,
+                "size": size,
+                "entry_price": entry_price,
+                "current_price": current_price,
+                "pnl": pnl,
+                "pnl_percent": pnl_percent,
+                "timestamp": int(time.time() * 1000)
+            }
+            
+            positions.append(position)
+        
+        return positions
+    
+    def get_dashboard_data(self, symbol, timeframe="5m", limit=100):
+        """Get all dashboard data for a symbol
+        
+        Args:
+            symbol: Symbol to get data for (any format)
+            timeframe: Timeframe for market data
+            limit: Number of candles to return
+            
         Returns:
             dict: Dashboard data
         """
-        return {
-            'market_data': self.market_data,
-            'trading_data': self.trading_data,
-            'signal_data': self.signal_data,
-            'decision_data': self.decision_data
+        # Standardize symbol
+        internal_symbol = self.standardizer.for_internal(symbol)
+        
+        # Get all data
+        market_data = self.get_market_data(internal_symbol, timeframe, limit)
+        signals = self.get_signals(internal_symbol, 10)
+        orders = self.get_orders(internal_symbol, 10)
+        positions = self.get_positions(internal_symbol)
+        
+        # Combine into dashboard data
+        dashboard_data = {
+            "symbol": internal_symbol,
+            "timeframe": timeframe,
+            "market_data": market_data,
+            "signals": signals,
+            "orders": orders,
+            "positions": positions,
+            "timestamp": int(time.time() * 1000)
         }
-
+        
+        return dashboard_data
 
 # Example usage
 if __name__ == "__main__":
-    # Create dashboard integration
     dashboard = EnhancedDashboardIntegration()
     
-    # Start dashboard integration
-    dashboard.start()
+    # Test with different symbol formats
+    symbols = ["BTC/USDC", "BTCUSDC", "ETH-USDC"]
     
-    # Run for a while
-    try:
-        print("Running Enhanced Dashboard Integration for 30 seconds...")
+    for symbol in symbols:
+        print(f"Getting dashboard data for {symbol}...")
+        data = dashboard.get_dashboard_data(symbol)
         
-        # Create test order
-        order_id = dashboard.paper_trading.create_order('BTCUSDC', 'BUY', 'LIMIT', 0.001, 105000.0)
-        print(f"Created test order: {order_id}")
+        print(f"Market data: {len(data['market_data'])} candles")
+        print(f"Signals: {len(data['signals'])}")
+        print(f"Orders: {len(data['orders'])}")
+        print(f"Positions: {len(data['positions'])}")
         
-        # Wait for a bit
-        time.sleep(5)
-        
-        # Fill order
-        dashboard.paper_trading.fill_order(order_id)
-        print(f"Filled test order: {order_id}")
-        
-        # Wait for a bit
-        time.sleep(5)
-        
-        # Get dashboard data
-        data = dashboard.get_dashboard_data()
-        print(f"Market data for BTCUSDC: {data['market_data']['BTCUSDC']['last_price']}")
-        print(f"Balance: {data['trading_data']['balance']}")
-        print(f"Positions: {len(data['trading_data']['positions'])}")
-        print(f"Orders: {len(data['trading_data']['orders'])}")
-        print(f"Trades: {len(data['trading_data']['trades'])}")
-        
-        # Wait for the rest of the time
-        time.sleep(20)
-    except KeyboardInterrupt:
-        print("Interrupted by user")
-    finally:
-        # Stop dashboard integration
-        dashboard.stop()
-        print("Enhanced Dashboard Integration stopped")
+        print("---")
