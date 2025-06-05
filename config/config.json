@@ -12,9 +12,31 @@
     "risk_level": "moderate"
   },
   "notifications": {
-    "level": "all"
+    "level": "all",
+    "frequency": "medium"
   },
-  "plugins": [],
+  "plugins": [
+    {
+      "id": "visualization",
+      "path": "system_overseer.plugins.visualization.visualization_plugin.VisualizationPlugin",
+      "enabled": true,
+      "config": {
+        "default_pairs": [
+          "BTCUSDC",
+          "ETHUSDC",
+          "SOLUSDC"
+        ],
+        "default_interval": "15m",
+        "default_chart_type": "candlestick"
+      }
+    },
+    {
+      "id": "llm_chart_integration",
+      "path": "system_overseer.llm_chart_integration.LLMChartIntegration",
+      "enabled": true,
+      "config": {}
+    }
+  ],
   "visualization": {
     "default_pairs": [
       "BTCUSDC",

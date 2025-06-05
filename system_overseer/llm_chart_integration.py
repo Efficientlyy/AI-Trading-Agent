@@ -9,10 +9,6 @@ import logging
 import os
 from typing import Dict, Any, Optional, List, Tuple
 
-from system_overseer.llm_client import LLMClient
-from system_overseer.telegram_integration import TelegramIntegration
-from system_overseer.plugins.visualization.visualization_plugin import VisualizationPlugin
-
 # Import the natural language processor
 import sys
 sys.path.append('/home/ubuntu/projects/Trading-Agent')
@@ -23,25 +19,40 @@ logger = logging.getLogger("system_overseer.llm_chart_integration")
 class LLMChartIntegration:
     """Integrate LLM with chart generation for natural language requests."""
     
-    def __init__(self, core):
+    def __init__(self):
         """Initialize the integration.
+        
+        Note: The core will be provided during the initialize method call
+        """
+        self.core = None
+        self.nlp_processor = NaturalLanguageChartProcessor()
+        self.llm_client = None
+        self.telegram = None
+        self.visualization = None
+        
+        logger.info("LLMChartIntegration instance created")
+    
+    def initialize(self, core) -> bool:
+        """Initialize the integration with the system core.
         
         Args:
             core: System Overseer core instance
+            
+        Returns:
+            bool: True if initialization was successful
         """
         self.core = core
-        self.nlp_processor = NaturalLanguageChartProcessor()
         
         # Get required services
         self.llm_client = self.core.get_service("llm_client")
         if not self.llm_client:
             logger.error("LLM client service not found")
-            self.llm_client = None
+            return False
         
-        self.telegram = self.core.get_service("telegram")
+        self.telegram = self.core.get_service("telegram_integration")
         if not self.telegram:
-            logger.error("Telegram service not found")
-            self.telegram = None
+            logger.error("Telegram integration service not found")
+            return False
         
         # Get visualization plugin
         self.visualization = None
@@ -50,17 +61,9 @@ class LLMChartIntegration:
             self.visualization = plugin_manager.get_plugin("visualization")
             if not self.visualization:
                 logger.error("Visualization plugin not found")
+                return False
         else:
             logger.error("Plugin manager service not found")
-    
-    def initialize(self) -> bool:
-        """Initialize the integration.
-        
-        Returns:
-            bool: True if initialization was successful
-        """
-        if not self.llm_client or not self.telegram or not self.visualization:
-            logger.error("Cannot initialize LLM chart integration: required services not available")
             return False
         
         # Register message handler with Telegram
@@ -68,6 +71,14 @@ class LLMChartIntegration:
         
         logger.info("LLM chart integration initialized successfully")
         return True
+    
+    def start(self):
+        """Start the plugin."""
+        logger.info("LLM chart integration plugin started")
+    
+    def stop(self):
+        """Stop the plugin."""
+        logger.info("LLM chart integration plugin stopped")
     
     def handle_message(self, message: Dict[str, Any]) -> bool:
         """Handle incoming Telegram message.
@@ -165,32 +176,3 @@ class LLMChartIntegration:
                 chat_id,
                 f"Sorry, an error occurred while generating the chart: {str(e)}"
             )
-
-
-# Example usage
-if __name__ == "__main__":
-    # This is just for demonstration, actual usage would be through the System Overseer
-    class MockCore:
-        def __init__(self):
-            self.services = {}
-        
-        def get_service(self, name):
-            return self.services.get(name)
-    
-    # Create mock core
-    core = MockCore()
-    
-    # Create LLM chart integration
-    integration = LLMChartIntegration(core)
-    
-    # Test with a sample message
-    message = {
-        "text": "Hey, can you show me a BTC chart?",
-        "chat": {"id": 123456789}
-    }
-    
-    # Process message
-    is_chart_request, params = integration.nlp_processor.process_request(message["text"])
-    
-    print(f"Is chart request: {is_chart_request}")
-    print(f"Parameters: {params}")

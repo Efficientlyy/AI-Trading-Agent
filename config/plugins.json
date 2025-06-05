@@ -1,23 +1,20 @@
 {
   "plugins": [
     {
-      "id": "trading_analytics",
-      "path": "plugins.trading_analytics.TradingAnalyticsPlugin",
-      "enabled": true,
-      "config": {}
-    },
-    {
-      "id": "market_monitor",
-      "path": "plugins.market_monitor.MarketMonitorPlugin",
+      "id": "visualization",
+      "path": "system_overseer.plugins.visualization.visualization_plugin.VisualizationPlugin",
       "enabled": true,
       "config": {
-        "update_interval": 300,
-        "pairs": [
-          "BTCUSDC",
-          "ETHUSDC",
-          "SOLUSDC"
-        ]
+        "default_pairs": ["BTCUSDC", "ETHUSDC", "SOLUSDC"],
+        "default_interval": "15m",
+        "default_chart_type": "candlestick"
       }
+    },
+    {
+      "id": "trading_analytics",
+      "path": "plugins.trading_analytics.trading_analytics_plugin.TradingAnalyticsPlugin",
+      "enabled": true,
+      "config": {}
     }
   ]
 }

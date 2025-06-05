@@ -1,8 +1,9 @@
 #!/usr/bin/env python
 """
-Telegram Integration for System Overseer.
+Improved Telegram Integration for System Overseer.
 
-This module provides the TelegramIntegration class for interacting with Telegram.
+This module provides the TelegramIntegration class for interacting with Telegram,
+with improved application lifecycle management based on successful debug tests.
 """
 
 import os
@@ -12,7 +13,7 @@ import logging
 import threading
 import time
 import asyncio
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Callable
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -29,7 +30,7 @@ except ImportError:
 logger = logging.getLogger("system_overseer.telegram_integration")
 
 class TelegramIntegration:
-    """Telegram Integration for System Overseer."""
+    """Telegram Integration for System Overseer with improved lifecycle management."""
     
     def __init__(self, dialogue_manager=None, system_core=None, token=None, chat_id=None):
         """Initialize Telegram Integration.
@@ -49,7 +50,7 @@ class TelegramIntegration:
         self.running = False
         self.thread = None
         self.lock = threading.RLock()
-        self.loop = None
+        self.message_handlers = []
         
         if not self.token:
             logger.error("Telegram bot token not found in environment variables")
@@ -68,24 +69,8 @@ class TelegramIntegration:
         logger.info("Initializing Telegram bot...")
         
         try:
-            # Create bot instance
+            # Create bot instance for direct API calls
             self.bot = Bot(token=self.token)
-            
-            # Create application
-            self.application = Application.builder().token(self.token).build()
-            
-            # Register handlers
-            self.application.add_handler(CommandHandler("start", self._start_command))
-            self.application.add_handler(CommandHandler("help", self._help_command))
-            self.application.add_handler(CommandHandler("status", self._status_command))
-            self.application.add_handler(CommandHandler("pairs", self._pairs_command))
-            self.application.add_handler(CommandHandler("add_pair", self._add_pair_command))
-            self.application.add_handler(CommandHandler("remove_pair", self._remove_pair_command))
-            self.application.add_handler(CommandHandler("notifications", self._notifications_command))
-            
-            # Register message handler
-            self.application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._message_handler))
-            
             logger.info("Telegram bot initialized")
             return True
         except Exception as e:
@@ -100,10 +85,6 @@ class TelegramIntegration:
         """
         logger.info("Starting Telegram bot...")
         
-        if not self.application:
-            logger.error("Telegram bot not initialized")
-            return False
-        
         try:
             # Set running flag
             self.running = True
@@ -113,6 +94,13 @@ class TelegramIntegration:
             self.thread.daemon = True
             self.thread.start()
             
+            # Give the thread time to start up
+            time.sleep(2)
+            
+            if not self.running:
+                logger.error("Telegram bot failed to start")
+                return False
+                
             logger.info("Telegram bot started")
             return True
         except Exception as e:
@@ -129,18 +117,8 @@ class TelegramIntegration:
         logger.info("Stopping Telegram bot...")
         
         try:
-            # Set running flag
+            # Set running flag to signal thread to stop
             self.running = False
-            
-            # Stop application using asyncio
-            if self.application and self.loop:
-                # Create a future to run stop in the event loop
-                future = asyncio.run_coroutine_threadsafe(self.application.stop(), self.loop)
-                # Wait for the future to complete with timeout
-                try:
-                    future.result(timeout=5)
-                except (asyncio.TimeoutError, concurrent.futures.TimeoutError):
-                    logger.warning("Timeout while stopping Telegram application")
             
             # Wait for thread to finish
             if self.thread and self.thread.is_alive():
@@ -155,42 +133,118 @@ class TelegramIntegration:
             return False
     
     def _run_bot(self):
-        """Run Telegram bot."""
+        """Run Telegram bot in a separate thread with proper asyncio event loop management."""
+        # Create new event loop for this thread
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
         try:
-            # Create new event loop for this thread
-            self.loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(self.loop)
-            
-            # Run the application
-            self.loop.run_until_complete(self._start_polling())
-            
-            # Run the event loop
-            self.loop.run_forever()
+            # Run the bot using asyncio.run which properly manages the event loop
+            loop.run_until_complete(self._run_telegram_application())
         except Exception as e:
             logger.error(f"Error in Telegram bot thread: {e}")
         finally:
             # Clean up
-            if self.loop and self.loop.is_running():
-                self.loop.stop()
-            if self.loop and not self.loop.is_closed():
-                self.loop.close()
-            self.loop = None
+            if not loop.is_closed():
+                loop.close()
             self.running = False
+            logger.info("Telegram bot thread exited")
     
-    async def _start_polling(self):
-        """Start polling for updates."""
-        await self.application.initialize()
-        await self.application.start()
-        await self.application.updater.start_polling()
+    async def _run_telegram_application(self):
+        """Run the Telegram application with proper lifecycle management."""
+        # Create application
+        application = Application.builder().token(self.token).build()
         
-        # Monitor the running flag
+        # Register handlers
+        application.add_handler(CommandHandler("start", self._start_command))
+        application.add_handler(CommandHandler("help", self._help_command))
+        application.add_handler(CommandHandler("status", self._status_command))
+        application.add_handler(CommandHandler("pairs", self._pairs_command))
+        application.add_handler(CommandHandler("add_pair", self._add_pair_command))
+        application.add_handler(CommandHandler("remove_pair", self._remove_pair_command))
+        application.add_handler(CommandHandler("notifications", self._notifications_command))
+        
+        # Register message handler
+        application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self._message_handler))
+        
+        # Start the application
+        await application.initialize()
+        await application.start()
+        await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+        
+        logger.info("Telegram polling started successfully")
+        
+        # Store application reference
+        self.application = application
+        
+        # Keep running until stop is requested
         while self.running:
             await asyncio.sleep(1)
         
-        # Stop polling when running flag is False
-        await self.application.updater.stop()
-        await self.application.stop()
-        await self.application.shutdown()
+        # Proper shutdown sequence
+        logger.info("Stopping Telegram polling...")
+        await application.updater.stop()
+        await application.stop()
+        await application.shutdown()
+        self.application = None
+        logger.info("Telegram polling stopped")
+    
+    def register_message_handler(self, handler: Callable[[Dict[str, Any]], bool]):
+        """Register a message handler.
+        
+        Args:
+            handler: Function that takes a message dict and returns True if handled
+        """
+        with self.lock:
+            self.message_handlers.append(handler)
+    
+    def send_message(self, chat_id: int, text: str):
+        """Send a message to a chat.
+        
+        Args:
+            chat_id: Chat ID
+            text: Message text
+        """
+        if not self.bot:
+            logger.error("Telegram bot not initialized")
+            return
+        
+        try:
+            # Create a new event loop for this operation
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(self.bot.send_message(chat_id=chat_id, text=text))
+            finally:
+                loop.close()
+        except Exception as e:
+            logger.error(f"Failed to send message: {e}")
+    
+    def send_photo(self, chat_id: int, photo_path: str, caption: str = None):
+        """Send a photo to a chat.
+        
+        Args:
+            chat_id: Chat ID
+            photo_path: Path to photo file
+            caption: Optional caption
+        """
+        if not self.bot:
+            logger.error("Telegram bot not initialized")
+            return
+        
+        try:
+            # Create a new event loop for this operation
+            loop = asyncio.new_event_loop()
+            try:
+                with open(photo_path, 'rb') as photo_file:
+                    loop.run_until_complete(self.bot.send_photo(
+                        chat_id=chat_id, 
+                        photo=photo_file, 
+                        caption=caption
+                    ))
+            finally:
+                loop.close()
+        except Exception as e:
+            logger.error(f"Failed to send photo: {e}")
     
     async def _start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command.
@@ -219,7 +273,11 @@ class TelegramIntegration:
             "/add_pair SYMBOL - Add trading pair (e.g., /add_pair ETHUSDC)\n"
             "/remove_pair SYMBOL - Remove trading pair (e.g., /remove_pair ETHUSDC)\n"
             "/notifications LEVEL - Set notification level (all, signals, trades, errors, none)\n\n"
-            "You can also ask me questions in natural language, and I'll do my best to help!"
+            "You can also ask me questions in natural language, and I'll do my best to help!\n\n"
+            "For charts, simply ask something like:\n"
+            "- \"Show me the BTC chart\"\n"
+            "- \"Give me the ETH candlestick chart\"\n"
+            "- \"I need to see the SOL price for the last hour\""
         )
     
     async def _status_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -429,89 +487,42 @@ class TelegramIntegration:
         # Get message text
         message_text = update.message.text
         
-        # Process message with dialogue manager
+        # Convert to message dict
+        message = {
+            "text": message_text,
+            "chat": {"id": update.effective_chat.id},
+            "from": {"id": update.effective_user.id, "username": update.effective_user.username},
+            "message_id": update.message.message_id,
+            "date": update.message.date.timestamp()
+        }
+        
+        # Process with dialogue manager if available
         if self.dialogue_manager:
-            try:
-                # Get response from dialogue manager
-                response = await self.dialogue_manager.process_message(message_text)
-                
-                # Send response
+            response = self.dialogue_manager.process_message(message)
+            if response:
                 await update.message.reply_text(response)
-            except Exception as e:
-                logger.error(f"Error processing message: {e}")
+                return
+        
+        # Try registered message handlers
+        handled = False
+        with self.lock:
+            for handler in self.message_handlers:
+                try:
+                    if handler(message):
+                        handled = True
+                        break
+                except Exception as e:
+                    logger.error(f"Error in message handler: {e}")
+        
+        # If not handled, provide a default response
+        if not handled:
+            # Check if this might be a chart request
+            if any(keyword in message_text.lower() for keyword in ["chart", "price", "btc", "eth", "sol", "bitcoin", "ethereum", "solana"]):
+                await update.message.reply_text(
+                    "I detected you might be asking for a chart. Our natural language chart request feature is being initialized. "
+                    "Please try again in a moment, or use a command like /help to see available options."
+                )
+            else:
                 await update.message.reply_text(
                     "I'm sorry, I encountered an error while processing your message. Please try again later."
                 )
-        else:
-            # Default response if dialogue manager not available
-            await update.message.reply_text(
-                "I understand you're trying to communicate with me, but my natural language processing capabilities are currently limited. "
-                "Please use commands like /help, /status, etc. for now."
-            )
-    
-    def send_message(self, message: str):
-        """Send message to Telegram chat.
-        
-        Args:
-            message: Message to send
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        if not self.bot or not self.chat_id:
-            logger.error("Telegram bot or chat ID not available")
-            return False
-        
-        try:
-            # Create a new event loop for this thread if needed
-            if not asyncio.get_event_loop().is_running():
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                loop.run_until_complete(self._send_message_async(message))
-            else:
-                # Use existing event loop
-                asyncio.create_task(self._send_message_async(message))
-            return True
-        except Exception as e:
-            logger.error(f"Failed to send message: {e}")
-            return False
-    
-    async def _send_message_async(self, message: str):
-        """Send message to Telegram chat asynchronously.
-        
-        Args:
-            message: Message to send
-        """
-        await self.bot.send_message(chat_id=self.chat_id, text=message)
-    
-    def send_notification(self, notification_type: str, message: str):
-        """Send notification to Telegram chat.
-        
-        Args:
-            notification_type: Notification type (all, signals, trades, errors)
-            message: Message to send
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        # Get config registry
-        config_registry = self.system_core.get_service("config_registry") if self.system_core else None
-        
-        # Get notification level
-        notification_level = "all"
-        if config_registry:
-            notification_level = config_registry.get_config("notifications.level", "all")
-        
-        # Check if notification should be sent
-        if notification_level == "none":
-            return True
-        
-        if notification_level != "all" and notification_type != notification_level:
-            if notification_type != "errors" or notification_level != "errors":
-                return True
-        
-        # Format notification
-        notification = f"[{notification_type.upper()}] {message}"
-        
-        # Send notification
-        return self.send_message(notification)
