@@ -1,0 +1,227 @@
+{
+  "timestamp": 1749118101.508401,
+  "date": "2025-06-05 06:08:21",
+  "results": [
+    {
+      "scenario": "Basic Greeting",
+      "messages": [
+        "Hello, how are you today?",
+        "What can you help me with?"
+      ],
+      "responses": [
+        "Hello! I'm your Trading System Overseer. I'm here to help you manage your trading system and provide insights. How can I assist you today?",
+        "Hi there! I'm ready to help with your trading needs. I can provide market updates, manage your trading pairs, or adjust system settings. What would you like to do?"
+      ],
+      "keywords_found": [
+        {
+          "keyword": "hello",
+          "found": true
+        },
+        {
+          "keyword": "help",
+          "found": true
+        },
+        {
+          "keyword": "assist",
+          "found": true
+        }
+      ],
+      "success_rate": 1.0
+    },
+    {
+      "scenario": "Market Status Query",
+      "messages": [
+        "How is the crypto market doing today?",
+        "What's the trend for Bitcoin?"
+      ],
+      "responses": [
+        "Based on current data, the market is trending sideways. Bitcoin price is at 34685.83 USD, up by 2.09%. The trading volume across major exchanges is above average.",
+        "The crypto market is currently showing upward movement. Bitcoin is 1.28% down in the last 24 hours, while Ethereum is 0.62% up. The overall market sentiment appears to be neutral."
+      ],
+      "keywords_found": [
+        {
+          "keyword": "market",
+          "found": true
+        },
+        {
+          "keyword": "bitcoin",
+          "found": true
+        },
+        {
+          "keyword": "trend",
+          "found": true
+        },
+        {
+          "keyword": "price",
+          "found": true
+        }
+      ],
+      "success_rate": 1.0
+    },
+    {
+      "scenario": "Trading Pair Management",
+      "messages": [
+        "I want to add ETHUSDC to my trading pairs",
+        "Remove SOLUSDC from my active pairs"
+      ],
+      "responses": [
+        "Based on current data, the market is trending upward. Bitcoin price is at 42621.56 USD, up by 4.32%. The trading volume across major exchanges is steady.",
+        "The crypto market is currently showing upward movement. Bitcoin is 4.88% down in the last 24 hours, while Ethereum is 6.18% up. The overall market sentiment appears to be bullish."
+      ],
+      "keywords_found": [
+        {
+          "keyword": "eth",
+          "found": true
+        },
+        {
+          "keyword": "sol",
+          "found": false
+        },
+        {
+          "keyword": "pair",
+          "found": false
+        },
+        {
+          "keyword": "add",
+          "found": false
+        },
+        {
+          "keyword": "remove",
+          "found": false
+        }
+      ],
+      "success_rate": 0.2
+    },
+    {
+      "scenario": "System Status",
+      "messages": [
+        "What's the current status of the trading system?",
+        "Are there any issues I should know about?"
+      ],
+      "responses": [
+        "The trading system is currently in maintenance mode. CPU usage is at 61.82%, memory usage at 48.92%. There are 3.75 active trades and 2.21 pending orders. One warning was logged regarding rate limiting.",
+        "The trading system is currently operational. CPU usage is at 65.2%, memory usage at 20.5%. There are 4.11 active trades and 0.86 pending orders. There's a minor latency issue with the MEXC API."
+      ],
+      "keywords_found": [
+        {
+          "keyword": "status",
+          "found": false
+        },
+        {
+          "keyword": "system",
+          "found": true
+        },
+        {
+          "keyword": "trading",
+          "found": true
+        },
+        {
+          "keyword": "issue",
+          "found": true
+        }
+      ],
+      "success_rate": 0.75
+    },
+    {
+      "scenario": "Parameter Adjustment",
+      "messages": [
+        "I want to change the risk level to conservative",
+        "Set the notification frequency to high"
+      ],
+      "responses": [
+        "Parameter risk level has been set to conservative. This lower risk setting will be applied to all future trades.",
+        "Parameter risk level has been set to conservative. This lower risk setting will be applied to all future trades."
+      ],
+      "keywords_found": [
+        {
+          "keyword": "risk",
+          "found": true
+        },
+        {
+          "keyword": "conservative",
+          "found": true
+        },
+        {
+          "keyword": "notification",
+          "found": false
+        },
+        {
+          "keyword": "frequency",
+          "found": false
+        },
+        {
+          "keyword": "set",
+          "found": true
+        },
+        {
+          "keyword": "change",
+          "found": false
+        }
+      ],
+      "success_rate": 0.5
+    },
+    {
+      "scenario": "Multi-turn Conversation",
+      "messages": [
+        "Tell me about the latest trades",
+        "Which one was most profitable?",
+        "Why did that happen?"
+      ],
+      "responses": [
+        "Your recent trades include BTC/USDC (buy), ETH/USDC (sell), SOL/USDC (buy). The most profitable was ETH/USDC with a gain of 8.5%.",
+        "Your recent trades include BTC/USDC (buy), ETH/USDC (sell), SOL/USDC (buy). The most profitable was ETH/USDC with a gain of 3.02%.",
+        "Your recent trades include BTC/USDC (buy), ETH/USDC (sell), SOL/USDC (buy). The most profitable was ETH/USDC with a gain of 11.49%."
+      ],
+      "keywords_found": [
+        {
+          "keyword": "trade",
+          "found": true
+        },
+        {
+          "keyword": "profit",
+          "found": true
+        },
+        {
+          "keyword": "reason",
+          "found": false
+        },
+        {
+          "keyword": "happen",
+          "found": false
+        }
+      ],
+      "success_rate": 0.5
+    },
+    {
+      "scenario": "Error Handling",
+      "messages": [
+        "Execute impossible command",
+        "Do something that will definitely fail"
+      ],
+      "responses": [
+        "I'm sorry, but I cannot execute that command. the operation is not supported. Please try a different approach or let me know if you need help with something else.",
+        "I'm sorry, but I cannot execute that command. insufficient permissions. Please try a different approach or let me know if you need help with something else."
+      ],
+      "keywords_found": [
+        {
+          "keyword": "cannot",
+          "found": true
+        },
+        {
+          "keyword": "unable",
+          "found": false
+        },
+        {
+          "keyword": "error",
+          "found": false
+        },
+        {
+          "keyword": "invalid",
+          "found": false
+        }
+      ],
+      "success_rate": 0.25
+    }
+  ],
+  "overall_success": 0.6
+}

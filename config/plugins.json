@@ -1,0 +1,23 @@
+{
+  "plugins": [
+    {
+      "id": "trading_analytics",
+      "path": "plugins.trading_analytics.TradingAnalyticsPlugin",
+      "enabled": true,
+      "config": {}
+    },
+    {
+      "id": "market_monitor",
+      "path": "plugins.market_monitor.MarketMonitorPlugin",
+      "enabled": true,
+      "config": {
+        "update_interval": 300,
+        "pairs": [
+          "BTCUSDC",
+          "ETHUSDC",
+          "SOLUSDC"
+        ]
+      }
+    }
+  ]
+}

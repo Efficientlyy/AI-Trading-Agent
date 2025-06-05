@@ -1,0 +1,227 @@
+{
+  "timestamp": 1749117913.969921,
+  "date": "2025-06-05 06:05:13",
+  "results": [
+    {
+      "scenario": "Basic Greeting",
+      "messages": [
+        "Hello, how are you today?",
+        "What can you help me with?"
+      ],
+      "responses": [
+        "This is a mock response to: Hello, how are you today?",
+        "This is a mock response to: Hello, how are you today?"
+      ],
+      "keywords_found": [
+        {
+          "keyword": "hello",
+          "found": true
+        },
+        {
+          "keyword": "help",
+          "found": false
+        },
+        {
+          "keyword": "assist",
+          "found": false
+        }
+      ],
+      "success_rate": 0.3333333333333333
+    },
+    {
+      "scenario": "Market Status Query",
+      "messages": [
+        "How is the crypto market doing today?",
+        "What's the trend for Bitcoin?"
+      ],
+      "responses": [
+        "This is a mock response to: How is the crypto market doing today?",
+        "This is a mock response to: How is the crypto market doing today?"
+      ],
+      "keywords_found": [
+        {
+          "keyword": "market",
+          "found": true
+        },
+        {
+          "keyword": "bitcoin",
+          "found": false
+        },
+        {
+          "keyword": "trend",
+          "found": false
+        },
+        {
+          "keyword": "price",
+          "found": false
+        }
+      ],
+      "success_rate": 0.25
+    },
+    {
+      "scenario": "Trading Pair Management",
+      "messages": [
+        "I want to add ETHUSDC to my trading pairs",
+        "Remove SOLUSDC from my active pairs"
+      ],
+      "responses": [
+        "This is a mock response to: I want to add ETHUSDC to my trading pairs",
+        "This is a mock response to: I want to add ETHUSDC to my trading pairs"
+      ],
+      "keywords_found": [
+        {
+          "keyword": "eth",
+          "found": true
+        },
+        {
+          "keyword": "sol",
+          "found": false
+        },
+        {
+          "keyword": "pair",
+          "found": true
+        },
+        {
+          "keyword": "add",
+          "found": true
+        },
+        {
+          "keyword": "remove",
+          "found": false
+        }
+      ],
+      "success_rate": 0.6
+    },
+    {
+      "scenario": "System Status",
+      "messages": [
+        "What's the current status of the trading system?",
+        "Are there any issues I should know about?"
+      ],
+      "responses": [
+        "This is a mock response to: What's the current status of the trading system?",
+        "This is a mock response to: What's the current status of the trading system?"
+      ],
+      "keywords_found": [
+        {
+          "keyword": "status",
+          "found": true
+        },
+        {
+          "keyword": "system",
+          "found": true
+        },
+        {
+          "keyword": "trading",
+          "found": true
+        },
+        {
+          "keyword": "issue",
+          "found": false
+        }
+      ],
+      "success_rate": 0.75
+    },
+    {
+      "scenario": "Parameter Adjustment",
+      "messages": [
+        "I want to change the risk level to conservative",
+        "Set the notification frequency to high"
+      ],
+      "responses": [
+        "This is a mock response to: I want to change the risk level to conservative",
+        "This is a mock response to: I want to change the risk level to conservative"
+      ],
+      "keywords_found": [
+        {
+          "keyword": "risk",
+          "found": true
+        },
+        {
+          "keyword": "conservative",
+          "found": true
+        },
+        {
+          "keyword": "notification",
+          "found": false
+        },
+        {
+          "keyword": "frequency",
+          "found": false
+        },
+        {
+          "keyword": "set",
+          "found": false
+        },
+        {
+          "keyword": "change",
+          "found": true
+        }
+      ],
+      "success_rate": 0.5
+    },
+    {
+      "scenario": "Multi-turn Conversation",
+      "messages": [
+        "Tell me about the latest trades",
+        "Which one was most profitable?",
+        "Why did that happen?"
+      ],
+      "responses": [
+        "This is a mock response to: Tell me about the latest trades",
+        "This is a mock response to: Tell me about the latest trades",
+        "This is a mock response to: Tell me about the latest trades"
+      ],
+      "keywords_found": [
+        {
+          "keyword": "trade",
+          "found": true
+        },
+        {
+          "keyword": "profit",
+          "found": false
+        },
+        {
+          "keyword": "reason",
+          "found": false
+        },
+        {
+          "keyword": "happen",
+          "found": false
+        }
+      ],
+      "success_rate": 0.25
+    },
+    {
+      "scenario": "Error Handling",
+      "messages": [
+        "Execute impossible command",
+        "Do something that will definitely fail"
+      ],
+      "responses": [
+        "This is a mock response to: Execute impossible command",
+        "This is a mock response to: Execute impossible command"
+      ],
+      "keywords_found": [
+        {
+          "keyword": "cannot",
+          "found": false
+        },
+        {
+          "keyword": "unable",
+          "found": false
+        },
+        {
+          "keyword": "error",
+          "found": false
+        },
+        {
+          "keyword": "invalid",
+          "found": false
+        }
+      ],
+      "success_rate": 0.0
+    }
+  ],
+  "overall_success": 0.3833333333333333
+}

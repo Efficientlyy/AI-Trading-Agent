@@ -1,0 +1,61 @@
+{
+  "traits": {
+    "verbosity": {
+      "trait_id": "verbosity",
+      "name": "Verbosity",
+      "description": "How detailed and lengthy responses should be",
+      "default_value": 0.7,
+      "min_value": 0.0,
+      "max_value": 1.0
+    },
+    "formality": {
+      "trait_id": "formality",
+      "name": "Formality",
+      "description": "How formal or casual the communication style should be",
+      "default_value": 0.5,
+      "min_value": 0.0,
+      "max_value": 1.0
+    },
+    "creativity": {
+      "trait_id": "creativity",
+      "name": "Creativity",
+      "description": "How creative or straightforward responses should be",
+      "default_value": 0.5,
+      "min_value": 0.0,
+      "max_value": 1.0
+    },
+    "empathy": {
+      "trait_id": "empathy",
+      "name": "Empathy",
+      "description": "How empathetic or neutral responses should be",
+      "default_value": 0.7,
+      "min_value": 0.0,
+      "max_value": 1.0
+    },
+    "humor": {
+      "trait_id": "humor",
+      "name": "Humor",
+      "description": "How humorous or serious responses should be",
+      "default_value": 0.3,
+      "min_value": 0.0,
+      "max_value": 1.0
+    },
+    "technical_depth": {
+      "trait_id": "technical_depth",
+      "name": "Technical Depth",
+      "description": "How technical or simplified explanations should be",
+      "default_value": 0.6,
+      "min_value": 0.0,
+      "max_value": 1.0
+    },
+    "proactivity": {
+      "trait_id": "proactivity",
+      "name": "Proactivity",
+      "description": "How proactive or reactive the system should be",
+      "default_value": 0.5,
+      "min_value": 0.0,
+      "max_value": 1.0
+    }
+  },
+  "timestamp": 1749118946.2636461
+}

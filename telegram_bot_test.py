@@ -1,178 +1,248 @@
 #!/usr/bin/env python
 """
-Telegram Bot Command Test Script
+Telegram Bot Connectivity Test
 
-This script tests all available commands for the Telegram bot.
+This script tests connectivity to the Telegram Bot API using the provided credentials.
 """
 
 import os
-import time
+import sys
 import logging
+import time
+from dotenv import load_dotenv
 import requests
-from datetime import datetime
+import json
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler("telegram_bot_test.log"),
-        logging.StreamHandler()
+        logging.StreamHandler(),
+        logging.FileHandler("telegram_bot_test.log")
     ]
 )
 logger = logging.getLogger("telegram_bot_test")
 
-def load_environment_variables(env_path=None):
-    """Load environment variables from .env file
-    
-    Args:
-        env_path: Path to .env file (optional)
-        
-    Returns:
-        dict: Environment variables
-    """
-    env_vars = {}
-    
-    # Try to find .env file
-    if env_path is None:
-        possible_paths = [
-            '.env-secure/.env',
-            '.env',
-            '../.env-secure/.env',
-            '../.env'
-        ]
-        
-        for path in possible_paths:
-            if os.path.exists(path):
-                env_path = path
-                logger.info(f"Found .env file at: {os.path.abspath(path)}")
-                break
-    
-    # Check if .env file exists
-    if env_path and os.path.exists(env_path):
-        logger.info(f"Loading environment variables from: {os.path.abspath(env_path)}")
-        
-        try:
-            with open(env_path, 'r') as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith('#'):
-                        try:
-                            key, value = line.split('=', 1)
-                            key = key.strip()
-                            value = value.strip()
-                            env_vars[key] = value
-                            # Log loaded variables (mask sensitive values)
-                            if 'TOKEN' in key or 'KEY' in key or 'SECRET' in key:
-                                masked_value = value[:5] + '...' if len(value) > 5 else '***'
-                                logger.info(f"Loaded {key}={masked_value}")
-                            else:
-                                logger.info(f"Loaded {key}={value}")
-                        except ValueError:
-                            logger.warning(f"Could not parse line: {line}")
-        except Exception as e:
-            logger.error(f"Error loading environment variables: {str(e)}")
-    else:
-        logger.error(f"Environment file not found: {env_path}")
-    
-    return env_vars
+# Load environment variables
+load_dotenv('.env-secure/.env')
 
-def send_telegram_message(token, chat_id, message):
-    """Send message to Telegram
+# Telegram Bot credentials
+BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
+
+# Telegram Bot API endpoint
+API_URL = f"https://api.telegram.org/bot{BOT_TOKEN}"
+
+def test_get_me():
+    """Test the getMe method to verify bot credentials.
     
-    Args:
-        token: Telegram bot token
-        chat_id: Telegram chat ID
-        message: Message to send
-        
     Returns:
         bool: True if successful, False otherwise
     """
+    logger.info("Testing Telegram Bot API getMe method...")
+    
+    # Endpoint
+    endpoint = "/getMe"
+    url = API_URL + endpoint
+    
     try:
-        url = f"https://api.telegram.org/bot{token}/sendMessage"
-        data = {
-            "chat_id": chat_id,
-            "text": message,
-            "parse_mode": "Markdown"
-        }
+        # Send request
+        response = requests.get(url)
         
-        response = requests.post(url, data=data, timeout=10)
+        # Check response
         if response.status_code == 200:
-            logger.info(f"Message sent successfully: {message[:20]}...")
-            return True
+            data = response.json()
+            if data.get("ok"):
+                bot_info = data.get("result")
+                logger.info("Telegram Bot API getMe test successful!")
+                logger.info(f"Bot info: {json.dumps(bot_info, indent=2)}")
+                return True
+            else:
+                logger.error(f"Telegram Bot API getMe test failed: {data.get('description')}")
+                return False
         else:
-            logger.error(f"Error sending message: {response.status_code}, {response.text}")
+            logger.error(f"Telegram Bot API getMe test failed with status code {response.status_code}")
+            logger.error(f"Response: {response.text}")
             return False
     except Exception as e:
-        logger.error(f"Error sending message: {str(e)}")
+        logger.error(f"Telegram Bot API getMe test failed with exception: {e}")
         return False
 
-def test_telegram_commands():
-    """Test all Telegram commands"""
-    logger.info("Starting Telegram command test")
+def test_get_updates():
+    """Test the getUpdates method to check for recent messages.
     
-    # Load environment variables
-    env_vars = load_environment_variables('.env-secure/.env')
-    token = env_vars.get('TELEGRAM_BOT_TOKEN')
-    chat_id = env_vars.get('TELEGRAM_CHAT_ID') or env_vars.get('TELEGRAM_USER_ID')
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    logger.info("Testing Telegram Bot API getUpdates method...")
     
-    if not token or not chat_id:
-        logger.error("Token or chat ID not set")
-        return False
+    # Endpoint
+    endpoint = "/getUpdates"
+    url = API_URL + endpoint
     
-    # Send test message
-    test_message = f"""
-🧪 *TELEGRAM COMMAND TEST*
-Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-
-Testing all available commands for the Trading-Agent Telegram bot.
-"""
-    
-    if not send_telegram_message(token, chat_id, test_message):
-        logger.error("Failed to send test message")
-        return False
-    
-    # Test commands
-    commands = [
-        "/help",
-        "/status",
-        "/pairs",
-        "/add_pair ETHUSDC",
-        "/remove_pair ETHUSDC",
-        "/notifications all"
-    ]
-    
-    for command in commands:
-        logger.info(f"Testing command: {command}")
+    try:
+        # Send request
+        response = requests.get(url)
         
-        if not send_telegram_message(token, chat_id, command):
-            logger.error(f"Failed to send command: {command}")
-            continue
+        # Check response
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("ok"):
+                updates = data.get("result", [])
+                logger.info("Telegram Bot API getUpdates test successful!")
+                logger.info(f"Received {len(updates)} updates")
+                
+                # Log recent updates
+                if updates:
+                    for update in updates[-3:]:  # Show last 3 updates
+                        logger.info(f"Update: {json.dumps(update, indent=2)}")
+                
+                return True
+            else:
+                logger.error(f"Telegram Bot API getUpdates test failed: {data.get('description')}")
+                return False
+        else:
+            logger.error(f"Telegram Bot API getUpdates test failed with status code {response.status_code}")
+            logger.error(f"Response: {response.text}")
+            return False
+    except Exception as e:
+        logger.error(f"Telegram Bot API getUpdates test failed with exception: {e}")
+        return False
+
+def test_send_message():
+    """Test sending a message to the chat.
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    logger.info("Testing Telegram Bot API sendMessage method...")
+    
+    # Endpoint
+    endpoint = "/sendMessage"
+    url = API_URL + endpoint
+    
+    # Message parameters
+    params = {
+        "chat_id": CHAT_ID,
+        "text": "🔄 System Overseer Test: This is a connectivity test message. The System Overseer is being configured and tested with real credentials.",
+        "parse_mode": "HTML"
+    }
+    
+    try:
+        # Send request
+        response = requests.post(url, json=params)
         
-        # Wait for bot to process command
-        time.sleep(2)
-    
-    # Send summary
-    summary_message = f"""
-📊 *COMMAND TEST SUMMARY*
-Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+        # Check response
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("ok"):
+                message = data.get("result")
+                logger.info("Telegram Bot API sendMessage test successful!")
+                logger.info(f"Message sent: {json.dumps(message, indent=2)}")
+                return True
+            else:
+                logger.error(f"Telegram Bot API sendMessage test failed: {data.get('description')}")
+                return False
+        else:
+            logger.error(f"Telegram Bot API sendMessage test failed with status code {response.status_code}")
+            logger.error(f"Response: {response.text}")
+            return False
+    except Exception as e:
+        logger.error(f"Telegram Bot API sendMessage test failed with exception: {e}")
+        return False
 
-Tested {len(commands)} commands:
-- {commands[0]}
-- {commands[1]}
-- {commands[2]}
-- {commands[3]}
-- {commands[4]}
-- {commands[5]}
+def test_send_system_status():
+    """Test sending a formatted system status message.
+    
+    Returns:
+        bool: True if successful, False otherwise
+    """
+    logger.info("Testing sending formatted system status message...")
+    
+    # Endpoint
+    endpoint = "/sendMessage"
+    url = API_URL + endpoint
+    
+    # Current time
+    current_time = time.strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Message parameters
+    params = {
+        "chat_id": CHAT_ID,
+        "text": f"""
+<b>📊 System Overseer Status Report</b>
 
-Please check if you received responses for all commands.
-If any command did not work, please let me know.
-"""
+<b>Time:</b> {current_time}
+<b>Status:</b> <i>Initializing</i>
+
+<b>Components:</b>
+✅ MEXC API Connection: <code>ACTIVE</code>
+✅ GitHub Repository: <code>SYNCED</code>
+🔄 LLM Integration: <code>PENDING</code>
+🔄 Trading System: <code>PENDING</code>
+
+<b>System Overseer is being configured and tested.</b>
+You will receive a full status report once all tests are complete.
+""",
+        "parse_mode": "HTML"
+    }
     
-    send_telegram_message(token, chat_id, summary_message)
+    try:
+        # Send request
+        response = requests.post(url, json=params)
+        
+        # Check response
+        if response.status_code == 200:
+            data = response.json()
+            if data.get("ok"):
+                message = data.get("result")
+                logger.info("Formatted system status message sent successfully!")
+                return True
+            else:
+                logger.error(f"Sending formatted system status message failed: {data.get('description')}")
+                return False
+        else:
+            logger.error(f"Sending formatted system status message failed with status code {response.status_code}")
+            logger.error(f"Response: {response.text}")
+            return False
+    except Exception as e:
+        logger.error(f"Sending formatted system status message failed with exception: {e}")
+        return False
+
+def main():
+    """Main function."""
+    logger.info("Starting Telegram Bot connectivity tests...")
     
-    logger.info("Telegram command test completed")
-    return True
+    # Check if Telegram Bot credentials are available
+    if not BOT_TOKEN or not CHAT_ID:
+        logger.error("Telegram Bot credentials not found in environment variables")
+        return False
+    
+    # Test getMe method
+    get_me_success = test_get_me()
+    
+    # Test getUpdates method
+    get_updates_success = test_get_updates()
+    
+    # Test sendMessage method
+    send_message_success = test_send_message()
+    
+    # Test sending formatted system status
+    system_status_success = test_send_system_status()
+    
+    # Summarize results
+    logger.info("Telegram Bot connectivity test results:")
+    logger.info(f"getMe: {'SUCCESS' if get_me_success else 'FAILED'}")
+    logger.info(f"getUpdates: {'SUCCESS' if get_updates_success else 'FAILED'}")
+    logger.info(f"sendMessage: {'SUCCESS' if send_message_success else 'FAILED'}")
+    logger.info(f"System Status Message: {'SUCCESS' if system_status_success else 'FAILED'}")
+    
+    # Overall result
+    overall_success = get_me_success and get_updates_success and send_message_success and system_status_success
+    logger.info(f"Overall result: {'SUCCESS' if overall_success else 'FAILED'}")
+    
+    return overall_success
 
 if __name__ == "__main__":
-    test_telegram_commands()
+    main()

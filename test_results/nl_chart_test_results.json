@@ -1,0 +1,435 @@
+{
+  "results": {
+    "basic_requests": [
+      {
+        "request": "Show me a BTC chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "I need to see the Bitcoin price",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "line",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Give me the ETH chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "ETHUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Can I see the Solana chart?",
+        "is_chart": true,
+        "params": {
+          "symbol": "SOLUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Display the BTC/USDC chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": []
+        }
+      }
+    ],
+    "specific_chart_types": [
+      {
+        "request": "Show me a BTC candlestick chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "I need to see the ETH line chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "ETHUSDC",
+          "chart_type": "line",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Give me the SOL volume chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "SOLUSDC",
+          "chart_type": "volume",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Can I see the Bitcoin candles?",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Display the Ethereum price line",
+        "is_chart": true,
+        "params": {
+          "symbol": "ETHUSDC",
+          "chart_type": "line",
+          "interval": "15m",
+          "indicators": []
+        }
+      }
+    ],
+    "specific_intervals": [
+      {
+        "request": "Show me the 1 minute BTC chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "1m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "I need to see the 15 min ETH chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "ETHUSDC",
+          "chart_type": "candlestick",
+          "interval": "5m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Give me the hourly SOL chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "SOLUSDC",
+          "chart_type": "candlestick",
+          "interval": "1h",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Can I see the daily Bitcoin chart?",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "1d",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Display the weekly Ethereum chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "ETHUSDC",
+          "chart_type": "candlestick",
+          "interval": "1w",
+          "indicators": []
+        }
+      }
+    ],
+    "with_indicators": [
+      {
+        "request": "Show me a BTC chart with SMA",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": [
+            "sma"
+          ]
+        }
+      },
+      {
+        "request": "I need to see the ETH chart with moving average",
+        "is_chart": true,
+        "params": {
+          "symbol": "ETHUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": [
+            "sma"
+          ]
+        }
+      },
+      {
+        "request": "Give me the SOL chart with RSI",
+        "is_chart": true,
+        "params": {
+          "symbol": "SOLUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": [
+            "rsi"
+          ]
+        }
+      },
+      {
+        "request": "Can I see the Bitcoin chart with bollinger bands?",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": [
+            "bollinger"
+          ]
+        }
+      },
+      {
+        "request": "Display the Ethereum chart with MACD",
+        "is_chart": true,
+        "params": {
+          "symbol": "ETHUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": [
+            "macd"
+          ]
+        }
+      }
+    ],
+    "complex_requests": [
+      {
+        "request": "Show me a 15 minute BTC candlestick chart with SMA",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "5m",
+          "indicators": [
+            "sma"
+          ]
+        }
+      },
+      {
+        "request": "I need to see the hourly ETH line chart with bollinger bands",
+        "is_chart": true,
+        "params": {
+          "symbol": "ETHUSDC",
+          "chart_type": "line",
+          "interval": "1h",
+          "indicators": [
+            "bollinger"
+          ]
+        }
+      },
+      {
+        "request": "Give me the daily SOL volume chart with RSI",
+        "is_chart": true,
+        "params": {
+          "symbol": "SOLUSDC",
+          "chart_type": "volume",
+          "interval": "1d",
+          "indicators": [
+            "rsi"
+          ]
+        }
+      },
+      {
+        "request": "Can I see the 5 minute Bitcoin candles with MACD?",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "5m",
+          "indicators": [
+            "macd"
+          ]
+        }
+      },
+      {
+        "request": "Display the weekly Ethereum price with moving averages",
+        "is_chart": true,
+        "params": {
+          "symbol": "ETHUSDC",
+          "chart_type": "line",
+          "interval": "1w",
+          "indicators": [
+            "sma"
+          ]
+        }
+      }
+    ],
+    "usdc_focus": [
+      {
+        "request": "Show me the BTCUSDC chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "I need to see the ETH/USDC price",
+        "is_chart": true,
+        "params": {
+          "symbol": "ETHUSDC",
+          "chart_type": "line",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Give me the SOL USDC chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "SOLUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Can I see the Bitcoin USDC candles?",
+        "is_chart": true,
+        "params": {
+          "symbol": "BTCUSDC",
+          "chart_type": "candlestick",
+          "interval": "15m",
+          "indicators": []
+        }
+      },
+      {
+        "request": "Display the Ethereum USDC line chart",
+        "is_chart": true,
+        "params": {
+          "symbol": "ETHUSDC",
+          "chart_type": "line",
+          "interval": "15m",
+          "indicators": []
+        }
+      }
+    ],
+    "ambiguous_requests": [
+      {
+        "request": "Show me the crypto chart",
+        "is_chart": false,
+        "params": {}
+      },
+      {
+        "request": "I need to see the market",
+        "is_chart": false,
+        "params": {}
+      },
+      {
+        "request": "Give me the latest data",
+        "is_chart": false,
+        "params": {}
+      },
+      {
+        "request": "Can I see what's happening?",
+        "is_chart": false,
+        "params": {}
+      },
+      {
+        "request": "Display the trading information",
+        "is_chart": false,
+        "params": {}
+      }
+    ],
+    "non_chart_requests": [
+      {
+        "request": "How's the weather today?",
+        "is_chart": false,
+        "params": {}
+      },
+      {
+        "request": "What time is it?",
+        "is_chart": false,
+        "params": {}
+      },
+      {
+        "request": "Tell me a joke",
+        "is_chart": false,
+        "params": {}
+      },
+      {
+        "request": "Who won the game yesterday?",
+        "is_chart": false,
+        "params": {}
+      },
+      {
+        "request": "What's the latest news?",
+        "is_chart": false,
+        "params": {}
+      }
+    ]
+  },
+  "analysis": {
+    "total_tests": 40,
+    "chart_requests_detected": 30,
+    "non_chart_requests_rejected": 5,
+    "false_positives": 0,
+    "false_negatives": 0,
+    "accuracy": 1.0,
+    "category_accuracy": {
+      "basic_requests": {
+        "accuracy": 1.0,
+        "correct": 5,
+        "total": 5
+      },
+      "specific_chart_types": {
+        "accuracy": 1.0,
+        "correct": 5,
+        "total": 5
+      },
+      "specific_intervals": {
+        "accuracy": 1.0,
+        "correct": 5,
+        "total": 5
+      },
+      "with_indicators": {
+        "accuracy": 1.0,
+        "correct": 5,
+        "total": 5
+      },
+      "complex_requests": {
+        "accuracy": 1.0,
+        "correct": 5,
+        "total": 5
+      },
+      "usdc_focus": {
+        "accuracy": 1.0,
+        "correct": 5,
+        "total": 5
+      },
+      "non_chart_requests": {
+        "accuracy": 1.0,
+        "correct": 5,
+        "total": 5
+      }
+    }
+  }
+}

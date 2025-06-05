@@ -1,0 +1,385 @@
+{
+  "contexts": {
+    "f0512106-09b3-4c2d-a764-810f8e180d22": {
+      "context_id": "f0512106-09b3-4c2d-a764-810f8e180d22",
+      "user_id": "test_user_basic_greeting",
+      "max_history": 50,
+      "max_tokens": 8000,
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the System Overseer, an AI assistant that helps manage and monitor the Trading Agent system. You provide insights, answer questions, and help control the system through natural conversation. Be helpful, informative, and concise in your responses.",
+          "name": null,
+          "message_id": "07bf1bce-5147-45fc-aa8f-3d7942036f02",
+          "timestamp": 1749118101.4894288
+        },
+        {
+          "role": "user",
+          "content": "Hello, how are you today?",
+          "name": null,
+          "message_id": "25e392a8-41ba-4d76-8461-5dc9bc8d08f7",
+          "timestamp": 1749118101.4896092
+        },
+        {
+          "role": "assistant",
+          "content": "Hello! I'm your Trading System Overseer. I'm here to help you manage your trading system and provide insights. How can I assist you today?",
+          "name": null,
+          "message_id": "c1e195ef-ea8a-414e-a542-0d9967f62f15",
+          "timestamp": 1749118101.4899771
+        },
+        {
+          "role": "user",
+          "content": "What can you help me with?",
+          "name": null,
+          "message_id": "a7d8fb49-0333-45ba-a0a6-ae26b01889b0",
+          "timestamp": 1749118101.490277
+        },
+        {
+          "role": "assistant",
+          "content": "Hi there! I'm ready to help with your trading needs. I can provide market updates, manage your trading pairs, or adjust system settings. What would you like to do?",
+          "name": null,
+          "message_id": "5c02b18b-055b-4574-8e3b-a8efa1569982",
+          "timestamp": 1749118101.4904938
+        }
+      ],
+      "metadata": {
+        "created_at": 1749118101.489421,
+        "last_updated": 1749118101.4905212,
+        "message_count": 5,
+        "token_count": 0
+      }
+    },
+    "d38f4681-4271-4612-b83d-956a4bf48684": {
+      "context_id": "d38f4681-4271-4612-b83d-956a4bf48684",
+      "user_id": "test_user_market_status_query",
+      "max_history": 50,
+      "max_tokens": 8000,
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the System Overseer, an AI assistant that helps manage and monitor the Trading Agent system. You provide insights, answer questions, and help control the system through natural conversation. Be helpful, informative, and concise in your responses.",
+          "name": null,
+          "message_id": "9bfa1287-66dd-41f9-8781-bc01b5e634fa",
+          "timestamp": 1749118101.490964
+        },
+        {
+          "role": "user",
+          "content": "How is the crypto market doing today?",
+          "name": null,
+          "message_id": "be2456b0-b2df-4027-99a7-deba008185c7",
+          "timestamp": 1749118101.4911637
+        },
+        {
+          "role": "assistant",
+          "content": "Based on current data, the market is trending sideways. Bitcoin price is at 34685.83 USD, up by 2.09%. The trading volume across major exchanges is above average.",
+          "name": null,
+          "message_id": "6ea1e93a-d491-4341-be50-746f42e579da",
+          "timestamp": 1749118101.4915516
+        },
+        {
+          "role": "user",
+          "content": "What's the trend for Bitcoin?",
+          "name": null,
+          "message_id": "07728190-6808-4a6c-a199-666c94f9704b",
+          "timestamp": 1749118101.4918947
+        },
+        {
+          "role": "assistant",
+          "content": "The crypto market is currently showing upward movement. Bitcoin is 1.28% down in the last 24 hours, while Ethereum is 0.62% up. The overall market sentiment appears to be neutral.",
+          "name": null,
+          "message_id": "40a12457-3631-4cc8-a93a-899d633bf08c",
+          "timestamp": 1749118101.4921756
+        }
+      ],
+      "metadata": {
+        "created_at": 1749118101.4909587,
+        "last_updated": 1749118101.4922016,
+        "message_count": 5,
+        "token_count": 0
+      }
+    },
+    "b81e96c3-2683-4416-96b3-4b4daaec57e8": {
+      "context_id": "b81e96c3-2683-4416-96b3-4b4daaec57e8",
+      "user_id": "test_user_trading_pair_management",
+      "max_history": 50,
+      "max_tokens": 8000,
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the System Overseer, an AI assistant that helps manage and monitor the Trading Agent system. You provide insights, answer questions, and help control the system through natural conversation. Be helpful, informative, and concise in your responses.",
+          "name": null,
+          "message_id": "d588834e-47f7-4199-ab6b-78ef43bf64b4",
+          "timestamp": 1749118101.4928768
+        },
+        {
+          "role": "user",
+          "content": "I want to add ETHUSDC to my trading pairs",
+          "name": null,
+          "message_id": "ccd6ac6d-9bb0-4112-9b12-b0704d70fdd0",
+          "timestamp": 1749118101.4932609
+        },
+        {
+          "role": "assistant",
+          "content": "Based on current data, the market is trending upward. Bitcoin price is at 42621.56 USD, up by 4.32%. The trading volume across major exchanges is steady.",
+          "name": null,
+          "message_id": "edb5b5b7-53d7-4b5b-ae41-d301d46083a7",
+          "timestamp": 1749118101.4937072
+        },
+        {
+          "role": "user",
+          "content": "Remove SOLUSDC from my active pairs",
+          "name": null,
+          "message_id": "daa87ad9-157c-4d6b-91fe-d84ecdcbb768",
+          "timestamp": 1749118101.494116
+        },
+        {
+          "role": "assistant",
+          "content": "The crypto market is currently showing upward movement. Bitcoin is 4.88% down in the last 24 hours, while Ethereum is 6.18% up. The overall market sentiment appears to be bullish.",
+          "name": null,
+          "message_id": "4f0a478f-e3ca-4ea2-bf7c-57e497922ab2",
+          "timestamp": 1749118101.4944859
+        }
+      ],
+      "metadata": {
+        "created_at": 1749118101.4928713,
+        "last_updated": 1749118101.494512,
+        "message_count": 5,
+        "token_count": 0
+      }
+    },
+    "f47c56f1-cfc7-4af8-92d7-339b0a25aac4": {
+      "context_id": "f47c56f1-cfc7-4af8-92d7-339b0a25aac4",
+      "user_id": "test_user_system_status",
+      "max_history": 50,
+      "max_tokens": 8000,
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the System Overseer, an AI assistant that helps manage and monitor the Trading Agent system. You provide insights, answer questions, and help control the system through natural conversation. Be helpful, informative, and concise in your responses.",
+          "name": null,
+          "message_id": "ac05ea57-aeb0-4523-9396-07937efaf53f",
+          "timestamp": 1749118101.495102
+        },
+        {
+          "role": "user",
+          "content": "What's the current status of the trading system?",
+          "name": null,
+          "message_id": "9b4a8ef6-3722-43c1-a2d9-1709023609b6",
+          "timestamp": 1749118101.4954567
+        },
+        {
+          "role": "assistant",
+          "content": "The trading system is currently in maintenance mode. CPU usage is at 61.82%, memory usage at 48.92%. There are 3.75 active trades and 2.21 pending orders. One warning was logged regarding rate limiting.",
+          "name": null,
+          "message_id": "ae7a6f9e-aed8-4e72-a068-339778fbc4ce",
+          "timestamp": 1749118101.4960115
+        },
+        {
+          "role": "user",
+          "content": "Are there any issues I should know about?",
+          "name": null,
+          "message_id": "ec292408-7f0c-4a1c-9557-04f6eae3880a",
+          "timestamp": 1749118101.4965029
+        },
+        {
+          "role": "assistant",
+          "content": "The trading system is currently operational. CPU usage is at 65.2%, memory usage at 20.5%. There are 4.11 active trades and 0.86 pending orders. There's a minor latency issue with the MEXC API.",
+          "name": null,
+          "message_id": "85ae128e-60c8-4693-a38a-83af93014b18",
+          "timestamp": 1749118101.4969623
+        }
+      ],
+      "metadata": {
+        "created_at": 1749118101.4950967,
+        "last_updated": 1749118101.49699,
+        "message_count": 5,
+        "token_count": 0
+      }
+    },
+    "fccf5e84-6a65-47eb-a601-9f72b0d048f3": {
+      "context_id": "fccf5e84-6a65-47eb-a601-9f72b0d048f3",
+      "user_id": "test_user_parameter_adjustment",
+      "max_history": 50,
+      "max_tokens": 8000,
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the System Overseer, an AI assistant that helps manage and monitor the Trading Agent system. You provide insights, answer questions, and help control the system through natural conversation. Be helpful, informative, and concise in your responses.",
+          "name": null,
+          "message_id": "9e8bda1e-fd91-4b91-97ce-c87c0747c5a0",
+          "timestamp": 1749118101.497688
+        },
+        {
+          "role": "user",
+          "content": "I want to change the risk level to conservative",
+          "name": null,
+          "message_id": "6c270ccc-5237-47d5-91fc-5f87fbc28cb3",
+          "timestamp": 1749118101.4981031
+        },
+        {
+          "role": "assistant",
+          "content": "Parameter risk level has been set to conservative. This lower risk setting will be applied to all future trades.",
+          "name": null,
+          "message_id": "2afa1b3b-49de-4be8-b379-8cce5abb6b21",
+          "timestamp": 1749118101.4986808
+        },
+        {
+          "role": "user",
+          "content": "Set the notification frequency to high",
+          "name": null,
+          "message_id": "bf11af6c-7186-4f86-9186-6e272fc868d5",
+          "timestamp": 1749118101.4992104
+        },
+        {
+          "role": "assistant",
+          "content": "Parameter risk level has been set to conservative. This lower risk setting will be applied to all future trades.",
+          "name": null,
+          "message_id": "b15712b2-92b7-4406-a517-7c0c54a7ae4a",
+          "timestamp": 1749118101.499695
+        }
+      ],
+      "metadata": {
+        "created_at": 1749118101.4976826,
+        "last_updated": 1749118101.4997153,
+        "message_count": 5,
+        "token_count": 0
+      }
+    },
+    "d2d07bf6-7990-4158-b8cd-21790d8936c0": {
+      "context_id": "d2d07bf6-7990-4158-b8cd-21790d8936c0",
+      "user_id": "test_user_multi-turn_conversation",
+      "max_history": 50,
+      "max_tokens": 8000,
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the System Overseer, an AI assistant that helps manage and monitor the Trading Agent system. You provide insights, answer questions, and help control the system through natural conversation. Be helpful, informative, and concise in your responses.",
+          "name": null,
+          "message_id": "a498d262-5e5a-4f02-9627-c45b49ca8037",
+          "timestamp": 1749118101.500471
+        },
+        {
+          "role": "user",
+          "content": "Tell me about the latest trades",
+          "name": null,
+          "message_id": "56407208-e07f-4a53-8ea5-2ad9e7a9134d",
+          "timestamp": 1749118101.5009632
+        },
+        {
+          "role": "assistant",
+          "content": "Your recent trades include BTC/USDC (buy), ETH/USDC (sell), SOL/USDC (buy). The most profitable was ETH/USDC with a gain of 8.5%.",
+          "name": null,
+          "message_id": "623d6616-7f7b-496c-a213-386a1ef87b28",
+          "timestamp": 1749118101.5015662
+        },
+        {
+          "role": "user",
+          "content": "Which one was most profitable?",
+          "name": null,
+          "message_id": "ba82490c-0e06-446a-a7f5-ea2a0746abc9",
+          "timestamp": 1749118101.5022492
+        },
+        {
+          "role": "assistant",
+          "content": "Your recent trades include BTC/USDC (buy), ETH/USDC (sell), SOL/USDC (buy). The most profitable was ETH/USDC with a gain of 3.02%.",
+          "name": null,
+          "message_id": "b224a260-787f-4f39-a86d-0b5ee3afc7b4",
+          "timestamp": 1749118101.5027952
+        },
+        {
+          "role": "user",
+          "content": "Why did that happen?",
+          "name": null,
+          "message_id": "79a04499-4d55-4619-8ae8-1115b25a7479",
+          "timestamp": 1749118101.5034032
+        },
+        {
+          "role": "assistant",
+          "content": "Your recent trades include BTC/USDC (buy), ETH/USDC (sell), SOL/USDC (buy). The most profitable was ETH/USDC with a gain of 11.49%.",
+          "name": null,
+          "message_id": "a9d9c280-d882-4b3d-a707-41689d693bc8",
+          "timestamp": 1749118101.5039618
+        }
+      ],
+      "metadata": {
+        "created_at": 1749118101.5004656,
+        "last_updated": 1749118101.503984,
+        "message_count": 7,
+        "token_count": 0
+      }
+    },
+    "8899af22-5f45-419f-b988-1276b91f82ea": {
+      "context_id": "8899af22-5f45-419f-b988-1276b91f82ea",
+      "user_id": "test_user_error_handling",
+      "max_history": 50,
+      "max_tokens": 8000,
+      "messages": [
+        {
+          "role": "system",
+          "content": "You are the System Overseer, an AI assistant that helps manage and monitor the Trading Agent system. You provide insights, answer questions, and help control the system through natural conversation. Be helpful, informative, and concise in your responses.",
+          "name": null,
+          "message_id": "cfb00fb0-f6c9-4f09-bd86-fcc3e872c9ef",
+          "timestamp": 1749118101.5048656
+        },
+        {
+          "role": "user",
+          "content": "Execute impossible command",
+          "name": null,
+          "message_id": "005a73fb-b49e-4c18-8a6f-55244e54c2ec",
+          "timestamp": 1749118101.5054438
+        },
+        {
+          "role": "assistant",
+          "content": "I'm sorry, but I cannot execute that command. the operation is not supported. Please try a different approach or let me know if you need help with something else.",
+          "name": null,
+          "message_id": "f7ce8156-2273-4e1c-ae47-41e51f0ff0d8",
+          "timestamp": 1749118101.5062106
+        },
+        {
+          "role": "user",
+          "content": "Do something that will definitely fail",
+          "name": null,
+          "message_id": "150a9606-6bbc-4d20-8278-f43ce90f78d6",
+          "timestamp": 1749118101.5068958
+        },
+        {
+          "role": "assistant",
+          "content": "I'm sorry, but I cannot execute that command. insufficient permissions. Please try a different approach or let me know if you need help with something else.",
+          "name": null,
+          "message_id": "3328bf60-ca85-44fa-a3df-4192b5a5ebf3",
+          "timestamp": 1749118101.507595
+        }
+      ],
+      "metadata": {
+        "created_at": 1749118101.50486,
+        "last_updated": 1749118101.507624,
+        "message_count": 5,
+        "token_count": 0
+      }
+    }
+  },
+  "user_contexts": {
+    "test_user_basic_greeting": [
+      "f0512106-09b3-4c2d-a764-810f8e180d22"
+    ],
+    "test_user_market_status_query": [
+      "d38f4681-4271-4612-b83d-956a4bf48684"
+    ],
+    "test_user_trading_pair_management": [
+      "b81e96c3-2683-4416-96b3-4b4daaec57e8"
+    ],
+    "test_user_system_status": [
+      "f47c56f1-cfc7-4af8-92d7-339b0a25aac4"
+    ],
+    "test_user_parameter_adjustment": [
+      "fccf5e84-6a65-47eb-a601-9f72b0d048f3"
+    ],
+    "test_user_multi-turn_conversation": [
+      "d2d07bf6-7990-4158-b8cd-21790d8936c0"
+    ],
+    "test_user_error_handling": [
+      "8899af22-5f45-419f-b988-1276b91f82ea"
+    ]
+  },
+  "timestamp": 1749118101.5076766
+}

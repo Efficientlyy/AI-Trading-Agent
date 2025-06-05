@@ -1,0 +1,1 @@
+"""Trading Analytics plugin package."""

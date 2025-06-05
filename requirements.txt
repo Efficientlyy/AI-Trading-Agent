@@ -1,0 +1,8 @@
+python-dotenv
+requests
+python-telegram-bot
+tiktoken
+pandas
+numpy
+matplotlib
+pyyaml

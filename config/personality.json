@@ -1,0 +1,12 @@
+{
+  "traits": {
+    "formality": 0.7,
+    "verbosity": 0.6,
+    "helpfulness": 0.9,
+    "proactivity": 0.8
+  },
+  "memory": {
+    "retention_period": 7,
+    "importance_threshold": 0.5
+  }
+}

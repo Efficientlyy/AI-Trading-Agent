@@ -1,0 +1,68 @@
+{
+  "users": {
+    "test_user_basic_greeting": {
+      "user_id": "test_user_basic_greeting",
+      "personality_profile_id": null,
+      "notification_level": "normal",
+      "language": "en",
+      "timezone": "UTC",
+      "custom_settings": {},
+      "last_updated": 1749118101.4892678
+    },
+    "test_user_market_status_query": {
+      "user_id": "test_user_market_status_query",
+      "personality_profile_id": null,
+      "notification_level": "normal",
+      "language": "en",
+      "timezone": "UTC",
+      "custom_settings": {},
+      "last_updated": 1749118101.4908187
+    },
+    "test_user_trading_pair_management": {
+      "user_id": "test_user_trading_pair_management",
+      "personality_profile_id": null,
+      "notification_level": "normal",
+      "language": "en",
+      "timezone": "UTC",
+      "custom_settings": {},
+      "last_updated": 1749118101.492705
+    },
+    "test_user_system_status": {
+      "user_id": "test_user_system_status",
+      "personality_profile_id": null,
+      "notification_level": "normal",
+      "language": "en",
+      "timezone": "UTC",
+      "custom_settings": {},
+      "last_updated": 1749118101.4949377
+    },
+    "test_user_parameter_adjustment": {
+      "user_id": "test_user_parameter_adjustment",
+      "personality_profile_id": null,
+      "notification_level": "normal",
+      "language": "en",
+      "timezone": "UTC",
+      "custom_settings": {},
+      "last_updated": 1749118101.4975138
+    },
+    "test_user_multi-turn_conversation": {
+      "user_id": "test_user_multi-turn_conversation",
+      "personality_profile_id": null,
+      "notification_level": "normal",
+      "language": "en",
+      "timezone": "UTC",
+      "custom_settings": {},
+      "last_updated": 1749118101.5002856
+    },
+    "test_user_error_handling": {
+      "user_id": "test_user_error_handling",
+      "personality_profile_id": null,
+      "notification_level": "normal",
+      "language": "en",
+      "timezone": "UTC",
+      "custom_settings": {},
+      "last_updated": 1749118101.5046403
+    }
+  },
+  "timestamp": 1749118101.5046632
+}

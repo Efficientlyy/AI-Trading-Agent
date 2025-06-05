@@ -1,0 +1,29 @@
+nohup: ignoring input
+2025-06-04 20:03:05,721 - telegram_bot_service - INFO - Found .env file at: /home/ubuntu/projects/Trading-Agent/.env-secure/.env
+2025-06-04 20:03:05,721 - telegram_bot_service - INFO - Starting Telegram bot service...
+2025-06-04 20:03:05,721 - telegram_notifications - INFO - Loading environment variables from: /home/ubuntu/projects/Trading-Agent/.env-secure/.env
+2025-06-04 20:03:05,721 - telegram_notifications - INFO - Loaded MEXC_API_KEY=mx0vg...
+2025-06-04 20:03:05,721 - telegram_notifications - INFO - Loaded MEXC_SECRET_KEY=d8946...
+2025-06-04 20:03:05,721 - telegram_notifications - INFO - Loaded TELEGRAM_BOT_TOKEN=78315...
+2025-06-04 20:03:05,721 - telegram_notifications - INFO - Loaded TELEGRAM_USER_ID=1888718908
+2025-06-04 20:03:05,721 - telegram_notifications - INFO - Loaded Telegram credentials - Token: 78315... Chat ID: 1888718908
+2025-06-04 20:03:05,723 - telegram_notifications - INFO - Telegram notification system started
+2025-06-04 20:03:05,723 - telegram_bot_service - INFO - Telegram bot service started
+2025-06-04 20:03:06,013 - telegram_bot_service - INFO - Notification sent: system
+2025-06-04 20:03:06,304 - telegram_bot_service - INFO - Notification sent: system
+2025-06-04 20:03:06,614 - telegram_bot_service - INFO - Notification sent: system
+2025-06-04 20:03:07,550 - telegram_bot_service - INFO - Notification sent: system
+2025-06-04 20:03:12,829 - telegram_bot_service - INFO - Notification sent: system
+2025-06-04 20:03:25,623 - telegram_bot_service - INFO - Notification sent: system
+2025-06-04 20:17:08,630 - telegram_bot_service - INFO - Notification sent: system
+2025-06-04 20:17:11,855 - telegram_bot_service - INFO - Notification sent: system
+2025-06-04 20:17:18,262 - telegram_bot_service - INFO - Notification sent: system
+2025-06-05 01:33:42,388 - telegram_notifications - ERROR - Error getting updates: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=35)
+2025-06-05 02:57:15,387 - telegram_notifications - ERROR - Error getting updates: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=35)
+2025-06-05 04:58:25,856 - telegram_notifications - ERROR - Error getting updates: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=35)
+2025-06-05 06:37:22,075 - telegram_notifications - ERROR - Error getting updates: HTTPSConnectionPool(host='api.telegram.org', port=443): Read timed out. (read timeout=35)
+2025-06-05 06:40:22,570 - telegram_bot_service - INFO - Received signal 15, shutting down...
+2025-06-05 06:40:22,571 - telegram_bot_service - INFO - Stopping Telegram bot service...
+2025-06-05 06:40:23,014 - telegram_bot_service - INFO - Notification processing thread stopped
+2025-06-05 06:40:24,015 - telegram_notifications - INFO - Telegram notification system stopped
+2025-06-05 06:40:24,015 - telegram_bot_service - INFO - Telegram bot service stopped

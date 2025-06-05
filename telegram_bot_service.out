@@ -1,0 +1,108 @@
+nohup: ignoring input
+2025-06-04 20:01:07,245 - telegram_bot_service - INFO - Found .env file at: /home/ubuntu/projects/Trading-Agent/.env-secure/.env
+2025-06-04 20:01:07,245 - telegram_bot_service - INFO - Starting Telegram bot service...
+2025-06-04 20:01:07,245 - telegram_notifications - INFO - Loading environment variables from: /home/ubuntu/projects/Trading-Agent/.env-secure/.env
+2025-06-04 20:01:07,245 - telegram_notifications - INFO - Loaded MEXC_API_KEY=mx0vg...
+2025-06-04 20:01:07,245 - telegram_notifications - INFO - Loaded MEXC_SECRET_KEY=d8946...
+2025-06-04 20:01:07,245 - telegram_notifications - INFO - Loaded TELEGRAM_BOT_TOKEN=78315...
+2025-06-04 20:01:07,245 - telegram_notifications - INFO - Loaded TELEGRAM_USER_ID=1888718908
+2025-06-04 20:01:07,245 - telegram_notifications - INFO - Loaded Telegram credentials - Token: 78315... Chat ID: 1888718908
+2025-06-04 20:01:07,246 - telegram_notifications - INFO - Telegram notification system started
+2025-06-04 20:01:07,246 - telegram_bot_service - INFO - Telegram bot service started
+2025-06-04 20:01:07,529 - telegram_notifications - INFO - Notification sent: system
+2025-06-04 20:01:07,815 - telegram_notifications - INFO - Notification sent: system
+2025-06-04 20:01:08,099 - telegram_notifications - INFO - Notification sent: system
+2025-06-04 20:01:08,396 - telegram_notifications - INFO - Notification sent: system
+2025-06-04 20:01:08,679 - telegram_notifications - INFO - Notification sent: system
+2025-06-04 20:01:09,680 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:10,680 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:11,680 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:12,681 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:13,681 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:14,682 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:15,682 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:16,683 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:17,683 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:18,683 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:19,684 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:20,684 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:21,685 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:22,685 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:23,685 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:24,686 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:25,686 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:26,687 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:27,687 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:28,687 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:29,688 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:30,688 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:31,689 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:32,689 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:33,690 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:34,690 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:35,690 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:36,691 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:37,691 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:38,692 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:39,692 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:40,693 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:41,693 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:42,694 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:43,694 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:44,694 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:45,695 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:46,695 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:47,696 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:48,696 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:49,696 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:50,697 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:51,697 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:52,697 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:53,698 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:54,698 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:55,698 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:56,699 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:57,699 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:58,700 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:01:59,700 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:00,700 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:01,701 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:02,701 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:03,702 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:04,702 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:05,702 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:06,703 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:07,703 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:08,704 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:09,704 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:10,705 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:11,705 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:12,705 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:13,706 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:14,706 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:15,707 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:16,707 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:17,708 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:18,708 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:19,709 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:20,709 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:21,710 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:22,710 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:23,710 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:24,711 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:25,711 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:26,712 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:27,712 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:28,712 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:29,713 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:30,713 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:31,713 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:32,714 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:33,714 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:34,714 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:35,715 - telegram_notifications - ERROR - Error processing notification: 
+2025-06-04 20:02:35,817 - telegram_bot_service - INFO - Received signal 15, shutting down...
+2025-06-04 20:02:35,817 - telegram_bot_service - INFO - Stopping Telegram bot service...
+2025-06-04 20:02:36,715 - telegram_notifications - INFO - Notification processing thread stopped
+2025-06-04 20:02:37,715 - telegram_notifications - INFO - Telegram notification system stopped
+2025-06-04 20:02:37,715 - telegram_bot_service - INFO - Telegram bot service stopped
